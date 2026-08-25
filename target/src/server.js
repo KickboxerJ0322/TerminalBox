@@ -2,6 +2,7 @@ import http from 'node:http';
 
 const PROFILE_ID = ['1', '2', '3'].includes(process.env.TARGET_PROFILE) ? process.env.TARGET_PROFILE : '1';
 const PORT = Number.parseInt(process.env.PORT ?? '3000', 10) || 3000;
+const HOST = process.env.HOST ?? '0.0.0.0';
 
 const profiles = {
   '1': {
@@ -175,4 +176,4 @@ const server = http.createServer(async (request, response) => {
   sendJson(response, 404, { error: 'not_found', path });
 });
 
-server.listen(PORT, '0.0.0.0', () => console.log(`${profile.service} listening on port ${PORT}`));
+server.listen(PORT, HOST, () => console.log(`${profile.service} listening on ${HOST}:${PORT}`));
