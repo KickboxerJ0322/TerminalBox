@@ -28,7 +28,7 @@ steps:
       - --max-instances=1
       - --session-affinity
       - --set-env-vars=AI_PROVIDER=gemini,GEMINI_MODEL=gemini-3.7-flash,KALI_VNC_GEOMETRY=1440x900
-      - --set-secrets=GEMINI_API_KEY=terminalbox-gemini-api-key:latest,TERMINALBOX_PASSWORD=terminalbox-access-password:latest
+      - --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,TERMINALBOX_PASSWORD=terminalbox-access-password:latest
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
 substitutions:

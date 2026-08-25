@@ -6,7 +6,7 @@ Cloud Run uses `Dockerfile.cloud` to run the web UI, backend, Kali/noVNC, and th
 
 Required Secret Manager secrets:
 
-- `terminalbox-gemini-api-key`: Gemini API key used only by the backend.
+- `GEMINI_API_KEY`: Gemini API key used only by the backend.
 - `terminalbox-access-password`: password for the browser Basic authentication user `terminalbox`.
 
 The API key is injected into the Cloud Run revision and is never included in the image, GitHub repository, or browser JavaScript. The browser shows `Google Cloud Secret` instead of an API-key input when the managed secret is configured.
