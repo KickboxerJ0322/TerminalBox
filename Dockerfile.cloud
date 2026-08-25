@@ -1,0 +1,55 @@
+FROM node:22-alpine AS web-build
+WORKDIR /build/web
+COPY web/package*.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
+FROM node:22-alpine AS backend-dependencies
+WORKDIR /build/backend
+COPY backend/package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+FROM kalilinux/kali-rolling:latest
+
+COPY kali/terminalbox.bashrc /etc/terminalbox.bashrc
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      adwaita-icon-theme apache2-utils bash ca-certificates curl dbus-x11 dnsutils git iproute2 \
+      mousepad netcat-openbsd nginx nmap nodejs novnc procps python3 thunar tigervnc-standalone-server \
+      util-linux wget websockify xdg-utils xfce4-panel xfce4-session xfce4-terminal xfdesktop4 xfwm4 \
+      fcitx5 fcitx5-mozc firefox-esr fonts-noto-cjk im-config locales kali-wallpapers-2026 tigervnc-tools \
+    && sed -i 's/^# *ja_JP.UTF-8 UTF-8/ja_JP.UTF-8 UTF-8/' /etc/locale.gen \
+    && locale-gen ja_JP.UTF-8 \
+    && useradd --create-home --shell /bin/bash --uid 1000 student \
+    && chmod 0644 /etc/terminalbox.bashrc \
+    && if [ ! -e /usr/share/novnc/index.html ]; then ln -s vnc.html /usr/share/novnc/index.html; fi \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --chmod=0755 kali/start-gui.sh /usr/local/bin/start-gui
+COPY --chmod=0755 kali/start-xfce.sh /usr/local/bin/start-xfce
+COPY --chmod=0755 kali/apply-wallpaper.sh /usr/local/bin/apply-wallpaper
+COPY --chmod=0755 kali/TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop
+COPY kali/assets/terminalbox-icon.png /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png
+COPY kali/assets/terminalbox-serpent-wallpaper.png /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png
+COPY kali/assets/kali-net-default.jpg /usr/local/share/backgrounds/kali-net-default.jpg
+RUN sed -i 's#http://terminalbox-web/terminalbox/#http://127.0.0.1:8080/terminalbox/#' /usr/local/share/applications/TerminalBox.desktop \
+    && chmod 0755 /usr/local/share/backgrounds \
+    && chmod 0644 /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png \
+      /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png \
+      /usr/local/share/backgrounds/kali-net-default.jpg
+
+WORKDIR /opt/terminalbox
+COPY --from=web-build /build/web/dist ./web
+COPY --from=backend-dependencies /build/backend/node_modules ./backend/node_modules
+COPY backend/package.json ./backend/package.json
+COPY backend/src ./backend/src
+COPY target ./target
+COPY config ./config
+COPY cloud/nginx.conf /etc/nginx/sites-enabled/default
+COPY --chmod=0755 cloud/start-cloud.sh /usr/local/bin/start-terminalbox-cloud
+
+ENV NODE_ENV=production LANG=ja_JP.UTF-8 LANGUAGE=ja_JP:ja LC_ALL=ja_JP.UTF-8
+EXPOSE 8080
+CMD ["/usr/local/bin/start-terminalbox-cloud"]

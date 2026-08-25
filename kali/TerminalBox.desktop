@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=TerminalBox
+Name[ja]=TerminalBox 練習環境
+Comment=Open the TerminalBox learning workspace
+Comment[ja]=TerminalBoxの練習環境を開きます
+Exec=firefox-esr --new-window http://terminalbox-web/terminalbox/?launch=desktop
+Icon=terminalbox
+Terminal=false
+StartupNotify=true
+Categories=Education;System;

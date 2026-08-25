@@ -1,0 +1,16 @@
+{
+  "name": "terminalbox-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dockerode": "^5.0.1",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "ws": "^8.18.3"
+  }
+}

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" role="img" aria-label="TerminalBox">
+  <rect width="128" height="112" y="8" rx="12" fill="#62f6a6"/>
+  <path d="M28 38 52 56 28 74" fill="none" stroke="#07100b" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M62 77h36" fill="none" stroke="#07100b" stroke-width="10" stroke-linecap="square"/>
+</svg>

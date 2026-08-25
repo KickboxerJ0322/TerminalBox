@@ -1,0 +1,40 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=Dockerfile.cloud
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --execution-environment=gen2
+      - --cpu=2
+      - --memory=4Gi
+      - --timeout=3600
+      - --concurrency=10
+      - --max-instances=1
+      - --session-affinity
+      - --set-env-vars=AI_PROVIDER=gemini,GEMINI_MODEL=gemini-3.7-flash,KALI_VNC_GEOMETRY=1440x900
+      - --set-secrets=GEMINI_API_KEY=terminalbox-gemini-api-key:latest,TERMINALBOX_PASSWORD=terminalbox-access-password:latest
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+substitutions:
+  _REGION: asia-northeast1
+  _REPOSITORY: terminalbox
+  _SERVICE: terminalbox
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 3600s
