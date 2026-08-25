@@ -27,14 +27,16 @@ RUN apt-get update \
     && if [ ! -e /usr/share/novnc/index.html ]; then ln -s vnc.html /usr/share/novnc/index.html; fi \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --chmod=0755 kali/start-gui.sh /usr/local/bin/start-gui
-COPY --chmod=0755 kali/start-xfce.sh /usr/local/bin/start-xfce
-COPY --chmod=0755 kali/apply-wallpaper.sh /usr/local/bin/apply-wallpaper
-COPY --chmod=0755 kali/TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop
+COPY kali/start-gui.sh /usr/local/bin/start-gui
+COPY kali/start-xfce.sh /usr/local/bin/start-xfce
+COPY kali/apply-wallpaper.sh /usr/local/bin/apply-wallpaper
+COPY kali/TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop
 COPY kali/assets/terminalbox-icon.png /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png
 COPY kali/assets/terminalbox-serpent-wallpaper.png /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png
 COPY kali/assets/kali-net-default.jpg /usr/local/share/backgrounds/kali-net-default.jpg
 RUN sed -i 's#http://terminalbox-web/terminalbox/#http://127.0.0.1:8080/terminalbox/#' /usr/local/share/applications/TerminalBox.desktop \
+    && chmod 0755 /usr/local/bin/start-gui /usr/local/bin/start-xfce /usr/local/bin/apply-wallpaper \
+      /usr/local/share/applications/TerminalBox.desktop \
     && chmod 0755 /usr/local/share/backgrounds \
     && chmod 0644 /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png \
       /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png \
@@ -48,7 +50,8 @@ COPY backend/src ./backend/src
 COPY target ./target
 COPY config ./config
 COPY cloud/nginx.conf /etc/nginx/sites-enabled/default
-COPY --chmod=0755 cloud/start-cloud.sh /usr/local/bin/start-terminalbox-cloud
+COPY cloud/start-cloud.sh /usr/local/bin/start-terminalbox-cloud
+RUN chmod 0755 /usr/local/bin/start-terminalbox-cloud
 
 ENV NODE_ENV=production LANG=ja_JP.UTF-8 LANGUAGE=ja_JP:ja LC_ALL=ja_JP.UTF-8
 EXPOSE 8080
