@@ -8,6 +8,7 @@ import { getQuickReply } from './quick-replies.js';
 import { sanitizeConversationHistory } from './conversation-history.js';
 import { getSystemStatus } from './status.js';
 import { resetLab } from './lab-reset.js';
+import { isAllowedWebSocketOrigin } from './origin.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -267,7 +268,7 @@ const terminalSockets = new WebSocketServer({ noServer: true, maxPayload: 16 * 1
 server.on('upgrade', (request, socket, head) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   const origin = request.headers.origin;
-  const originAllowed = !origin || config.allowedOrigins.includes(origin);
+  const originAllowed = isAllowedWebSocketOrigin(origin, request.headers.host, config.allowedOrigins);
   if (url.pathname !== '/ws/terminal' || !originAllowed) {
     socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
     socket.destroy();
