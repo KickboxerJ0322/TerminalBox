@@ -20,4 +20,12 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
+until node -e "fetch('http://127.0.0.1:${PORT}/api/health').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))"; do
+  if ! kill -0 "$backend_pid" >/dev/null 2>&1; then
+    echo "TerminalBox web backend exited before it became healthy" >&2
+    wait "$backend_pid"
+  fi
+  sleep 1
+done
+
 exec nginx -g 'daemon off;'
