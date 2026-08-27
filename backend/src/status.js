@@ -31,26 +31,15 @@ async function parseJsonWithTimeout(response) {
 
 const isReady = (result) => result.status === 'fulfilled' && result.value?.ok === true;
 
-export async function getSystemStatus(config, fetchImpl = fetch) {
+async function getOllamaStatus(config, fetchImpl) {
   const aiProvider = resolveAiProvider(config);
-  const ollamaStatus = aiProvider === 'ollama'
-    ? fetchWithTimeout(fetchImpl, `${config.ollamaUrl}/api/tags`)
-    : Promise.resolve({ ok: false });
-  const statusPromise = Promise.allSettled([
-    fetchWithTimeout(fetchImpl, `${config.targetUrl}/api/status`),
-    fetchWithTimeout(fetchImpl, `${config.kaliGuiUrl}/`),
-    ollamaStatus,
-  ]);
+  if (aiProvider !== 'ollama') return { status: 'fulfilled', value: { ok: false } };
+  return { status: 'fulfilled', value: await fetchWithTimeout(fetchImpl, `${config.ollamaUrl}/api/tags`) };
+}
 
-  const [targetResult, kaliGuiResult, ollamaResult] = await Promise.race([
-    statusPromise,
-    new Promise((resolve) => setTimeout(() => resolve([
-      { status: 'fulfilled', value: { ok: false } },
-      { status: 'fulfilled', value: { ok: false } },
-      { status: 'fulfilled', value: { ok: false } },
-    ]), STATUS_TIMEOUT_MS + 500)),
-  ]);
-
+export async function getAiStatus(config, fetchImpl = fetch) {
+  const aiProvider = resolveAiProvider(config);
+  const ollamaResult = await getOllamaStatus(config, fetchImpl);
   let modelInstalled = false;
   if (isReady(ollamaResult)) {
     const body = await parseJsonWithTimeout(ollamaResult.value);
@@ -62,14 +51,36 @@ export async function getSystemStatus(config, fetchImpl = fetch) {
   const aiReady = aiProvider === 'gemini' ? geminiConfigured : isReady(ollamaResult) && modelInstalled;
 
   return {
-    backend: true,
-    kaliGui: isReady(kaliGuiResult),
-    target: isReady(targetResult),
     ollama: isReady(ollamaResult),
     model: aiProvider === 'gemini' ? config.geminiModel : config.ollamaModel,
     modelInstalled,
     aiProvider,
     aiReady,
     geminiConfigured,
+  };
+}
+
+export async function getSystemStatus(config, fetchImpl = fetch) {
+  const checksPromise = Promise.allSettled([
+    fetchWithTimeout(fetchImpl, `${config.targetUrl}/api/status`),
+    fetchWithTimeout(fetchImpl, `${config.kaliGuiUrl}/`),
+  ]);
+
+  const [aiStatus, [targetResult, kaliGuiResult]] = await Promise.all([
+    getAiStatus(config, fetchImpl),
+    Promise.race([
+      checksPromise,
+      new Promise((resolve) => setTimeout(() => resolve([
+        { status: 'fulfilled', value: { ok: false } },
+        { status: 'fulfilled', value: { ok: false } },
+      ]), STATUS_TIMEOUT_MS + 500)),
+    ]),
+  ]);
+
+  return {
+    backend: true,
+    kaliGui: isReady(kaliGuiResult),
+    target: isReady(targetResult),
+    ...aiStatus,
   };
 }

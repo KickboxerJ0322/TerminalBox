@@ -24,7 +24,6 @@ function attachLocalTerminal(socket) {
         uid: 1000,
         gid: 1000,
         env: {
-          ...process.env,
           HOME: '/home/student',
           USER: 'student',
           LOGNAME: 'student',
@@ -32,6 +31,10 @@ function attachLocalTerminal(socket) {
           TERM: 'xterm-256color',
           COLORTERM: 'truecolor',
           DISPLAY: ':1',
+          LANG: 'ja_JP.UTF-8',
+          LANGUAGE: 'ja_JP:ja',
+          LC_ALL: 'ja_JP.UTF-8',
+          PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
         },
         stdio: ['pipe', 'pipe', 'pipe'],
       },

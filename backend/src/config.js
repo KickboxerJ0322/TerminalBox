@@ -12,6 +12,9 @@ const providerFromEnv = () => {
 
 export const config = {
   port: numberFromEnv('PORT', 3001, 1, 65535),
+  serviceRole: (process.env.SERVICE_ROLE ?? 'combined').toLowerCase(),
+  labServiceUrl: (process.env.LAB_SERVICE_URL ?? '').replace(/\/$/, ''),
+  labServiceAudience: (process.env.LAB_SERVICE_AUDIENCE ?? process.env.LAB_SERVICE_URL ?? '').replace(/\/$/, ''),
   aiProvider: providerFromEnv(),
   ollamaUrl: (process.env.OLLAMA_URL ?? 'http://ollama:11434').replace(/\/$/, ''),
   ollamaModel: process.env.OLLAMA_MODEL ?? 'LiquidAI/lfm2.5-1.2b-instruct:q4_k_m',

@@ -6,21 +6,37 @@ import { config, loadSystemPrompt, resolveAiProvider } from './config.js';
 import { attachTerminalSocket } from './terminal.js';
 import { getQuickReply } from './quick-replies.js';
 import { sanitizeConversationHistory } from './conversation-history.js';
-import { getSystemStatus } from './status.js';
+import { getAiStatus, getSystemStatus } from './status.js';
 import { resetLab } from './lab-reset.js';
 import { isAllowedWebSocketOrigin } from './origin.js';
+import { createLabProxy, isLabHttpPath, isLabWebSocketPath } from './lab-proxy.js';
+
+const isWebService = config.serviceRole === 'web';
+const isLabService = config.serviceRole === 'lab';
+const labProxy = isWebService ? createLabProxy(config) : null;
 
 const app = express();
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: false }));
+if (isWebService) {
+  app.use((request, response, next) => {
+    if (!isLabHttpPath(request.path)) {
+      next();
+      return;
+    }
+    void labProxy.proxyHttp(request, response);
+  });
+}
 app.use(express.json({ limit: '32kb' }));
 
 let systemPrompt = '';
-try {
-  systemPrompt = await loadSystemPrompt();
-} catch (error) {
-  console.error(`Could not load AI system prompt: ${error.message}`);
-  process.exit(1);
+if (!isLabService) {
+  try {
+    systemPrompt = await loadSystemPrompt();
+  } catch (error) {
+    console.error(`Could not load AI system prompt: ${error.message}`);
+    process.exit(1);
+  }
 }
 
 const writeNdjson = (response, payload) => {
@@ -185,6 +201,7 @@ async function sendOllamaChat(response, context, conversationHistory) {
 app.get('/api/health', (_request, response) => {
   response.json({
     status: 'ok',
+    serviceRole: config.serviceRole,
     model: resolveAiProvider(config) === 'gemini' ? config.geminiModel : config.ollamaModel,
     aiProvider: resolveAiProvider(config),
     target: config.targetUrl,
@@ -192,7 +209,34 @@ app.get('/api/health', (_request, response) => {
 });
 
 app.get('/api/status', async (_request, response) => {
-  response.json(await getSystemStatus(config));
+  if (!isWebService) {
+    response.json(await getSystemStatus(config));
+    return;
+  }
+
+  const [labResult, aiStatus] = await Promise.allSettled([
+    labProxy.fetchJson('/api/status'),
+    getAiStatus(config),
+  ]);
+  const labStatus = labResult.status === 'fulfilled'
+    ? labResult.value
+    : { backend: false, kaliGui: false, target: false };
+  if (labResult.status === 'rejected') {
+    console.error(`Could not read Lab status: ${labResult.reason.message}`);
+  }
+  response.json({
+    ...labStatus,
+    backend: true,
+    ...(aiStatus.status === 'fulfilled' ? aiStatus.value : {
+      ollama: false,
+      model: resolveAiProvider(config) === 'gemini' ? config.geminiModel : config.ollamaModel,
+      modelInstalled: false,
+      aiProvider: resolveAiProvider(config),
+      aiReady: false,
+      geminiConfigured: Boolean(config.geminiApiKey),
+    }),
+    lab: labResult.status === 'fulfilled',
+  });
 });
 
 app.post('/api/lab/reset', async (request, response) => {
@@ -209,6 +253,10 @@ app.post('/api/lab/reset', async (request, response) => {
 });
 
 app.post('/api/chat', async (request, response) => {
+  if (isLabService) {
+    response.status(404).json({ error: 'Not found' });
+    return;
+  }
   const message = typeof request.body?.message === 'string' ? request.body.message.trim() : '';
   const terminalHistory = typeof request.body?.terminalHistory === 'string'
     ? request.body.terminalHistory.slice(-(config.historyLimit * 2))
@@ -269,8 +317,24 @@ server.on('upgrade', (request, socket, head) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   const origin = request.headers.origin;
   const originAllowed = isAllowedWebSocketOrigin(origin, request.headers.host, config.allowedOrigins);
-  if (url.pathname !== '/ws/terminal' || !originAllowed) {
+  if (!originAllowed) {
     socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
+  if (isWebService) {
+    if (!isLabWebSocketPath(url.pathname)) {
+      socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    void labProxy.proxyWebSocket(request, socket, head);
+    return;
+  }
+
+  if (url.pathname !== '/ws/terminal') {
+    socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
     socket.destroy();
     return;
   }
@@ -282,7 +346,7 @@ server.on('upgrade', (request, socket, head) => {
 terminalSockets.on('connection', (socket, request) => attachTerminalSocket(socket, request, config));
 
 server.listen(config.port, '0.0.0.0', () => {
-  console.log(`TerminalBox backend listening on port ${config.port}`);
+  console.log(`TerminalBox ${config.serviceRole} backend listening on port ${config.port}`);
   if (resolveAiProvider(config) !== 'ollama') return;
   fetch(`${config.ollamaUrl}/api/generate`, {
     method: 'POST',

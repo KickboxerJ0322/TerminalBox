@@ -1,35 +1,45 @@
 steps:
   - name: gcr.io/cloud-builders/docker
-    args:
-      - pull
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:latest
+    args: [pull, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:latest']
+    allowFailure: true
+  - name: gcr.io/cloud-builders/docker
+    args: [pull, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:latest']
     allowFailure: true
   - name: gcr.io/cloud-builders/docker
     args:
       - build
-      - --file=Dockerfile.cloud
-      - --cache-from=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:latest
-      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
-      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:latest
+      - --file=Dockerfile.web.cloud
+      - --cache-from=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:latest
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:$BUILD_ID
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:latest
       - .
   - name: gcr.io/cloud-builders/docker
     args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+      - build
+      - --file=Dockerfile.lab.cloud
+      - --cache-from=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:latest
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:$BUILD_ID
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:latest
+      - .
   - name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:latest
+    args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:$BUILD_ID']
+  - name: gcr.io/cloud-builders/docker
+    args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:latest']
+  - name: gcr.io/cloud-builders/docker
+    args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:$BUILD_ID']
+  - name: gcr.io/cloud-builders/docker
+    args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:latest']
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
       - run
       - deploy
-      - ${_SERVICE}
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+      - ${_LAB_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:$BUILD_ID
       - --region=${_REGION}
       - --platform=managed
-      - --allow-unauthenticated
+      - --no-allow-unauthenticated
+      - --ingress=internal
       - --port=8080
       - --execution-environment=gen2
       - --cpu=2
@@ -38,15 +48,54 @@ steps:
       - --concurrency=10
       - --max-instances=1
       - --session-affinity
-      - --set-env-vars=AI_PROVIDER=gemini,GEMINI_MODEL=gemini-3.7-flash,KALI_VNC_GEOMETRY=1440x900
-      - --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,TERMINALBOX_PASSWORD=terminalbox-access-password:latest
+      - --service-account=${_LAB_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com
+      - --network=${_NETWORK}
+      - --subnet=${_SUBNET}
+      - --network-tags=${_LAB_NETWORK_TAG}
+      - --vpc-egress=all-traffic
+      - --set-env-vars=SERVICE_ROLE=lab,KALI_VNC_GEOMETRY=1440x900
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - add-iam-policy-binding
+      - ${_LAB_SERVICE}
+      - --region=${_REGION}
+      - --member=serviceAccount:${_WEB_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com
+      - --role=roles/run.invoker
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        LAB_URL="$$(gcloud run services describe '${_LAB_SERVICE}' --region '${_REGION}' --format='value(status.url)')"
+        gcloud run deploy '${_WEB_SERVICE}' \
+          --image='${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:$BUILD_ID' \
+          --region='${_REGION}' --platform=managed --allow-unauthenticated --ingress=all --port=8080 \
+          --execution-environment=gen2 --cpu=1 --memory=1Gi --timeout=3600 --concurrency=20 \
+          --max-instances=1 --session-affinity \
+          --service-account='${_WEB_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com' \
+          --network='${_NETWORK}' --subnet='${_SUBNET}' \
+          --network-tags='${_WEB_NETWORK_TAG}' --vpc-egress=all-traffic \
+          --set-env-vars="SERVICE_ROLE=web,AI_PROVIDER=gemini,GEMINI_MODEL=gemini-3.7-flash,LAB_SERVICE_URL=$${LAB_URL},LAB_SERVICE_AUDIENCE=$${LAB_URL}" \
+          --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,TERMINALBOX_PASSWORD=terminalbox-access-password:latest
 images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:latest
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:latest
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_LAB_SERVICE}:latest
 substitutions:
   _REGION: asia-northeast1
   _REPOSITORY: terminalbox
-  _SERVICE: terminalbox
+  _WEB_SERVICE: terminalbox
+  _LAB_SERVICE: terminalbox-lab
+  _WEB_RUNTIME_SA: terminalbox-web-runtime
+  _LAB_RUNTIME_SA: terminalbox-lab-runtime
+  _NETWORK: terminalbox-vpc
+  _SUBNET: terminalbox-run
+  _WEB_NETWORK_TAG: terminalbox-web
+  _LAB_NETWORK_TAG: terminalbox-lab-deny-egress
 options:
   logging: CLOUD_LOGGING_ONLY
 timeout: 3600s
