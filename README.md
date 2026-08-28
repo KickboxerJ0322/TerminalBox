@@ -21,8 +21,8 @@ TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しな�
 起動手順:
 
 ```bash
-git clone <repository-url>
-cd terminalbox
+git clone https://github.com/KickboxerJ0322/TerminalBox.git
+cd TerminalBox
 cp .env.example .env
 docker compose up -d --build
 ```
@@ -136,10 +136,10 @@ docker compose down -v
 
 Cloud Run では、Web と Lab を 2 つのサービスに分離します。
 
-- `terminalbox`: 公開サービス。Web UI、Basic 認証、AI Backend、Gemini Secret を持ちます。
-- `terminalbox-lab`: 非公開サービス。Kali/noVNC/terminal と 3 つの Target を持ちます。
+- `terminalbox`: 公開サービス。Web UI、Basic 認証、AI Backend、Gemini Secret を持ちます。Gemini API への外部通信はこのサービスだけが行います。
+- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocket ターミナルと 3 つの Target を持ちます。受講者が入力したコマンドはこのサービス内で実行されます。
 
-ブラウザは `terminalbox` にだけ接続します。Web Backend は Google 署名付き ID トークンを取得し、許可された HTTP/WebSocket パスだけを `terminalbox-lab` へプロキシします。Lab を呼び出せるのは Web 実行サービスアカウントだけです。
+ブラウザは `terminalbox` にだけ接続します。Web Backend は Google 署名付き ID トークンを取得し、許可された HTTP/WebSocket パスだけを `terminalbox-lab` へプロキシします。Lab を呼び出せるのは Web 実行サービスアカウントだけです。Target サイトは公開 Web と同一オリジンのパスにプロキシされるため、ブラウザが `target` などの Lab 内部ホスト名へ直接接続することはありません。
 
 必要な Secret Manager シークレット:
 
@@ -157,7 +157,18 @@ $plainGeminiKey | gcloud secrets versions add GEMINI_API_KEY --data-file=-
 Remove-Variable plainGeminiKey, credential, geminiKey
 ```
 
-Secret がすでに存在する場合は、`gcloud secrets create` を省略して新しいバージョンを追加します。登録後に Cloud Build で再デプロイすると、Web サービスだけが最新のキーを参照します。画面に `Google Cloud Secret` と `相談できます` が表示されていれば、ブラウザ側へのAPIキー入力は不要です。
+Secret がすでに存在する場合は、`gcloud secrets create` を省略して新しいバージョンを追加します。登録後に Cloud Build で再デプロイすると、Web サービスだけが最新のキーを参照します。画面に `Google Cloud Secret` と `相談できます` が表示されていれば、ブラウザ側への API キー入力は不要です。質問を入力すると送信ボタンが有効になり、Backend が Secret のキーを使って Gemini へ問い合わせます。
+
+Basic 認証パスワードも初回に作成します。Gemini API キーと同様に、既存の Secret を更新する場合は `gcloud secrets create` を省略してください。
+
+```powershell
+gcloud secrets create terminalbox-access-password --replication-policy=automatic
+$accessPassword = Read-Host 'TerminalBox password' -AsSecureString
+$credential = [PSCredential]::new('unused', $accessPassword)
+$plainAccessPassword = $credential.GetNetworkCredential().Password
+$plainAccessPassword | gcloud secrets versions add terminalbox-access-password --data-file=-
+Remove-Variable plainAccessPassword, credential, accessPassword
+```
 
 初回だけ、VPC、サブネット、実行サービスアカウント、Secret Manager 権限、Lab の外向き通信を拒否する firewall rule を作成します。
 
@@ -180,7 +191,9 @@ gcloud builds submit --config cloudbuild.yaml
 
 - Web サービスは Gemini Secret を持ち、Cloud NAT 経由で Gemini API へ接続できます。
 - Lab サービスには Gemini API キーや Basic 認証パスワードを渡しません。
-- Lab サービスは `terminalbox-lab-deny-egress` タグにより、外向き IPv4 通信を firewall rule で拒否します。
+- Lab サービスは全通信を `terminalbox-vpc` へ送る `vpc-access-egress: all-traffic` を使用します。
+- Lab サービスは `terminalbox-lab-deny-egress` タグにより、`0.0.0.0/0` 宛ての全 IPv4 通信を優先度 100 の firewall rule で拒否します。
+- Lab 実行サービスアカウントにはプロジェクトレベルの IAM ロールを付与しません。
 - Target は Lab インスタンス内の loopback に bind します。
 
 Lab 内の Target:
@@ -190,6 +203,22 @@ target  -> 127.0.0.2:3000
 target2 -> 127.0.0.3:3000
 target3 -> 127.0.0.4:3000
 ```
+
+## Lab の外部通信遮断
+
+現在の構成では、TerminalBox のターミナルから一般の外部インターネットへ任意に接続できません。Cloud Run を 2 サービスに分けることだけで遮断しているのではなく、次の設定を組み合わせて実現しています。
+
+- ターミナルのコマンドを非公開の `terminalbox-lab` で実行する。
+- Lab の全外向き通信を Direct VPC egress で VPC に通す。
+- Lab 専用ネットワークタグを対象に、全 IPv4 egress を firewall rule で拒否する。
+- Lab に Secret を注入せず、Lab 実行サービスアカウントにもプロジェクト権限を与えない。
+- Web サービスだけを egress 拒否ルールの対象外とし、Cloud NAT 経由の外部通信、Gemini Secret、Lab 呼び出し権限を利用できるようにする。
+
+そのため、ターミナル内の `curl https://example.com`、`wget`、`git clone`、`apt update` など、一般の外部 IPv4 サービスへの新規通信は失敗します。一方、loopback 上の `target`、`target2`、`target3` には接続でき、確立済み WebSocket を通じたターミナル入出力も利用できます。
+
+「一切のパケットが出ない」という意味の完全な無通信ではありません。Cloud Run の実行に必要なメタデータ、DNS、Google Cloud 基盤、WebSocket 応答などの内部通信は残ります。メタデータサービスから Lab のサービスアカウント情報を参照できる可能性を考慮し、そのアカウントにはプロジェクト権限を付与していません。また、現在の拒否範囲は IPv4 の `0.0.0.0/0` です。将来サブネットや Cloud Run をデュアルスタック化する場合は、IPv6 の `::/0` に対する拒否ルールも追加してください。
+
+この境界が保証するのは、「受講者がターミナルから任意の外部 IPv4 サイトへ接続することを防ぐ」ことです。構成変更後は、以下のデプロイ後確認を必ず再実行してください。
 
 詳しい Cloud Run 構成は [docs/cloud-run-web-lab.md](docs/cloud-run-web-lab.md) を参照してください。
 
@@ -208,13 +237,14 @@ env | grep -E 'GEMINI|TERMINALBOX_PASSWORD'
 期待する結果:
 
 - 3 つの Target API は成功する。
-- `https://example.com/` への外部通信は失敗する。
+- `https://example.com/` への外部通信はタイムアウトまたは接続エラーで失敗する。
 - `GEMINI` や `TERMINALBOX_PASSWORD` を含む環境変数は表示されない。
 
-## 次にやるべきこと
+公開 Web 側では、画面表示と AI を確認します。
 
-1. `README.md` と差分を確認する。
-2. 問題なければ変更をコミットする。
-3. `./cloud/setup-infrastructure.ps1` を一度だけ実行する。
-4. `gcloud builds submit --config cloudbuild.yaml` で本番デプロイする。
-5. デプロイ後の確認コマンドで、Target 接続、Lab 外部通信遮断、Secret 非注入を確認する。
+- ターミナルが接続され、コマンドの入力と出力ができる。
+- 3 つの Target サイトが画面内に表示される。
+- AI パネルに `Google Cloud Secret` と `相談できます` が表示される。
+- 質問を入力すると送信ボタンが有効になり、Gemini から応答が返る。
+
+確認時点の実装では、Target 接続、外部 IPv4 通信のタイムアウト、Secret 非注入、WebSocket ターミナル、Cloud Secret を使った Gemini 応答を実サービスで検証済みです。
