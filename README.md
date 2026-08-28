@@ -146,6 +146,19 @@ Cloud Run では、Web と Lab を 2 つのサービスに分離します。
 - `GEMINI_API_KEY`: Gemini API キー。Web サービスにだけ注入します。
 - `terminalbox-access-password`: ブラウザ Basic 認証ユーザー `terminalbox` のパスワード。
 
+Gemini API キーを初めて登録する場合は、Secret を作成してから値を追加します。入力したキーは画面に表示されません。
+
+```powershell
+gcloud secrets create GEMINI_API_KEY --replication-policy=automatic
+$geminiKey = Read-Host 'Gemini API key' -AsSecureString
+$credential = [PSCredential]::new('unused', $geminiKey)
+$plainGeminiKey = $credential.GetNetworkCredential().Password
+$plainGeminiKey | gcloud secrets versions add GEMINI_API_KEY --data-file=-
+Remove-Variable plainGeminiKey, credential, geminiKey
+```
+
+Secret がすでに存在する場合は、`gcloud secrets create` を省略して新しいバージョンを追加します。登録後に Cloud Build で再デプロイすると、Web サービスだけが最新のキーを参照します。画面に `Google Cloud Secret` と `相談できます` が表示されていれば、ブラウザ側へのAPIキー入力は不要です。
+
 初回だけ、VPC、サブネット、実行サービスアカウント、Secret Manager 権限、Lab の外向き通信を拒否する firewall rule を作成します。
 
 ```powershell

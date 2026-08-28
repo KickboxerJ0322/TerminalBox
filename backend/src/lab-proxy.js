@@ -72,6 +72,9 @@ export function createLabProxy(config) {
   async function proxyWebSocket(request, socket, head) {
     try {
       const headers = await authorizationHeaders();
+      // The public Origin was already validated by the Web service. The Lab
+      // validates its internal hop against the rewritten Host header.
+      headers.origin = config.labServiceUrl;
       proxy.ws(request, socket, head, { headers });
     } catch (error) {
       console.error(`Could not authorize Lab WebSocket: ${error.message}`);

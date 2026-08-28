@@ -37,9 +37,11 @@ function MessageContent({ content }: { content: string }) {
   );
 }
 
-function getInitialMessage(mode: 'local' | 'online') {
+function getInitialMessage(mode: 'local' | 'online', managedGemini = false) {
   return mode === 'online'
-    ? 'Gemini に相談できます。API キーを入力してから質問してください。'
+    ? managedGemini
+      ? 'Gemini に相談できます。API キーは Google Cloud Secret から安全に読み込まれます。'
+      : 'Gemini に相談できます。API キーを入力してから質問してください。'
     : 'コマンドの意味や実行結果で迷ったら、ここで相談してください。必要なら直近のターミナル履歴も一緒に送れます。';
 }
 
@@ -79,13 +81,14 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
   const [clipboardMessage, setClipboardMessage] = useState('');
 
   useEffect(() => {
-    setMessages([{ role: 'assistant', content: getInitialMessage(mode) }]);
+    const managedGemini = status?.aiProvider === 'gemini' && status?.geminiConfigured === true;
+    setMessages([{ role: 'assistant', content: getInitialMessage(mode, managedGemini) }]);
     setQuestion('');
     setIncludeTerminalHistory(false);
     setIncludeConversationHistory(true);
     setLoading(false);
     setClipboardMessage('');
-  }, [mode]);
+  }, [mode, status?.aiProvider, status?.geminiConfigured]);
 
   useEffect(() => {
     if (mode !== 'online') return;
@@ -144,7 +147,7 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
     event.preventDefault();
     const message = question.trim();
     if (!message || loading) return;
-    if (mode === 'online' && !apiKey.trim()) {
+    if (mode === 'online' && !onlineAiReady) {
       setMessages((current) => [...current, {
         role: 'assistant',
         content: 'Gemini API キーを入力してから質問してください。',
@@ -167,7 +170,7 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
           terminalHistory: includeTerminalHistory ? terminalHistory : '',
           conversationHistory,
           provider: mode === 'online' ? 'gemini' : 'ollama',
-          geminiApiKey: mode === 'online' ? apiKey.trim() : undefined,
+          geminiApiKey: mode === 'online' && apiKey.trim() ? apiKey.trim() : undefined,
           geminiModel: mode === 'online' ? selectedModel : undefined,
         }),
       });
