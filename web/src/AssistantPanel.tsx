@@ -364,7 +364,7 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
               直近のターミナル履歴を含める
             </label>
           </div>
-          <button type="submit" disabled={loading || !question.trim() || (mode === 'online' && !apiKey.trim())}>
+          <button type="submit" disabled={loading || !question.trim() || (mode === 'online' && !onlineAiReady)}>
             {loading ? '送信中' : '送信'} <span aria-hidden="true">→</span>
           </button>
         </div>
