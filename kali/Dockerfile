@@ -25,6 +25,7 @@ RUN apt-get update \
 
 COPY --chmod=0755 kali/start-gui.sh /usr/local/bin/start-gui
 COPY --chmod=0755 kali/start-xfce.sh /usr/local/bin/start-xfce
+COPY --chmod=0755 kali/wireshark-launcher.sh /usr/local/bin/wireshark
 COPY --chmod=0755 kali/apply-wallpaper.sh /usr/local/bin/apply-wallpaper
 COPY --chmod=0755 kali/seed-training-home.sh /usr/local/bin/seed-training-home
 COPY --chmod=0755 kali/TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop

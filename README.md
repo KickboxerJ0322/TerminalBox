@@ -4,11 +4,22 @@ TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しな�
 
 ## 主な構成
 
-- Web UI: React/Vite 製の学習画面、ターミナル、Target 表示、AI パネル。
+- Web UI: React/Vite 製のKaliワークスペース、学習パネル、Target表示、AIパネル。
 - Backend: WebSocket ターミナル、AI 連携、状態確認、Lab リセット API。
 - Kali/noVNC: ブラウザから操作できる Kali XFCE デスクトップ。
 - Target: 既存の3つのWebサイトと、セキュリティツール用の隔離Web/TCP Target。
 - AI: ローカルでは Ollama、Cloud Run では Gemini Secret Manager を使う構成。
+
+## 画面構成
+
+画面は左右2列・上下2段を基本とし、次のパネルを同時に使えます。
+
+- Kaliワークスペース: `_ Terminal`、`B Burp Suite`、`W Wireshark`、`🖥 Kali Desktop` の4タブ。Burp SuiteとWiresharkのタブはGUIツールをKali Desktop上で起動します。
+- Live Training Target: 問題1～4の演習サイトを同一オリジンのiframeで確認します。
+- 学習パネル: `基本操作`、`チュートリアル`、`ターゲット`、`ツール` の4区分。ターゲットには問題1～3、ツールには問題4の10問を掲載します。
+- AIパネル: ローカルAIとGeminiを切り替えられます。「直近のターミナル履歴を含める」は初期状態で有効です。
+
+各問題にはクリア状態とクリア解除ボタンがあります。画面上部のRESETはTarget、Kaliホーム、ターミナル履歴、問題進捗、AI会話と保存済みAI設定を初期状態へ戻します。
 
 ## ローカル起動
 
@@ -61,7 +72,7 @@ LiquidAI/lfm2.5-1.2b-instruct:q4_k_m
 
 ## Kali GUI
 
-TerminalBox 画面上部の `KALI DESKTOP` から Kali デスクトップを開けます。直接開く場合は次の URL です。
+Kaliワークスペースの `Kali Desktop` タブ、または画面上部の `KALI DESKTOP` からKaliデスクトップを開けます。直接開く場合は次のURLです。
 
 ```text
 http://localhost:3000/kali-gui/?autoconnect=1&resize=remote
@@ -69,7 +80,7 @@ http://localhost:3000/kali-gui/?autoconnect=1&resize=remote
 
 noVNC のパスワードは既定で `student` です。`.env` の `KALI_VNC_PASSWORD` で変更できます。
 
-Kali GUI と Web ターミナルは同じ Kali 環境を操作します。作成したファイルや Target への接続状態を、どちらからでも確認できます。ローカル構成では Kali のホームディレクトリは一時領域なので、コンテナを作り直すと消えます。
+Kali GUIとWebターミナルは同じKali環境を操作します。作成したファイルやTargetへの接続状態をどちらからでも確認できます。`Burp Suite` と `Wireshark` タブを選ぶと、対応するGUIツールを起動して同じnoVNC画面に表示します。ローカル構成ではKaliのホームディレクトリは一時領域なので、コンテナを作り直すと消えます。
 
 ## セキュリティツール演習
 
@@ -82,7 +93,7 @@ Kaliには次のツールを導入しています。
 
 ローカル版ではDocker Engineへ最低6 GB、Burp Suite・Kali Desktop・Hashcatを同時利用する場合は8 GB以上のメモリ割り当てを推奨します。`KALI_MEMORY_LIMIT` はコンテナ上限であり、Docker Desktop / WSL全体のメモリ割り当てを増やす設定ではありません。Hashcat問題は他の重いツールを閉じ、配布した小規模辞書だけで実行してください。
 
-学習画面の「問題」から「問題4」を選択すると、各ツールの手順、ヒント、回答欄を表示します。回答はFlagまたは復元したパスワードをBackendで照合し、正解した問題だけがクリアになります。教材は `~/TerminalBox-Labs` に配置され、RESET時に初期状態へ戻ります。
+学習パネルの「ツール」を選択すると、問題4の各ツールの手順、詳しいヒント、回答欄を表示します。回答はFlagまたは復元したパスワードをBackendで照合し、正解した問題だけがクリアになります。クリア後は各問の「クリア解除」で再挑戦できます。教材は `~/TerminalBox-Labs` に配置され、RESET時に初期状態へ戻ります。
 
 専用Targetは内部ネットワークの次のアドレスで利用できます。
 
@@ -91,7 +102,15 @@ http://labtarget:3100   Webツール演習
 labtarget:4100          Netcat TCP演習
 ```
 
-Wireshark問題はローカル版とCloud版で同じPCAPをオフライン解析します。HashcatはGPUを使用せず、配布した小規模辞書だけで短時間に完了する問題です。
+Wireshark問題はローカル版とCloud版で同じPCAPをオフライン解析します。Applicationsとターミナルのどちらから起動してもnoVNC向けのQt実行環境を設定する専用ランチャーを経由します。HashcatはGPUを使用せず、配布した小規模辞書だけで短時間に完了する問題です。
+
+Hydra問題でパスワードを確認した後は、次のコマンドでログインしてFlagを取得できます。
+
+```bash
+curl -d 'username=analyst&password=bluebird' http://labtarget:3100/hydra/login
+```
+
+Tool Labのナビゲーションとフォームは公開画面の `/tool-target/` プレフィックスと、Kali内の `http://labtarget:3100/` の両方に対応しています。
 
 ## 動作確認
 
@@ -159,7 +178,7 @@ docker compose down -v
 Cloud Run では、Web と Lab を 2 つのサービスに分離します。
 
 - `terminalbox`: 公開サービス。Web UI、Basic 認証、AI Backend、Gemini Secret を持ちます。Gemini API への外部通信はこのサービスだけが行います。
-- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocket ターミナル、既存3 Target、ツール演習Targetを持ちます。受講者が入力したコマンドはこのサービス内で実行されます。Cloud Runでは4 CPU・8GiBを割り当てます。
+- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocketターミナル、既存3 Target、ツール演習Targetを持ちます。受講者が入力したコマンドはこのサービス内で実行されます。Cloud Runでは4 CPU・8GiBを割り当て、コンテナ入口に8081を使用してBurp Proxy用の8080を確保します。
 
 ブラウザは `terminalbox` にだけ接続します。Web Backend は Google 署名付き ID トークンを取得し、許可された HTTP/WebSocket パスだけを `terminalbox-lab` へプロキシします。Lab を呼び出せるのは Web 実行サービスアカウントだけです。Target サイトは公開 Web と同一オリジンのパスにプロキシされるため、ブラウザが `target` などの Lab 内部ホスト名へ直接接続することはありません。
 
@@ -253,20 +272,22 @@ TerminalBox のターミナルで次を実行します。
 curl -fsS http://target:3000/api/status
 curl -fsS http://target2:3000/api/status
 curl -fsS http://target3:3000/api/status
+curl -fsS http://labtarget:3100/api/status
 curl --connect-timeout 5 https://example.com/
 env | grep -E 'GEMINI|TERMINALBOX_PASSWORD'
 ```
 
 期待する結果:
 
-- 3 つの Target API は成功する。
+- 4つのTarget APIは成功する。
 - `https://example.com/` への外部通信はタイムアウトまたは接続エラーで失敗する。
 - `GEMINI` や `TERMINALBOX_PASSWORD` を含む環境変数は表示されない。
 
 公開 Web 側では、画面表示と AI を確認します。
 
 - ターミナルが接続され、コマンドの入力と出力ができる。
-- 3 つの Target サイトが画面内に表示される。
+- 4つのTargetサイトが画面内に表示され、Tool LabのBurp、SQL、Loginリンクが404にならない。
+- KaliワークスペースのBurp SuiteとWiresharkタブから各GUIツールを起動できる。
 - AI パネルに `Google Cloud Secret` と `相談できます` が表示される。
 - 質問を入力すると送信ボタンが有効になり、Gemini から応答が返る。
 

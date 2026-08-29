@@ -49,6 +49,16 @@ def reset_database():
 
 reset_database()
 
+TOOL_PREFIX = "/tool-target"
+
+
+def normalize_path(path):
+    if path == TOOL_PREFIX:
+        return "/"
+    if path.startswith(TOOL_PREFIX + "/"):
+        return path[len(TOOL_PREFIX):]
+    return path
+
 
 def page(title, body):
     return f"""<!doctype html><html lang=\"ja\"><head><meta charset=\"utf-8\">
@@ -74,7 +84,7 @@ button:hover{{filter:brightness(1.08);box-shadow:0 0 24px rgba(85,245,210,.18)}}
 code{{padding:3px 7px;border:1px solid rgba(155,124,255,.3);border-radius:4px;color:#c8baff;background:rgba(155,124,255,.08)}}
 @media(max-width:560px){{body{{padding:24px 14px 50px}}h1{{margin-top:30px}}.card{{padding:21px}}}}
 </style></head>
-<body><nav><a href=\"/\">Tool Lab</a><a href=\"/burp/\">Burp</a><a href=\"/sql/\">SQL</a><a href=\"/hydra/\">Login</a></nav>
+<body><nav><a href=\"/tool-target/\">Tool Lab</a><a href=\"/tool-target/burp/\">Burp</a><a href=\"/tool-target/sql/\">SQL</a><a href=\"/tool-target/hydra/\">Login</a></nav>
 <h1>{html.escape(title)}</h1>{body}</body></html>"""
 
 
@@ -102,7 +112,7 @@ class ChallengeHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
-        path = parsed.path
+        path = normalize_path(parsed.path)
         if path == "/api/status":
             self.send_json(200, {"status": "ok", "service": "terminalbox-challenge-target"})
         elif path == "/":
@@ -117,11 +127,11 @@ class ChallengeHandler(BaseHTTPRequestHandler):
             self.send_bytes(200, f"Training server status: enabled\nFlag: {FLAGS['nikto']}\n", "text/plain; charset=utf-8")
         elif path == "/burp/":
             body = """<div class=\"card\"><p>社内研修の割引申請です。送信リクエストをBurp Proxyで捕捉し、<code>discount</code>を調査してください。</p>
-<form method=\"post\" action=\"/burp/apply\"><label>社員番号<input name=\"employee\" value=\"student\"></label>
+<form method=\"post\" action=\"/tool-target/burp/apply\"><label>社員番号<input name=\"employee\" value=\"student\"></label>
 <input type=\"hidden\" name=\"discount\" value=\"10\"><button type=\"submit\">10%割引を申請</button></form></div>"""
             self.send_bytes(200, page("Burp Suite演習", body))
         elif path == "/sql/":
-            body = """<div class=\"card\"><form method=\"get\" action=\"/sql/search\"><label>商品検索<input name=\"q\" value=\"apple\"></label><button>検索</button></form></div>"""
+            body = """<div class=\"card\"><form method=\"get\" action=\"/tool-target/sql/search\"><label>商品検索<input name=\"q\" value=\"apple\"></label><button>検索</button></form></div>"""
             self.send_bytes(200, page("商品検索API", body))
         elif path == "/sql/search":
             query = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
@@ -134,7 +144,7 @@ class ChallengeHandler(BaseHTTPRequestHandler):
             except sqlite3.Error as error:
                 self.send_json(500, {"error": f"SQLite error: {error}"})
         elif path == "/hydra/":
-            body = """<div class=\"card\"><form method=\"post\" action=\"/hydra/login\"><label>User<input name=\"username\"></label>
+            body = """<div class=\"card\"><form method=\"post\" action=\"/tool-target/hydra/login\"><label>User<input name=\"username\"></label>
 <label>Password<input type=\"password\" name=\"password\"></label><button>Login</button></form></div>"""
             self.send_bytes(200, page("Training Login", body))
         elif path == "/metasploit/status":
@@ -146,7 +156,7 @@ class ChallengeHandler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "not_found", "path": path})
 
     def do_POST(self):
-        path = urllib.parse.urlparse(self.path).path
+        path = normalize_path(urllib.parse.urlparse(self.path).path)
         if path == "/api/lab/reset":
             reset_database()
             self.send_json(200, {"status": "reset"})

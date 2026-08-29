@@ -22,6 +22,7 @@ interface Props {
   resetSignal: number;
   targetId: 1 | 2 | 3 | 4;
   onTargetChange: (targetId: 1 | 2 | 3 | 4) => void;
+  scope: 'targets' | 'tools';
 }
 
 const challengeGroups: ChallengeGroup[] = [
@@ -186,8 +187,8 @@ const challengeGroups: ChallengeGroup[] = [
       {
         id: '09', title: 'Hydra', answerId: 'hydra',
         goal: 'ユーザー `analyst` のパスワードを小さな専用辞書で検証し、ログイン後のFlagを取得してください。',
-        commands: ["hydra -l analyst -P ~/TerminalBox-Labs/hydra-passwords.txt labtarget -s 3100 http-post-form '/hydra/login:username=^USER^&password=^PASS^:F=Invalid credentials' -t 2 -f", "curl -d 'username=analyst&password=発見した値' http://labtarget:3100/hydra/login"],
-        hint: 'Applications → Password Attacks → hydra から起動するか、1本目の提示コマンドを実行します。`-l analyst` は固定ユーザー、`-P` はパスワード辞書、`-s 3100` は接続ポート、`http-post-form` の文字列は送信先・フォーム項目・失敗時の文言を表します。`^USER^` と `^PASS^` はHydraが候補へ置換し、`-t 2` は同時試行2件、`-f` は発見時に終了する指定です。成功行のpassword値を2本目のcurl内の「発見した値」と置き換え、ログインレスポンスのFlagを取得します。',
+        commands: ["hydra -l analyst -P ~/TerminalBox-Labs/hydra-passwords.txt labtarget -s 3100 http-post-form '/hydra/login:username=^USER^&password=^PASS^:F=Invalid credentials' -t 2 -f", "curl -d 'username=analyst&password=bluebird' http://labtarget:3100/hydra/login"],
+        hint: 'Applications → Password Attacks → hydra から起動するか、1本目の提示コマンドを実行します。`-l analyst` は固定ユーザー、`-P` はパスワード辞書、`-s 3100` は接続ポート、`http-post-form` の文字列は送信先・フォーム項目・失敗時の文言を表します。`^USER^` と `^PASS^` はHydraが候補へ置換し、`-t 2` は同時試行2件、`-f` は発見時に終了する指定です。成功行でパスワードが `bluebird` と分かったら、2本目のcurlを実行してログインレスポンスのFlagを取得します。',
         result: 'ログイン成功レスポンスの `TBX{...}` を回答します。',
       },
       {
@@ -211,8 +212,9 @@ function loadCompleted() {
   } catch { return []; }
 }
 
-export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTargetChange }: Props) {
-  const group = challengeGroups.find((item) => item.id === targetId) ?? challengeGroups[0];
+export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTargetChange, scope }: Props) {
+  const availableGroups = scope === 'tools' ? challengeGroups.filter((item) => item.id === 4) : challengeGroups.filter((item) => item.id !== 4);
+  const group = availableGroups.find((item) => item.id === targetId) ?? availableGroups[0];
   const [selectedId, setSelectedId] = useState(group.challenges[0].id);
   const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<string[]>(loadCompleted);
@@ -258,19 +260,25 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
     }
   };
 
+  const clearChallenge = () => {
+    setCompletedIds((current) => current.filter((id) => id !== completionId));
+    setAnswer('');
+    setFeedback('');
+  };
+
   return (
-    <section className="panel tutorial-panel challenge-panel" id="challenge-panel" role="tabpanel" aria-labelledby="challenge-tab">
+    <section className="panel tutorial-panel challenge-panel" id="challenge-panel" role="tabpanel" aria-labelledby={scope === 'tools' ? 'tools-tab' : 'targets-tab'}>
       <div className="panel-heading">
-        <div><span className="eyebrow">TARGET MISSIONS</span><h2>{group.subtitle}</h2></div>
+        <div><span className="eyebrow">{scope === 'tools' ? 'SECURITY TOOL MISSIONS' : 'TARGET MISSIONS'}</span><h2>{group.subtitle}</h2></div>
         <span className="ai-badge">{groupCompleted}/{group.challenges.length} CLEAR</span>
       </div>
-      <div className="challenge-target-tabs" role="tablist" aria-label="ターゲット問題を選択">
-        {challengeGroups.map((item) => (
+      {scope === 'targets' && <div className="challenge-target-tabs" role="tablist" aria-label="ターゲット問題を選択">
+        {availableGroups.map((item) => (
           <button key={item.id} type="button" role="tab" aria-selected={item.id === targetId} className={item.id === targetId ? 'active' : ''} onClick={() => onTargetChange(item.id)}>
             {item.title}
           </button>
         ))}
-      </div>
+      </div>}
       <div className="tutorial-body">
         <nav className="lesson-list" aria-label={`${group.title}の一覧`}>
           {group.challenges.map((item) => {
@@ -289,15 +297,20 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
           </div>
           <p>{challenge.goal}</p>
           {challenge.answerId ? (
-            <div className="challenge-answer">
-              <input aria-label="問題の回答" value={answer} disabled={completed || checking} placeholder="Flagまたは復元したパスワード" onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void checkAnswer(); }} />
-              <button type="button" disabled={completed || checking || !answer.trim()} onClick={() => void checkAnswer()}>{checking ? '確認中...' : completed ? '正解' : '回答する'}</button>
-              {feedback && <p className={completed ? 'correct' : 'incorrect'} role="status">{feedback}</p>}
-            </div>
+            <>
+              <div className="challenge-answer">
+                <input aria-label="問題の回答" value={answer} disabled={completed || checking} placeholder="Flagまたは復元したパスワード" onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void checkAnswer(); }} />
+                <button type="button" disabled={completed || checking || !answer.trim()} onClick={() => void checkAnswer()}>{checking ? '確認中...' : completed ? '正解' : '回答する'}</button>
+                {feedback && <p className={completed ? 'correct' : 'incorrect'} role="status">{feedback}</p>}
+              </div>
+              <div className="lesson-actions lesson-actions-single">
+                <button type="button" className="secondary" disabled={!completed} onClick={clearChallenge}>クリア解除</button>
+              </div>
+            </>
           ) : (
             <div className="lesson-actions">
               <button type="button" disabled={completed} onClick={() => setCompletedIds((current) => current.includes(completionId) ? current : [...current, completionId])}>クリアにする</button>
-              <button type="button" className="secondary" disabled={!completed} onClick={() => setCompletedIds((current) => current.filter((id) => id !== completionId))}>クリア解除</button>
+              <button type="button" className="secondary" disabled={!completed} onClick={clearChallenge}>クリア解除</button>
             </div>
           )}
           <div className="command-stack" aria-label="問題で使うコマンド">

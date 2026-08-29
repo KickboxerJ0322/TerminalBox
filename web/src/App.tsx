@@ -3,8 +3,8 @@ import { AssistantPanel } from './AssistantPanel';
 import { BasicOperationsPanel } from './BasicOperationsPanel';
 import { ChallengePanel } from './ChallengePanel';
 import { CommandGuide } from './CommandGuide';
+import { KaliWorkspacePanel } from './KaliWorkspacePanel';
 import { TargetPanel } from './TargetPanel';
-import { TerminalPanel } from './TerminalPanel';
 import { TutorialPanel } from './TutorialPanel';
 
 interface Status {
@@ -23,7 +23,7 @@ interface PasteRequest {
   text: string;
 }
 
-type LearningTab = 'operations' | 'tutorial' | 'challenge';
+type LearningTab = 'operations' | 'tutorial' | 'targets' | 'tools';
 type AssistantTab = 'assistant' | 'assistant-online';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
@@ -51,29 +51,39 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="info-content">
           <p>
-            TerminalBox は、隔離された Kali Linux 環境で安全にターミナル操作を練習するための学習アプリです。
-            コマンドの実験、チュートリアル、AI サポート、Kali Desktop の GUI 操作をひとつの画面で進められます。
+            TerminalBox は、隔離された Kali Linux 環境でLinuxの基本操作、Webターゲット調査、
+            セキュリティツール演習を安全に学ぶためのアプリです。TerminalとKali Desktopは同じ環境を操作します。
           </p>
           <div className="info-grid">
             <article>
               <span>01</span>
-              <h3>Terminal</h3>
-              <p>`pwd`、`ls`、`grep`、`curl` などの基本コマンドを実際に入力して試せます。</p>
+              <h3>Kaliワークスペース</h3>
+              <p>Terminal、Burp Suite、Wireshark、Kali Desktopをタブで切り替えられます。ツールタブではGUIツールを自動起動します。</p>
             </article>
             <article>
               <span>02</span>
-              <h3>チュートリアル</h3>
-              <p>ミッション形式で順に学べます。ボタンを押すとコマンドをターミナルへ貼り付けできます。</p>
+              <h3>基本操作・チュートリアル</h3>
+              <p>ファイル操作とLinuxコマンドをミッション形式で学べます。提示コマンドはTerminalへ貼り付けできます。</p>
             </article>
             <article>
               <span>03</span>
-              <h3>AI サポート</h3>
-              <p>ローカル AI と Gemini の両方を使い分けながら、コマンドの意味や結果を相談できます。</p>
+              <h3>ターゲット問題</h3>
+              <p>問題1～3では研修サイト、オンラインストア、図書館サイトを調査し、隔離環境内でAPIの安全性を学びます。</p>
             </article>
             <article>
               <span>04</span>
-              <h3>Kali Desktop</h3>
-              <p>noVNC 経由で Kali のデスクトップ画面を開き、GUI 操作と TerminalBox を行き来できます。</p>
+              <h3>セキュリティツール問題</h3>
+              <p>問題4ではBurp Suite、Wireshark/tshark、Gobuster、Nikto、sqlmap、John、Hashcat、Netcat、Hydra、Metasploitを使います。</p>
+            </article>
+            <article>
+              <span>05</span>
+              <h3>AIサポート</h3>
+              <p>ローカルAIとGeminiへ質問できます。「直近のターミナル履歴を含める」は初期状態で有効です。</p>
+            </article>
+            <article>
+              <span>06</span>
+              <h3>進捗とリセット</h3>
+              <p>各問題は回答確認、クリア、クリア解除ができます。RESETはターゲット、Kaliホーム、履歴、進捗、AI設定を初期化します。</p>
             </article>
           </div>
         </div>
@@ -212,6 +222,11 @@ export default function App() {
     setPasteRequest({ id: Date.now(), text });
   }, []);
 
+  const selectChallengeTarget = useCallback((targetId: 1 | 2 | 3 | 4) => {
+    setChallengeTargetId(targetId);
+    setLearningTab(targetId === 4 ? 'tools' : 'targets');
+  }, []);
+
   const applyClientReset = useCallback(() => {
     window.localStorage.removeItem(TUTORIAL_STORAGE_KEY);
     window.localStorage.removeItem(OPERATIONS_STORAGE_KEY);
@@ -290,7 +305,7 @@ export default function App() {
       <main className="workspace-main">
         <div className="workspace-grid four-pane-workspace">
           <div className="workspace-column workspace-column-left">
-            <TerminalPanel
+            <KaliWorkspacePanel
               key={`terminal-${resetSignal}`}
               onHistoryChange={updateHistory}
               pasteRequest={pasteRequest}
@@ -299,7 +314,7 @@ export default function App() {
               key={`target-${resetSignal}`}
               refreshSignal={targetRefreshSignal}
               targetId={challengeTargetId}
-              onTargetChange={setChallengeTargetId}
+              onTargetChange={selectChallengeTarget}
             />
           </div>
           <div className="workspace-column workspace-column-right">
@@ -328,15 +343,26 @@ export default function App() {
                 チュートリアル
               </button>
               <button
-                id="challenge-tab"
+                id="targets-tab"
                 type="button"
                 role="tab"
-                aria-selected={learningTab === 'challenge'}
+                aria-selected={learningTab === 'targets'}
                 aria-controls="challenge-panel"
-                className={learningTab === 'challenge' ? 'active' : ''}
-                onClick={() => setLearningTab('challenge')}
+                className={learningTab === 'targets' ? 'active' : ''}
+                onClick={() => { setLearningTab('targets'); if (challengeTargetId === 4) setChallengeTargetId(1); }}
               >
-                問題
+                ターゲット
+              </button>
+              <button
+                id="tools-tab"
+                type="button"
+                role="tab"
+                aria-selected={learningTab === 'tools'}
+                aria-controls="challenge-panel"
+                className={learningTab === 'tools' ? 'active' : ''}
+                onClick={() => { setLearningTab('tools'); setChallengeTargetId(4); }}
+              >
+                ツール
               </button>
             </div>
             {learningTab === 'operations' && (
@@ -345,12 +371,22 @@ export default function App() {
             {learningTab === 'tutorial' && (
               <TutorialPanel onInsertCommand={queueTerminalPaste} resetSignal={resetSignal} />
             )}
-            {learningTab === 'challenge' && (
+            {learningTab === 'targets' && (
               <ChallengePanel
                 onInsertCommand={queueTerminalPaste}
                 resetSignal={resetSignal}
                 targetId={challengeTargetId}
-                onTargetChange={setChallengeTargetId}
+                onTargetChange={selectChallengeTarget}
+                scope="targets"
+              />
+            )}
+            {learningTab === 'tools' && (
+              <ChallengePanel
+                onInsertCommand={queueTerminalPaste}
+                resetSignal={resetSignal}
+                targetId={4}
+                onTargetChange={selectChallengeTarget}
+                scope="tools"
               />
             )}
             </aside>

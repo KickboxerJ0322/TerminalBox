@@ -30,6 +30,7 @@ RUN apt-get update \
 
 COPY kali/start-gui.sh /usr/local/bin/start-gui
 COPY kali/start-xfce.sh /usr/local/bin/start-xfce
+COPY kali/wireshark-launcher.sh /usr/local/bin/wireshark
 COPY kali/apply-wallpaper.sh /usr/local/bin/apply-wallpaper
 COPY kali/seed-training-home.sh /usr/local/bin/seed-training-home
 COPY kali/TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop
@@ -37,7 +38,7 @@ COPY kali/assets/terminalbox-icon.png /usr/local/share/icons/hicolor/256x256/app
 COPY kali/assets/terminalbox-serpent-wallpaper.png /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png
 COPY kali/assets/kali-net-default.jpg /usr/local/share/backgrounds/kali-net-default.jpg
 RUN sed -i 's#http://terminalbox-web/terminalbox/#http://127.0.0.1:8080/terminalbox/#' /usr/local/share/applications/TerminalBox.desktop \
-    && chmod 0755 /usr/local/bin/start-gui /usr/local/bin/start-xfce /usr/local/bin/apply-wallpaper /usr/local/bin/seed-training-home \
+    && chmod 0755 /usr/local/bin/start-gui /usr/local/bin/start-xfce /usr/local/bin/wireshark /usr/local/bin/apply-wallpaper /usr/local/bin/seed-training-home \
       /usr/local/share/applications/TerminalBox.desktop \
     && chmod 0755 /usr/local/share/backgrounds \
     && chmod 0644 /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png \

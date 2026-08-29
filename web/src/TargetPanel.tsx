@@ -61,7 +61,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) 
         <input type="text" value={target.address} readOnly aria-label="ターゲットサイトのアドレス" />
         <button type="button" onClick={refresh} aria-label="ターゲットサイトを再読み込み" title="再読み込み">↻</button>
       </div>
-      <iframe key={`${targetId}-${frameVersion}`} className="target-frame" src={target.proxyPath} title={target.label} sandbox="" />
+      <iframe key={`${targetId}-${frameVersion}`} className="target-frame" src={target.proxyPath} title={target.label} sandbox="allow-forms" />
     </section>
   );
 }
