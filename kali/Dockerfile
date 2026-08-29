@@ -5,7 +5,7 @@ COPY kali/terminalbox.bashrc /etc/terminalbox.bashrc
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       adwaita-icon-theme bash ca-certificates curl dbus-x11 dnsutils git iproute2 \
-      burpsuite gobuster hashcat hydra john metasploit-framework mousepad netcat-openbsd nikto nmap \
+      burpsuite gobuster hashcat hydra john kali-menu metasploit-framework mousepad netcat-openbsd nikto nmap \
       novnc python3 sqlmap thunar tshark tigervnc-standalone-server wget wireshark wordlists xdg-utils \
       websockify xfce4-panel xfce4-session xfce4-terminal xfdesktop4 xfwm4 \
     && rm -rf /var/lib/apt/lists/* \

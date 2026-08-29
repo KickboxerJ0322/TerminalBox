@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const execFileAsync = promisify(execFile);
 
-const HOME_RESET_SCRIPT = String.raw`
+export const HOME_RESET_SCRIPT = String.raw`
 set -eu
 home=/home/student
 desktop="$home/Desktop"
@@ -22,6 +22,7 @@ find "$home" -mindepth 1 -maxdepth 1 \
   ! -name .local \
   ! -name .mozilla \
   ! -name .vnc \
+  ! -name .Xauthority \
   -exec rm -rf -- {} +
 cp /usr/local/share/applications/TerminalBox.desktop "$desktop/TerminalBox.desktop"
 chmod 0755 "$desktop/TerminalBox.desktop"

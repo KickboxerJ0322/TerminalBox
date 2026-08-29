@@ -71,7 +71,7 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
     { role: 'assistant', content: getInitialMessage(mode) },
   ]);
   const [question, setQuestion] = useState('');
-  const [includeTerminalHistory, setIncludeTerminalHistory] = useState(false);
+  const [includeTerminalHistory, setIncludeTerminalHistory] = useState(true);
   const [includeConversationHistory, setIncludeConversationHistory] = useState(true);
   const [loading, setLoading] = useState(false);
   const [apiKey, setApiKey] = useState(() => loadStoredValue(GEMINI_API_KEY_STORAGE, ''));
@@ -84,7 +84,7 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
     const managedGemini = status?.aiProvider === 'gemini' && status?.geminiConfigured === true;
     setMessages([{ role: 'assistant', content: getInitialMessage(mode, managedGemini) }]);
     setQuestion('');
-    setIncludeTerminalHistory(false);
+    setIncludeTerminalHistory(true);
     setIncludeConversationHistory(true);
     setLoading(false);
     setClipboardMessage('');
