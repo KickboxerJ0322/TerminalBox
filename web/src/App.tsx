@@ -108,7 +108,7 @@ function ResetDialog({
         </div>
         <div className="reset-content">
           <p id="reset-description">
-            3つのターゲットサイト、Kaliで作成した学習ファイル、ターミナル履歴、問題の進捗、AI会話と保存済みAPI設定を初期状態へ戻します。
+            4つの演習ターゲット、Kaliで作成した学習ファイル、ターミナル履歴、問題の進捗、AI会話と保存済みAPI設定を初期状態へ戻します。
           </p>
           <p className="reset-warning">この操作は取り消せません。</p>
           {error && <p className="reset-error" role="alert">{error}</p>}
@@ -137,7 +137,7 @@ export default function App() {
   const [pasteRequest, setPasteRequest] = useState<PasteRequest | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [targetRefreshSignal, setTargetRefreshSignal] = useState(0);
-  const [challengeTargetId, setChallengeTargetId] = useState<1 | 2 | 3>(1);
+  const [challengeTargetId, setChallengeTargetId] = useState<1 | 2 | 3 | 4>(1);
   const targetEventCountRef = useRef(0);
 
   const updateHistory = useCallback((value: string) => setHistory(value), []);
@@ -193,6 +193,7 @@ export default function App() {
       { id: 1 as const, index: recentHistory.lastIndexOf('http://target:3000') },
       { id: 2 as const, index: recentHistory.lastIndexOf('http://target2:3000') },
       { id: 3 as const, index: recentHistory.lastIndexOf('http://target3:3000') },
+      { id: 4 as const, index: recentHistory.lastIndexOf('labtarget') },
     ];
     const latestTarget = targetMatches.reduce((latest, candidate) => (
       candidate.index > latest.index ? candidate : latest

@@ -79,12 +79,12 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 
 .assistant-panel, .tutorial-panel, .target-panel { display: flex; flex-direction: column; min-height: 560px; }
 
-.challenge-target-tabs { flex: 0 0 auto; min-height: 42px; padding: 5px 10px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.challenge-target-tabs { flex: 0 0 auto; min-height: 42px; padding: 5px 10px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .challenge-target-tabs button { min-height: 30px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0d1210; font-size: 10px; cursor: pointer; }
 .challenge-target-tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
 .challenge-target-tabs button.active { color: #07100b; border-color: var(--accent); background: var(--accent); font-weight: 700; }
 
-.target-site-tabs { flex: 0 0 auto; min-height: 42px; padding: 5px 10px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.target-site-tabs { flex: 0 0 auto; min-height: 42px; padding: 5px 10px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .target-site-tabs button { min-height: 30px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0d1210; font-size: 10px; cursor: pointer; }
 .target-site-tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
 .target-site-tabs button.active { color: #07100b; border-color: var(--accent); background: var(--accent); font-weight: 700; }
@@ -155,6 +155,13 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .lesson-actions button { min-height: 34px; border: 1px solid var(--accent-dim); border-radius: 3px; color: #07100b; background: var(--accent); font-size: 10px; font-weight: 700; cursor: pointer; }
 .lesson-actions button.secondary { color: var(--muted); border-color: var(--border); background: #0a0f0d; }
 .lesson-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.challenge-answer { margin: 0 0 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.challenge-answer input { min-width: 0; min-height: 36px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 3px; color: var(--text); background: #080d0b; font-family: 'JetBrains Mono', 'Consolas', monospace; }
+.challenge-answer button { min-height: 36px; padding: 0 14px; border: 1px solid var(--accent-dim); border-radius: 3px; color: #07100b; background: var(--accent); font-size: 10px; font-weight: 700; cursor: pointer; }
+.challenge-answer input:disabled, .challenge-answer button:disabled { opacity: .55; cursor: not-allowed; }
+.challenge-answer p { grid-column: 1 / -1; margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; }
+.challenge-answer p.correct { color: var(--accent); border-color: var(--accent-dim); background: rgba(91, 255, 145, .06); }
+.challenge-answer p.incorrect { color: #ffb9c0; border-color: #74323b; background: #261014; }
 .learning-quick-start { flex: 0 0 auto; min-height: 42px; padding: 7px 12px; border: 0; border-bottom: 1px solid var(--border); color: var(--text); background: #0a0f0d; display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 10px; text-align: left; cursor: pointer; }
 .learning-quick-start:hover { background: #10221c; }
 .learning-quick-start span { color: var(--accent); font-size: 8px; letter-spacing: .12em; }

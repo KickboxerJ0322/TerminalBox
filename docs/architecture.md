@@ -15,6 +15,7 @@ Browser
                                     └─ Ollama API ───────> ollama (Liquid AI LFM)
 
 kali ── lab network / Docker DNS ──> target:3000
+kali ── lab network / Docker DNS ──> labtarget:3100,4100
 Kali Firefox ── lab network ───────> terminalbox-web/terminalbox/
 ```
 
@@ -28,6 +29,7 @@ Kali Firefox ── lab network ───────> terminalbox-web/terminalb
 | terminalbox-backend | yes | yes | none |
 | kali | no | yes | none |
 | target | no | yes | none |
+| challenge-target | no | yes | none |
 | ollama | yes | yes | none |
 
 Kaliは`lab`にのみ接続するため、Dockerの外へ直接ルーティングされません。`target`というサービス名はDocker DNSで解決されます。`terminalbox-web`はKali GUIを中継するため両方のネットワークに参加しますが、nginxが公開する内部サービス経路は`/kali-gui/`に限定されます。Ollamaが`edge`にも接続するのはモデル取得のためです。

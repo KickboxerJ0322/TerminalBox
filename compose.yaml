@@ -13,6 +13,8 @@ services:
         condition: service_healthy
       target3:
         condition: service_healthy
+      challenge-target:
+        condition: service_healthy
     networks:
       - edge
       - lab
@@ -37,7 +39,7 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
       GEMINI_URL: ${GEMINI_URL:-https://generativelanguage.googleapis.com}
       TARGET_URL: ${TARGET_URL:-http://target:3000}
-      TARGET_URLS: ${TARGET_URLS:-http://target:3000,http://target2:3000,http://target3:3000}
+      TARGET_URLS: ${TARGET_URLS:-http://target:3000,http://target2:3000,http://target3:3000,http://labtarget:3100}
       KALI_GUI_URL: ${KALI_GUI_URL:-http://kali:6080}
       TERMINAL_HISTORY_LIMIT: ${TERMINAL_HISTORY_LIMIT:-6000}
       KALI_CONTAINER: ${KALI_CONTAINER:-terminalbox-kali}
@@ -50,6 +52,8 @@ services:
       kali:
         condition: service_healthy
       target:
+        condition: service_healthy
+      challenge-target:
         condition: service_healthy
       ollama:
         condition: service_started
@@ -73,7 +77,9 @@ services:
       retries: 10
 
   kali:
-    build: ./kali
+    build:
+      context: .
+      dockerfile: kali/Dockerfile
     container_name: terminalbox-kali
     hostname: kali
     environment:
@@ -86,16 +92,16 @@ services:
     tty: true
     read_only: true
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=64m
+      - /tmp:rw,noexec,nosuid,size=512m
       - /run:rw,nosuid,nodev,size=32m
       - /run/user/1000:rw,nosuid,nodev,size=16m,uid=1000,gid=1000,mode=0700
-      - /home/student:rw,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=0700
+      - /home/student:rw,nosuid,nodev,size=2g,uid=1000,gid=1000,mode=0700
     cap_drop:
       - ALL
     cap_add:
       - NET_RAW
     pids_limit: 512
-    mem_limit: ${KALI_MEMORY_LIMIT:-2g}
+    mem_limit: ${KALI_MEMORY_LIMIT:-6g}
     cpus: ${KALI_CPU_LIMIT:-2.0}
     security_opt:
       - no-new-privileges:true
@@ -182,6 +188,33 @@ services:
       test: ["CMD", "node", "-e", "require('node:http').get('http://localhost:3000/api/status',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 10s
       timeout: 3s
+      retries: 10
+
+  challenge-target:
+    build: ./challenge-target
+    container_name: terminalbox-challenge-target
+    hostname: labtarget
+    init: true
+    networks:
+      lab:
+        aliases:
+          - labtarget
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.25
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3100/api/status', timeout=8)"]
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
       retries: 10
 
   ollama:

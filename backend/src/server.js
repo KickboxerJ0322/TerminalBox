@@ -10,6 +10,7 @@ import { getAiStatus, getSystemStatus } from './status.js';
 import { resetLab } from './lab-reset.js';
 import { isAllowedWebSocketOrigin } from './origin.js';
 import { createLabProxy, isLabHttpPath, isLabWebSocketPath } from './lab-proxy.js';
+import { checkChallengeAnswer } from './challenge-check.js';
 
 const isWebService = config.serviceRole === 'web';
 const isLabService = config.serviceRole === 'lab';
@@ -250,6 +251,11 @@ app.post('/api/lab/reset', async (request, response) => {
     console.error(`Lab reset failed: ${error.message}`);
     response.status(500).json({ error: 'Lab reset failed', detail: error.message });
   }
+});
+
+app.post('/api/challenges/check', (request, response) => {
+  const result = checkChallengeAnswer(request.body?.id, request.body?.answer);
+  response.status(result.status).json(result.body);
 });
 
 app.post('/api/chat', async (request, response) => {

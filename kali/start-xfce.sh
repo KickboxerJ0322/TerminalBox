@@ -33,6 +33,7 @@ desktop_dir="$HOME/Desktop"
 mkdir -p "$desktop_dir"
 cp /usr/local/share/applications/TerminalBox.desktop "$desktop_dir/TerminalBox.desktop"
 chmod 0755 "$desktop_dir/TerminalBox.desktop"
+/usr/local/bin/seed-training-home
 xdg-mime default org.xfce.mousepad.desktop text/plain || true
 
 exec dbus-launch --exit-with-session sh -c '

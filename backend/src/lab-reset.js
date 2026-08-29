@@ -26,6 +26,7 @@ find "$home" -mindepth 1 -maxdepth 1 \
 cp /usr/local/share/applications/TerminalBox.desktop "$desktop/TerminalBox.desktop"
 chmod 0755 "$desktop/TerminalBox.desktop"
 mkdir -p "$home/Downloads"
+HOME="$home" /usr/local/bin/seed-training-home
 `;
 
 async function collectExecOutput(stream) {

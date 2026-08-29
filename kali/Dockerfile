@@ -1,11 +1,12 @@
 FROM kalilinux/kali-rolling:latest
 
-COPY terminalbox.bashrc /etc/terminalbox.bashrc
+COPY kali/terminalbox.bashrc /etc/terminalbox.bashrc
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       adwaita-icon-theme bash ca-certificates curl dbus-x11 dnsutils git iproute2 \
-      mousepad netcat-openbsd nmap novnc python3 thunar tigervnc-standalone-server wget xdg-utils \
+      burpsuite gobuster hashcat hydra john metasploit-framework mousepad netcat-openbsd nikto nmap \
+      novnc python3 sqlmap thunar tshark tigervnc-standalone-server wget wireshark wordlists xdg-utils \
       websockify xfce4-panel xfce4-session xfce4-terminal xfdesktop4 xfwm4 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash --uid 1000 student \
@@ -22,13 +23,15 @@ RUN apt-get update \
     && locale-gen ja_JP.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --chmod=0755 start-gui.sh /usr/local/bin/start-gui
-COPY --chmod=0755 start-xfce.sh /usr/local/bin/start-xfce
-COPY --chmod=0755 apply-wallpaper.sh /usr/local/bin/apply-wallpaper
-COPY --chmod=0755 TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop
-COPY assets/terminalbox-icon.png /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png
-COPY assets/terminalbox-serpent-wallpaper.png /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png
-COPY assets/kali-net-default.jpg /usr/local/share/backgrounds/kali-net-default.jpg
+COPY --chmod=0755 kali/start-gui.sh /usr/local/bin/start-gui
+COPY --chmod=0755 kali/start-xfce.sh /usr/local/bin/start-xfce
+COPY --chmod=0755 kali/apply-wallpaper.sh /usr/local/bin/apply-wallpaper
+COPY --chmod=0755 kali/seed-training-home.sh /usr/local/bin/seed-training-home
+COPY --chmod=0755 kali/TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop
+COPY kali/assets/terminalbox-icon.png /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png
+COPY kali/assets/terminalbox-serpent-wallpaper.png /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png
+COPY kali/assets/kali-net-default.jpg /usr/local/share/backgrounds/kali-net-default.jpg
+COPY challenges /opt/terminalbox/challenges
 RUN chmod 0755 /usr/local/share/backgrounds \
     && chmod 0644 /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png \
       /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png \

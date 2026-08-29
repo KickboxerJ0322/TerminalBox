@@ -7,10 +7,11 @@ interface Challenge {
   commands: string[];
   hint: string;
   result: string;
+  answerId?: string;
 }
 
 interface ChallengeGroup {
-  id: 1 | 2 | 3;
+  id: 1 | 2 | 3 | 4;
   title: string;
   subtitle: string;
   challenges: Challenge[];
@@ -19,8 +20,8 @@ interface ChallengeGroup {
 interface Props {
   onInsertCommand: (command: string) => void;
   resetSignal: number;
-  targetId: 1 | 2 | 3;
-  onTargetChange: (targetId: 1 | 2 | 3) => void;
+  targetId: 1 | 2 | 3 | 4;
+  onTargetChange: (targetId: 1 | 2 | 3 | 4) => void;
 }
 
 const challengeGroups: ChallengeGroup[] = [
@@ -121,6 +122,83 @@ const challengeGroups: ChallengeGroup[] = [
       },
     ],
   },
+  {
+    id: 4,
+    title: '問題4',
+    subtitle: 'セキュリティツール実践ラボ',
+    challenges: [
+      {
+        id: '01', title: 'Burp Suite Community', answerId: 'burp',
+        goal: 'Kali DesktopでBurp Suiteを起動し、FirefoxのHTTP Proxyを `127.0.0.1:8080` に設定します。割引申請を捕捉してRepeaterへ送り、`discount`を書き換えてFlagを取得してください。',
+        commands: ['firefox http://labtarget:3100/burp/'],
+        hint: 'フォームに表示されないhiddenパラメータも、Proxyのリクエストでは確認できます。値は90を試してください。',
+        result: 'レスポンスに表示された `TBX{...}` を回答欄へ入力します。',
+      },
+      {
+        id: '02', title: 'Wireshark / tshark', answerId: 'wireshark',
+        goal: '配布PCAPからHTTPリクエストを調べ、`X-Training-Flag` ヘッダーを発見してください。Cloud版でも利用できるオフライン解析問題です。',
+        commands: ["tshark -r ~/TerminalBox-Labs/capture.pcapng -Y http -V | grep -i -A2 'training-flag'", 'wireshark ~/TerminalBox-Labs/capture.pcapng'],
+        hint: 'GUIでは表示フィルター `http` を使い、Hypertext Transfer Protocolを展開します。',
+        result: '`X-Training-Flag` の値を回答します。',
+      },
+      {
+        id: '03', title: 'Gobuster', answerId: 'gobuster',
+        goal: '専用辞書を使って公開されていないディレクトリとFlagファイルを発見してください。',
+        commands: ['gobuster dir -u http://labtarget:3100 -w ~/TerminalBox-Labs/directories.txt -x txt', 'curl http://labtarget:3100/internal-backup/flag.txt'],
+        hint: '見つかったディレクトリに対して、Flagファイルまで確認します。',
+        result: '発見したファイル内の `TBX{...}` を回答します。',
+      },
+      {
+        id: '04', title: 'Nikto', answerId: 'nikto',
+        goal: 'Webサーバーをスキャンし、公開されたサーバーステータスと危険なHTTP設定を確認してください。',
+        commands: ['nikto -h http://labtarget:3100 -maxtime 2m', 'curl http://labtarget:3100/server-status'],
+        hint: 'スキャン結果の `/server-status` と許可HTTPメソッドに注目します。',
+        result: 'サーバーステータスにある `TBX{...}` を回答します。',
+      },
+      {
+        id: '05', title: 'sqlmap', answerId: 'sqlmap',
+        goal: '商品検索の `q` パラメータを検査し、SQLiteの `secrets` テーブルからFlagを取得してください。',
+        commands: ["sqlmap -u 'http://labtarget:3100/sql/search?q=apple' -p q --dbms=SQLite --batch --tables", "sqlmap -u 'http://labtarget:3100/sql/search?q=apple' -p q --dbms=SQLite --batch -T secrets --dump"],
+        hint: '最初にテーブル一覧を確認してから、`secrets`だけをdumpします。',
+        result: '`training_flag` の値を回答します。',
+      },
+      {
+        id: '06', title: 'John the Ripper', answerId: 'john',
+        goal: 'raw MD5形式の漏えいハッシュを専用辞書で復元してください。',
+        commands: ['john --format=raw-md5 --wordlist=~/TerminalBox-Labs/passwords.txt ~/TerminalBox-Labs/john.hash', 'john --show --format=raw-md5 ~/TerminalBox-Labs/john.hash'],
+        hint: '解答はFlag形式ではなく、Johnが復元した平文パスワードです。',
+        result: '復元したパスワードを回答します。',
+      },
+      {
+        id: '07', title: 'Hashcat', answerId: 'hashcat',
+        goal: 'SHA-256ハッシュを辞書攻撃で復元してください。GPUを使わず、短時間で終わる教材です。',
+        commands: ['hashcat -m 1400 -a 0 ~/TerminalBox-Labs/hashcat.sha256 ~/TerminalBox-Labs/passwords.txt --potfile-path ~/TerminalBox-Labs/hashcat.pot', 'hashcat -m 1400 ~/TerminalBox-Labs/hashcat.sha256 --show --potfile-path ~/TerminalBox-Labs/hashcat.pot'],
+        hint: 'Hash mode 1400はSHA-256です。解答は復元された平文です。',
+        result: '復元したパスワードを回答します。',
+      },
+      {
+        id: '08', title: 'Netcat', answerId: 'netcat',
+        goal: 'TCPサービスへ接続し、表示された独自プロトコルの指示に従ってFlagを取得してください。',
+        commands: ["printf 'FLAG PLEASE\\n' | nc labtarget 4100"],
+        hint: '接続先はHTTPではありません。Netcatで生のTCPテキストを送信します。',
+        result: 'TCPサービスが返した `TBX{...}` を回答します。',
+      },
+      {
+        id: '09', title: 'Hydra', answerId: 'hydra',
+        goal: 'ユーザー `analyst` のパスワードを小さな専用辞書で検証し、ログイン後のFlagを取得してください。',
+        commands: ["hydra -l analyst -P ~/TerminalBox-Labs/hydra-passwords.txt labtarget -s 3100 http-post-form '/hydra/login:username=^USER^&password=^PASS^:F=Invalid credentials' -t 2 -f", "curl -d 'username=analyst&password=発見した値' http://labtarget:3100/hydra/login"],
+        hint: '演習環境の負荷を抑えるため、並列数は2、候補は配布辞書だけに限定します。',
+        result: 'ログイン成功レスポンスの `TBX{...}` を回答します。',
+      },
+      {
+        id: '10', title: 'Metasploit Framework', answerId: 'metasploit',
+        goal: 'TerminalBox専用Auxiliary Scannerを実行し、TargetからFlagを取得してください。',
+        commands: ['msfconsole -q -x "use auxiliary/scanner/http/terminalbox_flag; set RHOSTS labtarget; set RPORT 3100; run; exit -y"'],
+        hint: 'この問題は外部へのpayload送信やreverse shellを行わない、安全なScanner演習です。',
+        result: '`[+]` の行に表示された `TBX{...}` を回答します。',
+      },
+    ],
+  },
 ];
 
 const STORAGE_KEY = 'terminalbox:challenge-completed';
@@ -138,6 +216,9 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const [selectedId, setSelectedId] = useState(group.challenges[0].id);
   const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<string[]>(loadCompleted);
+  const [answer, setAnswer] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [feedback, setFeedback] = useState('');
   const completedSet = useMemo(() => new Set(completedIds), [completedIds]);
   const challenge = group.challenges.find((item) => item.id === selectedId) ?? group.challenges[0];
   const completionId = `${group.id}:${challenge.id}`;
@@ -145,13 +226,36 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const groupCompleted = group.challenges.filter((item) => completedSet.has(`${group.id}:${item.id}`)).length;
 
   useEffect(() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(completedIds)), [completedIds]);
-  useEffect(() => { setSelectedId(group.challenges[0].id); setQueuedCommand(null); }, [group]);
-  useEffect(() => { setSelectedId('01'); setCompletedIds(loadCompleted()); }, [resetSignal]);
+  useEffect(() => { setSelectedId(group.challenges[0].id); setQueuedCommand(null); setAnswer(''); setFeedback(''); }, [group]);
+  useEffect(() => { setSelectedId('01'); setCompletedIds(loadCompleted()); setAnswer(''); setFeedback(''); }, [resetSignal]);
 
   const queueCommand = (command: string) => {
     onInsertCommand(command);
     setQueuedCommand(command);
     window.setTimeout(() => setQueuedCommand((current) => current === command ? null : current), 1400);
+  };
+
+  const checkAnswer = async () => {
+    if (!challenge.answerId || !answer.trim()) return;
+    setChecking(true);
+    setFeedback('');
+    try {
+      const response = await fetch('/api/challenges/check', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: challenge.answerId, answer }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+      setFeedback(result.message);
+      if (result.correct) {
+        setCompletedIds((current) => current.includes(completionId) ? current : [...current, completionId]);
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : '回答の確認に失敗しました。');
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -172,7 +276,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
           {group.challenges.map((item) => {
             const itemCompletionId = `${group.id}:${item.id}`;
             return (
-              <button key={item.id} type="button" className={`${item.id === selectedId ? 'active' : ''} ${completedSet.has(itemCompletionId) ? 'completed' : ''}`} onClick={() => setSelectedId(item.id)}>
+              <button key={item.id} type="button" className={`${item.id === selectedId ? 'active' : ''} ${completedSet.has(itemCompletionId) ? 'completed' : ''}`} onClick={() => { setSelectedId(item.id); setAnswer(''); setFeedback(''); }}>
                 <span>{completedSet.has(itemCompletionId) ? '✓' : item.id}</span>{item.title}
               </button>
             );
@@ -184,10 +288,18 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
             <span className={`lesson-clear-badge ${completed ? 'cleared' : ''}`}>{completed ? 'クリア済み' : '未クリア'}</span>
           </div>
           <p>{challenge.goal}</p>
-          <div className="lesson-actions">
-            <button type="button" disabled={completed} onClick={() => setCompletedIds((current) => current.includes(completionId) ? current : [...current, completionId])}>クリアにする</button>
-            <button type="button" className="secondary" disabled={!completed} onClick={() => setCompletedIds((current) => current.filter((id) => id !== completionId))}>クリア解除</button>
-          </div>
+          {challenge.answerId ? (
+            <div className="challenge-answer">
+              <input aria-label="問題の回答" value={answer} disabled={completed || checking} placeholder="Flagまたは復元したパスワード" onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void checkAnswer(); }} />
+              <button type="button" disabled={completed || checking || !answer.trim()} onClick={() => void checkAnswer()}>{checking ? '確認中...' : completed ? '正解' : '回答する'}</button>
+              {feedback && <p className={completed ? 'correct' : 'incorrect'} role="status">{feedback}</p>}
+            </div>
+          ) : (
+            <div className="lesson-actions">
+              <button type="button" disabled={completed} onClick={() => setCompletedIds((current) => current.includes(completionId) ? current : [...current, completionId])}>クリアにする</button>
+              <button type="button" className="secondary" disabled={!completed} onClick={() => setCompletedIds((current) => current.filter((id) => id !== completionId))}>クリア解除</button>
+            </div>
+          )}
           <div className="command-stack" aria-label="問題で使うコマンド">
             {challenge.commands.map((command) => (
               <button key={command} type="button" onClick={() => queueCommand(command)}><code>{command}</code><span>{queuedCommand === command ? 'PASTED' : 'PASTE'}</span></button>

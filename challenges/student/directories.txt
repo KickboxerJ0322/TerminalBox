@@ -1,0 +1,8 @@
+admin
+api
+backup
+debug
+internal
+internal-backup
+private
+server-status

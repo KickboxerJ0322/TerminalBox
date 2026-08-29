@@ -3,7 +3,7 @@
 TerminalBox is deployed as two Cloud Run services:
 
 - `terminalbox`: public Web/UI, Basic authentication, AI backend, Gemini secret
-- `terminalbox-lab`: private Kali/noVNC/terminal and three local training targets
+- `terminalbox-lab`: private Kali/noVNC/terminal, three original targets, and the security-tool target
 
 The browser only connects to `terminalbox`. The Web backend obtains a Google-signed ID token and proxies the allowed HTTP and WebSocket paths to `terminalbox-lab`. Only the Web runtime service account has `roles/run.invoker` on Lab.
 
@@ -17,7 +17,10 @@ The targets bind to loopback addresses inside the Lab instance, so these still w
 target  -> 127.0.0.2:3000
 target2 -> 127.0.0.3:3000
 target3 -> 127.0.0.4:3000
+labtarget -> 127.0.0.5:3100 (HTTP), 127.0.0.5:4100 (TCP)
 ```
+
+The Lab service is deployed with 4 vCPU and 8 GiB memory. Wireshark uses an offline PCAP because Cloud Run does not grant packet-capture capabilities. Burp Suite, Hashcat, and Metasploit share this Lab allocation, so challenge inputs are deliberately bounded.
 
 Lab receives no Secret Manager values. Its runtime service account has no project-level IAM roles. Cloud Run's metadata endpoint can still identify and mint a token for the assigned service account, but that identity has no project permissions.
 
@@ -39,8 +42,9 @@ From the TerminalBox shell:
 curl -fsS http://target:3000/api/status
 curl -fsS http://target2:3000/api/status
 curl -fsS http://target3:3000/api/status
+curl -fsS http://labtarget:3100/api/status
 curl --connect-timeout 5 https://example.com/
 env | grep -E 'GEMINI|TERMINALBOX_PASSWORD'
 ```
 
-The three target calls must succeed. The external call must fail, and the environment search must print nothing.
+The four target calls must succeed. The external call must fail, and the environment search must print nothing.

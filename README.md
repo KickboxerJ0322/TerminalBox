@@ -7,7 +7,7 @@ TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しな�
 - Web UI: React/Vite 製の学習画面、ターミナル、Target 表示、AI パネル。
 - Backend: WebSocket ターミナル、AI 連携、状態確認、Lab リセット API。
 - Kali/noVNC: ブラウザから操作できる Kali XFCE デスクトップ。
-- Target: 演習用の 3 つのローカル Web サイト。
+- Target: 既存の3つのWebサイトと、セキュリティツール用の隔離Web/TCP Target。
 - AI: ローカルでは Ollama、Cloud Run では Gemini Secret Manager を使う構成。
 
 ## ローカル起動
@@ -71,6 +71,28 @@ noVNC のパスワードは既定で `student` です。`.env` の `KALI_VNC_PAS
 
 Kali GUI と Web ターミナルは同じ Kali 環境を操作します。作成したファイルや Target への接続状態を、どちらからでも確認できます。ローカル構成では Kali のホームディレクトリは一時領域なので、コンテナを作り直すと消えます。
 
+## セキュリティツール演習
+
+Kaliには次のツールを導入しています。
+
+- Burp Suite Community、Wireshark / tshark、Gobuster、Nikto、sqlmap
+- John the Ripper、Hashcat、Netcat、Hydra、Metasploit Framework
+
+初回のKaliイメージビルドでは、大容量のパッケージを取得します。今回のローカル検証では取得アーカイブが約1.4 GB、完成した `terminalbox-kali` イメージが約2.27 GBでした。Dockerのキャッシュや既存イメージも使用するため、実行前にDockerデータ領域へ十分な空き容量を確保してください。
+
+ローカル版ではDocker Engineへ最低6 GB、Burp Suite・Kali Desktop・Hashcatを同時利用する場合は8 GB以上のメモリ割り当てを推奨します。`KALI_MEMORY_LIMIT` はコンテナ上限であり、Docker Desktop / WSL全体のメモリ割り当てを増やす設定ではありません。Hashcat問題は他の重いツールを閉じ、配布した小規模辞書だけで実行してください。
+
+学習画面の「問題」から「問題4」を選択すると、各ツールの手順、ヒント、回答欄を表示します。回答はFlagまたは復元したパスワードをBackendで照合し、正解した問題だけがクリアになります。教材は `~/TerminalBox-Labs` に配置され、RESET時に初期状態へ戻ります。
+
+専用Targetは内部ネットワークの次のアドレスで利用できます。
+
+```text
+http://labtarget:3100   Webツール演習
+labtarget:4100          Netcat TCP演習
+```
+
+Wireshark問題はローカル版とCloud版で同じPCAPをオフライン解析します。HashcatはGPUを使用せず、配布した小規模辞書だけで短時間に完了する問題です。
+
 ## 動作確認
 
 TerminalBox のターミナルで次を試します。
@@ -121,7 +143,7 @@ docker compose down -v
 | `GEMINI_API_KEY` | 空 | Gemini をローカルで使う場合の API キー |
 | `GEMINI_MODEL` | `gemini-3.7-flash` | Gemini モデル |
 | `TARGET_URL` | `http://target:3000` | 代表 Target URL |
-| `TARGET_URLS` | `http://target:3000,http://target2:3000,http://target3:3000` | リセット対象の Target 一覧 |
+| `TARGET_URLS` | `http://target:3000,http://target2:3000,http://target3:3000,http://labtarget:3100` | リセット対象の Target 一覧 |
 | `KALI_GUI_URL` | `http://kali:6080` | Backend から見た Kali noVNC |
 | `TERMINAL_HISTORY_LIMIT` | `2000` | AI に渡すターミナル履歴の最大文字数 |
 | `KALI_CONTAINER` | `terminalbox-kali` | ローカルリセット時に操作する Kali コンテナ名 |
@@ -129,7 +151,7 @@ docker compose down -v
 | `ALLOWED_ORIGINS` | `http://localhost:3000` | WebSocket 接続を許可する Origin |
 | `KALI_VNC_PASSWORD` | `student` | noVNC/TigerVNC のパスワード |
 | `KALI_VNC_GEOMETRY` | `1440x900` | Kali GUI の初期解像度 |
-| `KALI_MEMORY_LIMIT` | `2g` | Kali コンテナのメモリ上限 |
+| `KALI_MEMORY_LIMIT` | `6g` | Kali コンテナのメモリ上限 |
 | `KALI_CPU_LIMIT` | `2.0` | Kali コンテナの CPU 上限 |
 
 ## Cloud Run デプロイ
@@ -137,7 +159,7 @@ docker compose down -v
 Cloud Run では、Web と Lab を 2 つのサービスに分離します。
 
 - `terminalbox`: 公開サービス。Web UI、Basic 認証、AI Backend、Gemini Secret を持ちます。Gemini API への外部通信はこのサービスだけが行います。
-- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocket ターミナルと 3 つの Target を持ちます。受講者が入力したコマンドはこのサービス内で実行されます。
+- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocket ターミナル、既存3 Target、ツール演習Targetを持ちます。受講者が入力したコマンドはこのサービス内で実行されます。Cloud Runでは4 CPU・8GiBを割り当てます。
 
 ブラウザは `terminalbox` にだけ接続します。Web Backend は Google 署名付き ID トークンを取得し、許可された HTTP/WebSocket パスだけを `terminalbox-lab` へプロキシします。Lab を呼び出せるのは Web 実行サービスアカウントだけです。Target サイトは公開 Web と同一オリジンのパスにプロキシされるため、ブラウザが `target` などの Lab 内部ホスト名へ直接接続することはありません。
 
@@ -202,6 +224,7 @@ Lab 内の Target:
 target  -> 127.0.0.2:3000
 target2 -> 127.0.0.3:3000
 target3 -> 127.0.0.4:3000
+labtarget -> 127.0.0.5:3100 (HTTP), 127.0.0.5:4100 (TCP)
 ```
 
 ## Lab の外部通信遮断
