@@ -58,7 +58,7 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
             <article>
               <span>01</span>
               <h3>Kaliワークスペース</h3>
-              <p>Terminal、Burp Suite、Wireshark、Kali Desktopをタブで切り替えられます。ツールタブではGUIツールを自動起動します。</p>
+              <p>Terminal、Burp Suite、Wireshark、Kali Desktopをタブで切り替えられます。GUI接続を保持し、選択したツールを前面へ表示します。</p>
             </article>
             <article>
               <span>02</span>
@@ -78,7 +78,7 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
             <article>
               <span>05</span>
               <h3>AIサポート</h3>
-              <p>ローカルAIとGeminiへ質問できます。「直近のターミナル履歴を含める」は初期状態で有効です。</p>
+              <p>初期状態ではGeminiのAI（オンライン）が選択されます。「直近のターミナル履歴を含める」も初期状態で有効です。</p>
             </article>
             <article>
               <span>06</span>
@@ -138,7 +138,7 @@ export default function App() {
   const [history, setHistory] = useState('');
   const [status, setStatus] = useState<Status | null>(null);
   const [learningTab, setLearningTab] = useState<LearningTab>('operations');
-  const [assistantTab, setAssistantTab] = useState<AssistantTab>('assistant');
+  const [assistantTab, setAssistantTab] = useState<AssistantTab>('assistant-online');
   const [infoOpen, setInfoOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -236,7 +236,7 @@ export default function App() {
     setHistory('');
     setPasteRequest(null);
     setLearningTab('operations');
-    setAssistantTab('assistant');
+    setAssistantTab('assistant-online');
     setChallengeTargetId(1);
     targetEventCountRef.current = 0;
     setResetSignal((value) => value + 1);
@@ -362,7 +362,7 @@ export default function App() {
                 className={learningTab === 'tools' ? 'active' : ''}
                 onClick={() => { setLearningTab('tools'); setChallengeTargetId(4); }}
               >
-                ツール
+                セキュリティツール
               </button>
             </div>
             {learningTab === 'operations' && (

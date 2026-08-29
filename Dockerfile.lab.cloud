@@ -11,7 +11,7 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       adwaita-icon-theme bash ca-certificates curl dbus-x11 dnsutils git iproute2 \
       burpsuite gobuster hashcat hydra john kali-menu metasploit-framework mousepad netcat-openbsd nginx nikto nmap \
-      nodejs novnc procps python3 sqlmap thunar tshark tigervnc-standalone-server wireshark wordlists \
+      nodejs novnc procps python3 sqlmap thunar tshark tigervnc-standalone-server wireshark wmctrl wordlists \
       util-linux wget websockify xdg-utils xfce4-panel xfce4-session xfce4-terminal xfdesktop4 xfwm4 \
       fcitx5 fcitx5-mozc firefox-esr fonts-noto-cjk im-config locales kali-wallpapers-2026 tigervnc-tools \
     && sed -i 's/^# *ja_JP.UTF-8 UTF-8/ja_JP.UTF-8 UTF-8/' /etc/locale.gen \
@@ -24,13 +24,14 @@ RUN apt-get update \
 COPY kali/start-gui.sh /usr/local/bin/start-gui
 COPY kali/start-xfce.sh /usr/local/bin/start-xfce
 COPY kali/wireshark-launcher.sh /usr/local/bin/wireshark
+COPY kali/activate-tool.sh /usr/local/bin/terminalbox-activate-tool
 COPY kali/apply-wallpaper.sh /usr/local/bin/apply-wallpaper
 COPY kali/seed-training-home.sh /usr/local/bin/seed-training-home
 COPY kali/TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop
 COPY kali/assets/terminalbox-icon.png /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png
 COPY kali/assets/terminalbox-serpent-wallpaper.png /usr/local/share/backgrounds/terminalbox-serpent-wallpaper.png
 COPY kali/assets/kali-net-default.jpg /usr/local/share/backgrounds/kali-net-default.jpg
-RUN chmod 0755 /usr/local/bin/start-gui /usr/local/bin/start-xfce /usr/local/bin/wireshark /usr/local/bin/apply-wallpaper /usr/local/bin/seed-training-home \
+RUN chmod 0755 /usr/local/bin/start-gui /usr/local/bin/start-xfce /usr/local/bin/wireshark /usr/local/bin/terminalbox-activate-tool /usr/local/bin/apply-wallpaper /usr/local/bin/seed-training-home \
       /usr/local/share/applications/TerminalBox.desktop \
     && chmod 0755 /usr/local/share/backgrounds \
     && chmod 0644 /usr/local/share/icons/hicolor/256x256/apps/terminalbox.png \

@@ -21,12 +21,14 @@ const workspaceTabs: Array<{ id: WorkspaceTab; icon: string; label: string }> = 
 ];
 
 const launchCommands: Partial<Record<WorkspaceTab, string>> = {
-  burp: "pgrep -f '[b]urpsuite' >/dev/null || (DISPLAY=:1 XAUTHORITY=/home/student/.Xauthority nohup burpsuite >/tmp/burpsuite.log 2>&1 &)\r",
-  wireshark: "pgrep -x wireshark >/dev/null || (DISPLAY=:1 XAUTHORITY=/home/student/.Xauthority nohup wireshark ~/TerminalBox-Labs/capture.pcapng >/tmp/wireshark.log 2>&1 &)\r",
+  burp: 'nohup terminalbox-activate-tool burp >/tmp/terminalbox-activate-burp.log 2>&1 &\r',
+  wireshark: 'nohup terminalbox-activate-tool wireshark >/tmp/terminalbox-activate-wireshark.log 2>&1 &\r',
+  desktop: 'terminalbox-activate-tool desktop\r',
 };
 
 export function KaliWorkspacePanel({ onHistoryChange, pasteRequest }: Props) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('terminal');
+  const [guiInitialized, setGuiInitialized] = useState(false);
   const [terminalRequest, setTerminalRequest] = useState<PasteRequest | null>(pasteRequest);
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export function KaliWorkspacePanel({ onHistoryChange, pasteRequest }: Props) {
 
   const selectTab = (tab: WorkspaceTab) => {
     setActiveTab(tab);
+    if (tab !== 'terminal') setGuiInitialized(true);
     const command = launchCommands[tab];
     if (command) setTerminalRequest({ id: Date.now(), text: command });
   };
@@ -61,8 +64,8 @@ export function KaliWorkspacePanel({ onHistoryChange, pasteRequest }: Props) {
       <div className={guiVisible ? 'kali-terminal-view kali-view-hidden' : 'kali-terminal-view'} aria-hidden={guiVisible}>
         <TerminalPanel onHistoryChange={onHistoryChange} pasteRequest={terminalRequest} />
       </div>
-      {guiVisible && (
-        <section className="panel kali-gui-panel" role="tabpanel" aria-label={activeDefinition.label}>
+      {guiInitialized && (
+        <section className={guiVisible ? 'panel kali-gui-panel' : 'panel kali-gui-panel kali-view-hidden'} role="tabpanel" aria-label={activeDefinition.label} aria-hidden={!guiVisible}>
           <div className="panel-heading">
             <div><span className="eyebrow">WORKSPACE / KALI</span><h2>{activeDefinition.label}</h2></div>
             <a className="gui-link" href="/kali-gui/?autoconnect=1&resize=remote" target="_blank" rel="noopener noreferrer">別画面で開く</a>

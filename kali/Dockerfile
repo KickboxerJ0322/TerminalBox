@@ -6,7 +6,7 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       adwaita-icon-theme bash ca-certificates curl dbus-x11 dnsutils git iproute2 \
       burpsuite gobuster hashcat hydra john kali-menu metasploit-framework mousepad netcat-openbsd nikto nmap \
-      novnc python3 sqlmap thunar tshark tigervnc-standalone-server wget wireshark wordlists xdg-utils \
+      novnc python3 sqlmap thunar tshark tigervnc-standalone-server wget wireshark wmctrl wordlists xdg-utils \
       websockify xfce4-panel xfce4-session xfce4-terminal xfdesktop4 xfwm4 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash --uid 1000 student \
@@ -26,6 +26,7 @@ RUN apt-get update \
 COPY --chmod=0755 kali/start-gui.sh /usr/local/bin/start-gui
 COPY --chmod=0755 kali/start-xfce.sh /usr/local/bin/start-xfce
 COPY --chmod=0755 kali/wireshark-launcher.sh /usr/local/bin/wireshark
+COPY --chmod=0755 kali/activate-tool.sh /usr/local/bin/terminalbox-activate-tool
 COPY --chmod=0755 kali/apply-wallpaper.sh /usr/local/bin/apply-wallpaper
 COPY --chmod=0755 kali/seed-training-home.sh /usr/local/bin/seed-training-home
 COPY --chmod=0755 kali/TerminalBox.desktop /usr/local/share/applications/TerminalBox.desktop

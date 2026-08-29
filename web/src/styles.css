@@ -157,6 +157,10 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .lesson-list button.completed span { display: grid; place-items: center; width: 17px; height: 17px; color: #07100b; background: var(--accent); border-radius: 50%; }
 .lesson-detail { min-width: 0; padding: 18px; overflow-y: auto; }
 .lesson-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.lesson-title-status { display: flex; align-items: center; gap: 8px; }
+.lesson-clear-button { min-height: 26px; padding: 0 9px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0a0f0d; font-size: 9px; cursor: pointer; white-space: nowrap; }
+.lesson-clear-button:hover:not(:disabled) { color: var(--text); border-color: var(--accent-dim); }
+.lesson-clear-button:disabled { opacity: .4; cursor: not-allowed; }
 .lesson-detail h3 { margin: 8px 0 8px; font-family: 'Yu Gothic UI', sans-serif; font-size: 22px; line-height: 1.35; letter-spacing: -.02em; }
 .lesson-detail > p { margin: 0 0 16px; color: var(--muted); font-family: 'Yu Gothic UI', sans-serif; font-size: 12px; line-height: 1.8; }
 .lesson-clear-badge { flex: 0 0 auto; margin-top: 2px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); font-size: 8px; letter-spacing: .08em; white-space: nowrap; }
@@ -165,7 +169,6 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .lesson-actions button { min-height: 34px; border: 1px solid var(--accent-dim); border-radius: 3px; color: #07100b; background: var(--accent); font-size: 10px; font-weight: 700; cursor: pointer; }
 .lesson-actions button.secondary { color: var(--muted); border-color: var(--border); background: #0a0f0d; }
 .lesson-actions button:disabled { opacity: .45; cursor: not-allowed; }
-.lesson-actions-single { grid-template-columns: 1fr; }
 .challenge-answer { margin: 0 0 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .challenge-answer input { min-width: 0; min-height: 36px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 3px; color: var(--text); background: #080d0b; font-family: 'JetBrains Mono', 'Consolas', monospace; }
 .challenge-answer button { min-height: 36px; padding: 0 14px; border: 1px solid var(--accent-dim); border-radius: 3px; color: #07100b; background: var(--accent); font-size: 10px; font-weight: 700; cursor: pointer; }
@@ -182,6 +185,10 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .lesson-card span { color: var(--accent); font-size: 9px; letter-spacing: .14em; }
 .lesson-card p { margin: 6px 0 0; color: var(--text); font-family: 'Yu Gothic UI', sans-serif; font-size: 12px; line-height: 1.75; }
 .lesson-hint { background: #111814; }
+.hint-toggle { width: 100%; min-height: 38px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); background: #0d1410; cursor: pointer; }
+.hint-toggle:hover { color: var(--text); border-color: var(--accent-dim); }
+.hint-toggle span { color: var(--accent); font-size: 9px; letter-spacing: .18em; }
+.hint-toggle strong { font-size: 10px; font-weight: 600; }
 .lesson-check { border-color: #264737; background: #0f1a15; }
 .command-stack { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; }
 .command-stack button { width: 100%; min-height: 36px; padding: 7px 9px 7px 11px; border: 1px solid var(--border); border-radius: 3px; color: var(--accent); background: #070b09; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; text-align: left; cursor: pointer; }

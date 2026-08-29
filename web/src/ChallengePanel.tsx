@@ -221,6 +221,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const [answer, setAnswer] = useState('');
   const [checking, setChecking] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [hintVisible, setHintVisible] = useState(false);
   const completedSet = useMemo(() => new Set(completedIds), [completedIds]);
   const challenge = group.challenges.find((item) => item.id === selectedId) ?? group.challenges[0];
   const completionId = `${group.id}:${challenge.id}`;
@@ -230,6 +231,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   useEffect(() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(completedIds)), [completedIds]);
   useEffect(() => { setSelectedId(group.challenges[0].id); setQueuedCommand(null); setAnswer(''); setFeedback(''); }, [group]);
   useEffect(() => { setSelectedId('01'); setCompletedIds(loadCompleted()); setAnswer(''); setFeedback(''); }, [resetSignal]);
+  useEffect(() => setHintVisible(false), [selectedId, resetSignal]);
 
   const queueCommand = (command: string) => {
     onInsertCommand(command);
@@ -293,20 +295,18 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
         <article className="lesson-detail">
           <div className="lesson-title-row">
             <div><span className="eyebrow">{group.title.toUpperCase()} / QUESTION {challenge.id}</span><h3>{challenge.title}</h3></div>
-            <span className={`lesson-clear-badge ${completed ? 'cleared' : ''}`}>{completed ? 'クリア済み' : '未クリア'}</span>
+            <div className="lesson-title-status">
+              {scope === 'tools' && <button type="button" className="lesson-clear-button" disabled={!completed} onClick={clearChallenge}>クリア解除</button>}
+              <span className={`lesson-clear-badge ${completed ? 'cleared' : ''}`}>{completed ? 'クリア済み' : '未クリア'}</span>
+            </div>
           </div>
           <p>{challenge.goal}</p>
           {challenge.answerId ? (
-            <>
-              <div className="challenge-answer">
-                <input aria-label="問題の回答" value={answer} disabled={completed || checking} placeholder="Flagまたは復元したパスワード" onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void checkAnswer(); }} />
-                <button type="button" disabled={completed || checking || !answer.trim()} onClick={() => void checkAnswer()}>{checking ? '確認中...' : completed ? '正解' : '回答する'}</button>
-                {feedback && <p className={completed ? 'correct' : 'incorrect'} role="status">{feedback}</p>}
-              </div>
-              <div className="lesson-actions lesson-actions-single">
-                <button type="button" className="secondary" disabled={!completed} onClick={clearChallenge}>クリア解除</button>
-              </div>
-            </>
+            <div className="challenge-answer">
+              <input aria-label="問題の回答" value={answer} disabled={completed || checking} placeholder="Flagまたは復元したパスワード" onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void checkAnswer(); }} />
+              <button type="button" disabled={completed || checking || !answer.trim()} onClick={() => void checkAnswer()}>{checking ? '確認中...' : completed ? '正解' : '回答する'}</button>
+              {feedback && <p className={completed ? 'correct' : 'incorrect'} role="status">{feedback}</p>}
+            </div>
           ) : (
             <div className="lesson-actions">
               <button type="button" disabled={completed} onClick={() => setCompletedIds((current) => current.includes(completionId) ? current : [...current, completionId])}>クリアにする</button>
@@ -318,7 +318,10 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
               <button key={command} type="button" onClick={() => queueCommand(command)}><code>{command}</code><span>{queuedCommand === command ? 'PASTED' : 'PASTE'}</span></button>
             ))}
           </div>
-          <div className="lesson-card lesson-hint"><span>HINT</span><p>{challenge.hint}</p></div>
+          <button type="button" className="hint-toggle" aria-expanded={hintVisible} onClick={() => setHintVisible((current) => !current)}>
+            <span>HINT</span><strong>{hintVisible ? 'ヒントを隠す' : 'ヒントを表示'}</strong>
+          </button>
+          {hintVisible && <div className="lesson-card lesson-hint"><p>{challenge.hint}</p></div>}
           <div className="lesson-card lesson-check"><span>CHECK</span><p>{challenge.result}</p></div>
         </article>
       </div>

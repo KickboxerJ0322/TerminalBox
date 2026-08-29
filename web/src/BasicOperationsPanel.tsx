@@ -101,12 +101,14 @@ export function BasicOperationsPanel({ onInsertCommand, resetSignal }: Props) {
   const [selectedId, setSelectedId] = useState(operations[0].id);
   const [completedIds, setCompletedIds] = useState<string[]>(loadCompleted);
   const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
+  const [hintVisible, setHintVisible] = useState(false);
   const completedSet = useMemo(() => new Set(completedIds), [completedIds]);
   const operation = operations.find((item) => item.id === selectedId) ?? operations[0];
   const completed = completedSet.has(operation.id);
 
   useEffect(() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(completedIds)), [completedIds]);
   useEffect(() => { setSelectedId('01'); setCompletedIds(loadCompleted()); }, [resetSignal]);
+  useEffect(() => setHintVisible(false), [selectedId, resetSignal]);
 
   const queueCommand = (command: string) => {
     onInsertCommand(command);
@@ -139,7 +141,10 @@ export function BasicOperationsPanel({ onInsertCommand, resetSignal }: Props) {
           </div>
           <div className="lesson-card"><span>MISSION</span><p>{operation.mission}</p></div>
           <div className="command-stack">{operation.commands.map((command) => <button key={command} type="button" onClick={() => queueCommand(command)}><code>{command}</code><span>{queuedCommand === command ? 'PASTED' : 'PASTE'}</span></button>)}</div>
-          <div className="lesson-card lesson-hint"><span>HINT</span><p>{operation.hint}</p></div>
+          <button type="button" className="hint-toggle" aria-expanded={hintVisible} onClick={() => setHintVisible((current) => !current)}>
+            <span>HINT</span><strong>{hintVisible ? 'ヒントを隠す' : 'ヒントを表示'}</strong>
+          </button>
+          {hintVisible && <div className="lesson-card lesson-hint"><p>{operation.hint}</p></div>}
           <div className="lesson-card lesson-check"><span>CHECK</span><p>{operation.check}</p></div>
         </article>
       </div>

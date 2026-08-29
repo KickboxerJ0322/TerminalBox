@@ -146,6 +146,7 @@ export function TutorialPanel({ onInsertCommand, resetSignal }: Props) {
   const [selectedId, setSelectedId] = useState(lessons[0].id);
   const [completedIds, setCompletedIds] = useState<string[]>(loadCompletedLessons);
   const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
+  const [hintVisible, setHintVisible] = useState(false);
   const completedSet = useMemo(() => new Set(completedIds), [completedIds]);
   const lesson = lessons.find((item) => item.id === selectedId) ?? lessons[0];
   const lessonCompleted = completedSet.has(lesson.id);
@@ -159,6 +160,8 @@ export function TutorialPanel({ onInsertCommand, resetSignal }: Props) {
     setCompletedIds(loadCompletedLessons());
     setQueuedCommand(null);
   }, [resetSignal]);
+
+  useEffect(() => setHintVisible(false), [selectedId, resetSignal]);
 
   const queueCommand = (command: string) => {
     onInsertCommand(command);
@@ -247,10 +250,10 @@ export function TutorialPanel({ onInsertCommand, resetSignal }: Props) {
             ))}
           </div>
 
-          <div className="lesson-card lesson-hint">
-            <span>HINT</span>
-            <p>{lesson.hint}</p>
-          </div>
+          <button type="button" className="hint-toggle" aria-expanded={hintVisible} onClick={() => setHintVisible((current) => !current)}>
+            <span>HINT</span><strong>{hintVisible ? 'ヒントを隠す' : 'ヒントを表示'}</strong>
+          </button>
+          {hintVisible && <div className="lesson-card lesson-hint"><p>{lesson.hint}</p></div>}
 
           <div className="lesson-card lesson-check">
             <span>CHECK</span>
