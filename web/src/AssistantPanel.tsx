@@ -145,7 +145,11 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const message = question.trim();
+    const typedMessage = question.trim();
+    const canAnalyzeTerminalHistory = mode === 'online' && includeTerminalHistory;
+    const message = typedMessage || (canAnalyzeTerminalHistory
+      ? '直近のターミナル履歴を分析し、実行内容、結果、エラー、次に行うべきことを説明してください。'
+      : '');
     if (!message || loading) return;
     if (mode === 'online' && !onlineAiReady) {
       setMessages((current) => [...current, {
@@ -364,7 +368,10 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
               直近のターミナル履歴を含める
             </label>
           </div>
-          <button type="submit" disabled={loading || !question.trim() || (mode === 'online' && !onlineAiReady)}>
+          <button
+            type="submit"
+            disabled={loading || (!question.trim() && !(mode === 'online' && includeTerminalHistory)) || (mode === 'online' && !onlineAiReady)}
+          >
             {loading ? '送信中' : '送信'} <span aria-hidden="true">→</span>
           </button>
         </div>

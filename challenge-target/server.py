@@ -53,9 +53,27 @@ reset_database()
 def page(title, body):
     return f"""<!doctype html><html lang=\"ja\"><head><meta charset=\"utf-8\">
 <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>{html.escape(title)}</title>
-<style>body{{font-family:system-ui,sans-serif;max-width:860px;margin:40px auto;padding:0 20px;background:#f3f7f5;color:#17251e}}
-nav a{{margin-right:16px}}code{{background:#e3ece7;padding:2px 5px}}form{{display:grid;gap:10px;max-width:480px}}
-input,button{{padding:10px}}.card{{padding:20px;background:white;border:1px solid #bfd0c6;border-radius:8px}}</style></head>
+<style>
+:root{{--bg:#05070a;--panel:#0c1117;--panel-2:#101821;--line:#253443;--text:#d8e7f2;--muted:#8293a3;--cyan:#55f5d2;--violet:#9b7cff}}
+*{{box-sizing:border-box}}html{{min-height:100%;background:var(--bg)}}
+body{{min-height:100vh;margin:0;padding:42px 22px 70px;color:var(--text);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:radial-gradient(circle at 78% 12%,rgba(155,124,255,.13),transparent 30%),radial-gradient(circle at 12% 85%,rgba(85,245,210,.09),transparent 32%),linear-gradient(rgba(85,245,210,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(85,245,210,.025) 1px,transparent 1px),var(--bg);background-size:auto,auto,30px 30px,30px 30px,auto}}
+body::before{{content:'TERMINALBOX // ISOLATED SECURITY LAB';display:block;max-width:920px;margin:0 auto 14px;color:var(--cyan);font-size:11px;letter-spacing:.22em;text-transform:uppercase}}
+nav,h1,body>.card{{width:min(920px,100%);margin-left:auto;margin-right:auto}}
+nav{{display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:rgba(12,17,23,.88);box-shadow:0 18px 70px rgba(0,0,0,.38)}}
+nav a{{padding:9px 13px;border:1px solid transparent;border-radius:5px;color:var(--muted);font-size:12px;text-decoration:none;transition:.18s ease}}
+nav a:hover{{color:var(--cyan);border-color:rgba(85,245,210,.35);background:rgba(85,245,210,.06)}}
+h1{{margin-top:44px;margin-bottom:20px;color:#f1f7fb;font-size:clamp(24px,5vw,42px);line-height:1.15;letter-spacing:-.04em;text-shadow:0 0 32px rgba(85,245,210,.13)}}
+h1::before{{content:'> ';color:var(--cyan)}}
+.card{{position:relative;overflow:hidden;padding:28px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(145deg,rgba(16,24,33,.97),rgba(8,12,17,.97));box-shadow:0 24px 80px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.025)}}
+.card::before{{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,var(--cyan),var(--violet),transparent)}}
+p{{color:#aebdca;line-height:1.75}}label{{display:grid;gap:7px;color:var(--muted);font-size:12px}}form{{display:grid;gap:16px;max-width:520px}}
+input,button{{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:5px;color:var(--text);background:#070b0f;font:inherit}}
+input:focus{{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(85,245,210,.08)}}
+button{{cursor:pointer;border-color:rgba(85,245,210,.48);color:#07110f;background:var(--cyan);font-weight:700;letter-spacing:.04em;transition:.18s ease}}
+button:hover{{filter:brightness(1.08);box-shadow:0 0 24px rgba(85,245,210,.18)}}
+code{{padding:3px 7px;border:1px solid rgba(155,124,255,.3);border-radius:4px;color:#c8baff;background:rgba(155,124,255,.08)}}
+@media(max-width:560px){{body{{padding:24px 14px 50px}}h1{{margin-top:30px}}.card{{padding:21px}}}}
+</style></head>
 <body><nav><a href=\"/\">Tool Lab</a><a href=\"/burp/\">Burp</a><a href=\"/sql/\">SQL</a><a href=\"/hydra/\">Login</a></nav>
 <h1>{html.escape(title)}</h1>{body}</body></html>"""
 
