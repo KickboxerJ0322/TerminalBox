@@ -20,7 +20,7 @@ target3 -> 127.0.0.4:3000
 labtarget -> 127.0.0.5:3100 (HTTP), 127.0.0.5:4100 (TCP)
 ```
 
-The Lab service is deployed with 4 vCPU and 8 GiB memory. Wireshark uses an offline PCAP because Cloud Run does not grant packet-capture capabilities. Burp Suite, Hashcat, and Metasploit share this Lab allocation, so challenge inputs are deliberately bounded.
+The Lab service is deployed with 4 vCPU and 8 GiB memory. Its Cloud Run ingress listens on container port 8081 so that Burp Suite can keep its default proxy listener on `127.0.0.1:8080`. Wireshark uses an offline PCAP because Cloud Run does not grant packet-capture capabilities. Burp Suite, Hashcat, and Metasploit share this Lab allocation, so challenge inputs are deliberately bounded.
 
 Lab receives no Secret Manager values. Its runtime service account has no project-level IAM roles. Cloud Run's metadata endpoint can still identify and mint a token for the assigned service account, but that identity has no project permissions.
 

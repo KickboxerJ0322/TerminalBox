@@ -40,7 +40,8 @@ steps:
       - --platform=managed
       - --no-allow-unauthenticated
       - --ingress=internal
-      - --port=8080
+      # Port 8080 is reserved inside the Lab container for Burp Suite Proxy.
+      - --port=8081
       - --execution-environment=gen2
       - --cpu=4
       - --memory=8Gi

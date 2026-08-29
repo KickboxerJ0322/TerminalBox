@@ -48,5 +48,5 @@ COPY cloud/start-lab.sh /usr/local/bin/start-terminalbox-lab
 RUN chmod 0755 /usr/local/bin/start-terminalbox-lab
 
 ENV NODE_ENV=production LANG=ja_JP.UTF-8 LANGUAGE=ja_JP:ja LC_ALL=ja_JP.UTF-8
-EXPOSE 8080
+EXPOSE 8081
 CMD ["/usr/local/bin/start-terminalbox-lab"]
