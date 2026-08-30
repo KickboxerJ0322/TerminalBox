@@ -23,7 +23,7 @@ interface PasteRequest {
   text: string;
 }
 
-type LearningTab = 'operations' | 'tutorial' | 'targets' | 'tools';
+type LearningTab = 'operations' | 'tutorial' | 'targets' | 'tools' | 'web-attacks';
 type AssistantTab = 'assistant' | 'assistant-online';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
@@ -77,11 +77,16 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
             </article>
             <article>
               <span>05</span>
+              <h3>Web Attacks 初級</h3>
+              <p>問題5ではTBX Marketの8つの演習を通じて、初歩的なWeb脆弱性を安全な模擬環境で学びます。</p>
+            </article>
+            <article>
+              <span>06</span>
               <h3>AIサポート</h3>
               <p>初期状態ではGeminiのAI（オンライン）が選択されます。「直近のターミナル履歴を含める」も初期状態で有効です。</p>
             </article>
             <article>
-              <span>06</span>
+              <span>07</span>
               <h3>進捗とリセット</h3>
               <p>各問題は回答確認、クリア、クリア解除ができます。RESETはターゲット、Kaliホーム、履歴、進捗、AI設定を初期化します。</p>
             </article>
@@ -118,7 +123,7 @@ function ResetDialog({
         </div>
         <div className="reset-content">
           <p id="reset-description">
-            4つの演習ターゲット、Kaliで作成した学習ファイル、ターミナル履歴、問題の進捗、AI会話と保存済みAPI設定を初期状態へ戻します。
+            すべての演習ターゲット、Kaliで作成した学習ファイル、ターミナル履歴、問題の進捗、AI会話と保存済みAPI設定を初期状態へ戻します。
           </p>
           <p className="reset-warning">この操作は取り消せません。</p>
           {error && <p className="reset-error" role="alert">{error}</p>}
@@ -136,6 +141,7 @@ function ResetDialog({
 
 export default function App() {
   const [history, setHistory] = useState('');
+  const [fullTerminalHistory, setFullTerminalHistory] = useState('');
   const [status, setStatus] = useState<Status | null>(null);
   const [learningTab, setLearningTab] = useState<LearningTab>('operations');
   const [assistantTab, setAssistantTab] = useState<AssistantTab>('assistant-online');
@@ -147,10 +153,11 @@ export default function App() {
   const [pasteRequest, setPasteRequest] = useState<PasteRequest | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [targetRefreshSignal, setTargetRefreshSignal] = useState(0);
-  const [challengeTargetId, setChallengeTargetId] = useState<1 | 2 | 3 | 4>(1);
+  const [challengeTargetId, setChallengeTargetId] = useState<1 | 2 | 3 | 4 | 5>(1);
   const targetEventCountRef = useRef(0);
 
   const updateHistory = useCallback((value: string) => setHistory(value), []);
+  const updateFullHistory = useCallback((value: string) => setFullTerminalHistory(value), []);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -199,11 +206,14 @@ export default function App() {
 
   useEffect(() => {
     const recentHistory = history.slice(-4000);
+    const webAttacksUrl = 'http://labtarget:3100/web-attacks';
+    const historyWithoutWebAttacksUrl = recentHistory.replaceAll(webAttacksUrl, ' '.repeat(webAttacksUrl.length));
     const targetMatches = [
+      { id: 5 as const, index: recentHistory.lastIndexOf(webAttacksUrl) },
       { id: 1 as const, index: recentHistory.lastIndexOf('http://target:3000') },
       { id: 2 as const, index: recentHistory.lastIndexOf('http://target2:3000') },
       { id: 3 as const, index: recentHistory.lastIndexOf('http://target3:3000') },
-      { id: 4 as const, index: recentHistory.lastIndexOf('labtarget') },
+      { id: 4 as const, index: historyWithoutWebAttacksUrl.lastIndexOf('labtarget') },
     ];
     const latestTarget = targetMatches.reduce((latest, candidate) => (
       candidate.index > latest.index ? candidate : latest
@@ -222,9 +232,9 @@ export default function App() {
     setPasteRequest({ id: Date.now(), text });
   }, []);
 
-  const selectChallengeTarget = useCallback((targetId: 1 | 2 | 3 | 4) => {
+  const selectChallengeTarget = useCallback((targetId: 1 | 2 | 3 | 4 | 5) => {
     setChallengeTargetId(targetId);
-    setLearningTab(targetId === 4 ? 'tools' : 'targets');
+    setLearningTab(targetId === 5 ? 'web-attacks' : targetId === 4 ? 'tools' : 'targets');
   }, []);
 
   const applyClientReset = useCallback(() => {
@@ -234,6 +244,7 @@ export default function App() {
     window.localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
     window.localStorage.removeItem(GEMINI_MODEL_STORAGE_KEY);
     setHistory('');
+    setFullTerminalHistory('');
     setPasteRequest(null);
     setLearningTab('operations');
     setAssistantTab('assistant-online');
@@ -308,6 +319,7 @@ export default function App() {
             <KaliWorkspacePanel
               key={`terminal-${resetSignal}`}
               onHistoryChange={updateHistory}
+              onFullHistoryChange={updateFullHistory}
               pasteRequest={pasteRequest}
             />
             <TargetPanel
@@ -349,7 +361,7 @@ export default function App() {
                 aria-selected={learningTab === 'targets'}
                 aria-controls="challenge-panel"
                 className={learningTab === 'targets' ? 'active' : ''}
-                onClick={() => { setLearningTab('targets'); if (challengeTargetId === 4) setChallengeTargetId(1); }}
+                onClick={() => { setLearningTab('targets'); if (challengeTargetId === 4 || challengeTargetId === 5) setChallengeTargetId(1); }}
               >
                 ターゲット
               </button>
@@ -363,6 +375,17 @@ export default function App() {
                 onClick={() => { setLearningTab('tools'); setChallengeTargetId(4); }}
               >
                 セキュリティツール
+              </button>
+              <button
+                id="web-attacks-tab"
+                type="button"
+                role="tab"
+                aria-selected={learningTab === 'web-attacks'}
+                aria-controls="challenge-panel"
+                className={learningTab === 'web-attacks' ? 'active' : ''}
+                onClick={() => { setLearningTab('web-attacks'); setChallengeTargetId(5); }}
+              >
+                Web Attacks
               </button>
             </div>
             {learningTab === 'operations' && (
@@ -387,6 +410,15 @@ export default function App() {
                 targetId={4}
                 onTargetChange={selectChallengeTarget}
                 scope="tools"
+              />
+            )}
+            {learningTab === 'web-attacks' && (
+              <ChallengePanel
+                onInsertCommand={queueTerminalPaste}
+                resetSignal={resetSignal}
+                targetId={5}
+                onTargetChange={selectChallengeTarget}
+                scope="web-attacks"
               />
             )}
             </aside>
@@ -423,6 +455,7 @@ export default function App() {
                 tabId="assistant-tab"
                 mode="local"
                 terminalHistory={history}
+                fullTerminalHistory={fullTerminalHistory}
                 status={status}
               />
             )}
@@ -433,6 +466,7 @@ export default function App() {
                 tabId="assistant-online-tab"
                 mode="online"
                 terminalHistory={history}
+                fullTerminalHistory={fullTerminalHistory}
                 status={status}
               />
             )}

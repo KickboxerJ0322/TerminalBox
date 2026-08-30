@@ -99,6 +99,17 @@ const lessons: Lesson[] = [
   },
   {
     id: '08',
+    title: 'ping の返答を確認する',
+    level: 'ネットワーク入門',
+    goal: '`ping` で相手までパケットが届き、返答が戻ることを確認する。',
+    scenario: 'HTTPを調べる前に、演習用Targetと基本的なIP通信ができるか確認します。',
+    commands: ['ping -c 4 target', 'ping -c 4 labtarget'],
+    mission: '`target` に4回pingを送り、送信数・受信数・パケットロスを確認してください。',
+    hint: '`-c 4` は4回送信したら終了する指定です。`0% packet loss` なら全て返答しています。',
+    check: '`4 packets transmitted, 4 received` と応答時間が表示されればクリアです。',
+  },
+  {
+    id: '09',
     title: 'ログを読む',
     level: 'ログ分析',
     goal: '先頭、末尾、行数をすばやく確認できるようになる。',
@@ -109,7 +120,7 @@ const lessons: Lesson[] = [
     check: '3 つのコマンドの使い分けができればクリアです。',
   },
   {
-    id: '09',
+    id: '10',
     title: '並べ替えて数える',
     level: '検索コマンド',
     goal: '標準入力を使って並べ替えと集計ができるようになる。',
@@ -120,7 +131,7 @@ const lessons: Lesson[] = [
     check: '`alice` が 2 回、`bob` が 1 回と表示されればクリアです。',
   },
   {
-    id: '10',
+    id: '11',
     title: '小さなメモを残す',
     level: '実践',
     goal: 'コマンド結果をファイルへ保存できるようになる。',

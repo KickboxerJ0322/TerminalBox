@@ -8,6 +8,7 @@ interface PasteRequest {
 
 interface Props {
   onHistoryChange: (history: string) => void;
+  onFullHistoryChange: (history: string) => void;
   pasteRequest: PasteRequest | null;
 }
 
@@ -26,7 +27,7 @@ const launchCommands: Partial<Record<WorkspaceTab, string>> = {
   desktop: 'terminalbox-activate-tool desktop\r',
 };
 
-export function KaliWorkspacePanel({ onHistoryChange, pasteRequest }: Props) {
+export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, pasteRequest }: Props) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('terminal');
   const [guiInitialized, setGuiInitialized] = useState(false);
   const [terminalRequest, setTerminalRequest] = useState<PasteRequest | null>(pasteRequest);
@@ -62,7 +63,7 @@ export function KaliWorkspacePanel({ onHistoryChange, pasteRequest }: Props) {
         ))}
       </div>
       <div className={guiVisible ? 'kali-terminal-view kali-view-hidden' : 'kali-terminal-view'} aria-hidden={guiVisible}>
-        <TerminalPanel onHistoryChange={onHistoryChange} pasteRequest={terminalRequest} />
+        <TerminalPanel onHistoryChange={onHistoryChange} onFullHistoryChange={onFullHistoryChange} pasteRequest={terminalRequest} />
       </div>
       {guiInitialized && (
         <section className={guiVisible ? 'panel kali-gui-panel' : 'panel kali-gui-panel kali-view-hidden'} role="tabpanel" aria-label={activeDefinition.label} aria-hidden={!guiVisible}>

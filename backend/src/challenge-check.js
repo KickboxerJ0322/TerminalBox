@@ -9,6 +9,14 @@ const answers = new Map([
   ['netcat', 'TBX{netcat_line_protocol}'],
   ['hydra', 'TBX{hydra_bounded_login}'],
   ['metasploit', 'TBX{metasploit_auxiliary_scan}'],
+  ['web-parameter', 'TBX{web_parameter_tampering}'],
+  ['web-idor', 'TBX{web_idor_profile}'],
+  ['web-sqli', 'TBX{web_sqli_basic}'],
+  ['web-xss', 'TBX{web_stored_xss}'],
+  ['web-traversal', 'TBX{web_path_traversal}'],
+  ['web-upload', 'TBX{web_file_upload}'],
+  ['web-ssrf', 'TBX{web_ssrf_internal}'],
+  ['web-jwt', 'TBX{web_jwt_admin}'],
 ]);
 
 export function checkChallengeAnswer(id, answer) {

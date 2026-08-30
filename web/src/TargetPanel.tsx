@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 interface Props {
   refreshSignal: number;
-  targetId: 1 | 2 | 3 | 4;
-  onTargetChange: (targetId: 1 | 2 | 3 | 4) => void;
+  targetId: 1 | 2 | 3 | 4 | 5;
+  onTargetChange: (targetId: 1 | 2 | 3 | 4 | 5) => void;
 }
 
 const targetDefinitions = {
@@ -11,6 +11,7 @@ const targetDefinitions = {
   2: { address: 'http://target2:3000/', proxyPath: '/target-site-2/', label: '問題2 オンラインストア' },
   3: { address: 'http://target3:3000/', proxyPath: '/target-site-3/', label: '問題3 図書館サイト' },
   4: { address: 'http://labtarget:3100/', proxyPath: '/tool-target/', label: '問題4 セキュリティツール演習' },
+  5: { address: 'http://labtarget:3100/web-attacks/', proxyPath: '/tool-target/web-attacks/', label: '問題5 Web Attacks' },
 } as const;
 
 export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) {
@@ -43,7 +44,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) 
         </div>
       </div>
       <div className="target-site-tabs" role="tablist" aria-label="ターゲットサイト">
-        {([1, 2, 3, 4] as const).map((id) => (
+        {([1, 2, 3, 4, 5] as const).map((id) => (
           <button
             key={id}
             type="button"

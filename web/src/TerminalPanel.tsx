@@ -11,12 +11,13 @@ interface PasteRequest {
 
 interface Props {
   onHistoryChange: (history: string) => void;
+  onFullHistoryChange: (history: string) => void;
   pasteRequest: PasteRequest | null;
 }
 
 const HISTORY_LIMIT = 12_000;
 
-export function TerminalPanel({ onHistoryChange, pasteRequest }: Props) {
+export function TerminalPanel({ onHistoryChange, onFullHistoryChange, pasteRequest }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -62,6 +63,15 @@ export function TerminalPanel({ onHistoryChange, pasteRequest }: Props) {
       onHistoryChange(history);
     };
 
+    const publishFullHistory = () => {
+      const buffer = terminal.buffer.active;
+      const lines: string[] = [];
+      for (let index = 0; index < buffer.length; index += 1) {
+        lines.push(buffer.getLine(index)?.translateToString(true) ?? '');
+      }
+      onFullHistoryChange(lines.join('\n').trimEnd());
+    };
+
     const sendSize = () => {
       const socket = socketRef.current;
       if (socket?.readyState === WebSocket.OPEN) {
@@ -103,7 +113,7 @@ export function TerminalPanel({ onHistoryChange, pasteRequest }: Props) {
           sendSize();
           flushPendingPaste();
         } else if (message.type === 'output') {
-          terminal.write(message.data);
+          terminal.write(message.data, publishFullHistory);
           appendHistory(message.data);
         } else if (message.type === 'error') {
           terminal.writeln(`\r\n\x1b[31m${message.message}\x1b[0m`);
@@ -146,7 +156,7 @@ export function TerminalPanel({ onHistoryChange, pasteRequest }: Props) {
       terminalRef.current = null;
       terminal.dispose();
     };
-  }, [onHistoryChange]);
+  }, [onFullHistoryChange, onHistoryChange]);
 
   useEffect(() => {
     if (!pasteRequest) return;

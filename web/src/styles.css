@@ -72,7 +72,8 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 
 .side-workspace { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .workspace-tabs { min-height: 42px; padding: 5px; border: 1px solid var(--border); background: #090d0b; border-radius: 5px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
-.learning-workspace > .workspace-tabs, .kali-workspace-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.learning-workspace > .workspace-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.kali-workspace-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .workspace-tabs button { border: 1px solid transparent; border-radius: 3px; color: var(--muted); background: transparent; font-size: 10px; cursor: pointer; }
 .kali-workspace-tabs button { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .kali-workspace-tabs button span { color: var(--accent); font-weight: 700; }
@@ -82,7 +83,7 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 
 .kali-terminal-view { flex: 1; min-height: 0; display: flex; }
 .kali-terminal-view > .terminal-panel { flex: 1; min-height: 0; }
-.kali-view-hidden { display: none; }
+.kali-view-hidden, .kali-gui-panel.kali-view-hidden { display: none; }
 .kali-gui-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .kali-gui-note { flex: 0 0 auto; margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--muted); background: #0a0f0d; font-family: 'Yu Gothic UI', sans-serif; font-size: 10px; }
 .kali-gui-frame { flex: 1; width: 100%; min-height: 0; border: 0; background: #050806; }
@@ -94,7 +95,7 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .challenge-target-tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
 .challenge-target-tabs button.active { color: #07100b; border-color: var(--accent); background: var(--accent); font-weight: 700; }
 
-.target-site-tabs { flex: 0 0 auto; min-height: 42px; padding: 5px 10px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.target-site-tabs { flex: 0 0 auto; min-height: 42px; padding: 5px 10px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .target-site-tabs button { min-height: 30px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0d1210; font-size: 10px; cursor: pointer; }
 .target-site-tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
 .target-site-tabs button.active { color: #07100b; border-color: var(--accent); background: var(--accent); font-weight: 700; }
@@ -144,6 +145,8 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .history-options { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
 .history-toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 8px; cursor: pointer; }
 .history-toggle input { accent-color: var(--accent); }
+.history-toggle-capture { color: var(--text); }
+.capture-note { flex-basis: 100%; margin: 0; color: var(--muted); font-family: 'Yu Gothic UI', sans-serif; font-size: 8px; }
 .form-actions button { padding: 8px 14px; border: 0; border-radius: 2px; color: #07100b; background: var(--accent); font-size: 10px; font-weight: 600; cursor: pointer; }
 .form-actions button:disabled { opacity: .4; cursor: not-allowed; }
 

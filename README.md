@@ -7,7 +7,7 @@ TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しな�
 - Web UI: React/Vite 製のKaliワークスペース、学習パネル、Target表示、AIパネル。
 - Backend: WebSocket ターミナル、AI 連携、状態確認、Lab リセット API。
 - Kali/noVNC: ブラウザから操作できる Kali XFCE デスクトップ。
-- Target: 既存の3つのWebサイトと、セキュリティツール用の隔離Web/TCP Target。
+- Target: 既存の3つのWebサイトと、セキュリティツール・Web Attacks用の隔離Web/TCP Target。
 - AI: ローカルでは Ollama、Cloud Run では Gemini Secret Manager を使う構成。
 
 ## 画面構成
@@ -15,8 +15,8 @@ TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しな�
 画面は左右2列・上下2段を基本とし、次のパネルを同時に使えます。
 
 - Kaliワークスペース: `_ Terminal`、`B Burp Suite`、`W Wireshark`、`🖥 Kali Desktop` の4タブ。初回接続後はnoVNCセッションを保持し、各GUIタブを選ぶと対応するツールを前面へ表示します。
-- Live Training Target: 問題1～4の演習サイトを同一オリジンのiframeで確認します。
-- 学習パネル: `基本操作`、`チュートリアル`、`ターゲット`、`セキュリティツール` の4区分。ターゲットには問題1～3、セキュリティツールには問題4の10問を掲載します。各問題のヒントは初期状態で非表示になり、HINTボタンで開閉できます。
+- Live Training Target: 問題1～5の演習サイトを同一オリジンのiframeで確認します。
+- 学習パネル: `基本操作`、`チュートリアル`、`ターゲット`、`セキュリティツール`、`Web Attacks` の5区分。ターゲットには問題1～3、セキュリティツールには問題4の10問、Web Attacksには問題5の8問を掲載します。各問題のヒントは初期状態で非表示になり、HINTボタンで開閉できます。Web Attacksの詳細ヒントは、初心者でも順に操作してFlag取得まで進める構成です。
 - AIパネル: 初期状態ではGeminiを使うAI（オンライン）が選択されます。ローカルAIへ切り替えることもでき、「直近のターミナル履歴を含める」は初期状態で有効です。
 
 各問題にはクリア状態とクリア解除ボタンがあります。画面上部のRESETはTarget、Kaliホーム、ターミナル履歴、問題進捗、AI会話と保存済みAI設定を初期状態へ戻します。
@@ -112,6 +112,23 @@ curl -d 'username=analyst&password=bluebird' http://labtarget:3100/hydra/login
 
 Tool Labのナビゲーションとフォームは公開画面の `/tool-target/` プレフィックスと、Kali内の `http://labtarget:3100/` の両方に対応しています。
 
+## Web Attacks 演習
+
+学習パネル右端の「Web Attacks」を選択すると、問題5「Web Attacks 初級」とTBX Marketが連動して開きます。既存のツール演習Targetを拡張しているため、追加コンテナ・追加イメージ・追加依存パッケージはありません。
+
+8問でParameter Tampering、IDOR、SQL Injection、安全なStored XSS模擬、仮想ファイルだけを使うPath Traversal、安全なメタデータ判定だけを行うFile Upload、外部通信を行わないSSRF模擬、署名なし研修トークンを扱うJWT演習を学習できます。各問題は詳細ヒントと回答欄を備え、BackendでFlagを照合します。
+
+TBX Marketは次のURLで利用できます。
+
+```text
+http://labtarget:3100/web-attacks/   Kali・Terminalからの直接アクセス
+/tool-target/web-attacks/            ブラウザiframe用プロキシパス
+```
+
+Stored XSSの入力は表示時にエスケープされ、JavaScriptは実行されません。File Uploadは内容を保存・実行せず、ファイル名・Content-Type・サイズだけをメモリDBへ記録します。Path Traversalは事前定義された仮想ファイルだけを返し、SSRFは完全一致する教材URLを固定レスポンスへ割り当てるだけでネットワーク接続しません。
+
+画面の「HPを復元」または全体RESETを実行すると、コメント、アップロード履歴、研修DB、トークンnonceが初期化されます。RESET前に発行したトークンは再利用できません。
+
 ## 動作確認
 
 TerminalBox のターミナルで次を試します。
@@ -178,7 +195,7 @@ docker compose down -v
 Cloud Run では、Web と Lab を 2 つのサービスに分離します。
 
 - `terminalbox`: 公開サービス。Web UI、Basic 認証、AI Backend、Gemini Secret を持ちます。Gemini API への外部通信はこのサービスだけが行います。
-- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocketターミナル、既存3 Target、ツール演習Targetを持ちます。受講者が入力したコマンドはこのサービス内で実行されます。Cloud Runでは4 CPU・8GiBを割り当て、コンテナ入口に8081を使用してBurp Proxy用の8080を確保します。
+- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocketターミナル、既存3 Target、ツール演習とWeb Attacksを収容する共通Targetを持ちます。受講者が入力したコマンドはこのサービス内で実行されます。Cloud Runでは4 CPU・8GiBを割り当て、コンテナ入口に8081を使用してBurp Proxy用の8080を確保します。
 
 ブラウザは `terminalbox` にだけ接続します。Web Backend は Google 署名付き ID トークンを取得し、許可された HTTP/WebSocket パスだけを `terminalbox-lab` へプロキシします。Lab を呼び出せるのは Web 実行サービスアカウントだけです。Target サイトは公開 Web と同一オリジンのパスにプロキシされるため、ブラウザが `target` などの Lab 内部ホスト名へ直接接続することはありません。
 

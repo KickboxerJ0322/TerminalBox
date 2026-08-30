@@ -28,7 +28,10 @@ if (isWebService) {
     void labProxy.proxyHttp(request, response);
   });
 }
-app.use(express.json({ limit: '32kb' }));
+app.use(express.json({ limit: '3mb' }));
+
+const FULL_TERMINAL_HISTORY_LIMIT = 120_000;
+const SCREEN_CAPTURE_LIMIT = 2_500_000;
 
 let systemPrompt = '';
 if (!isLabService) {
@@ -54,11 +57,15 @@ function cleanTerminalHistory(value) {
     .trim();
 }
 
-function prepareContext(message, terminalHistory) {
+function prepareContext(message, terminalHistory, terminalHistoryMode = 'recent') {
   if (!terminalHistory) return message;
-  const transcript = cleanTerminalHistory(terminalHistory).slice(-config.historyLimit);
+  const historyLimit = terminalHistoryMode === 'full' ? FULL_TERMINAL_HISTORY_LIMIT : config.historyLimit;
+  const transcript = cleanTerminalHistory(terminalHistory).slice(-historyLimit);
   return [
-    '以下は直近のターミナル記録です。ユーザーが入力したコマンドだけでなく、その直後に表示された標準出力・標準エラーも含まれます。',
+    terminalHistoryMode === 'full'
+      ? '以下は現在のターミナルバッファに残っている全文です。'
+      : '以下は直近のターミナル記録です。',
+    'ユーザーが入力したコマンドだけでなく、その直後に表示された標準出力・標準エラーも含まれます。',
     '質問に答えるときは、コマンドと実行結果の両方を読み、実際に表示された値を根拠に説明してください。',
     '',
     '--- ターミナル記録 開始 ---',
@@ -69,12 +76,25 @@ function prepareContext(message, terminalHistory) {
   ].join('\n');
 }
 
-function toGeminiContents(conversationHistory, context) {
+function toGeminiContents(conversationHistory, context, screenCapture) {
   const history = conversationHistory.map((item) => ({
     role: item.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: item.content }],
   }));
-  return [...history, { role: 'user', parts: [{ text: context }] }];
+  const parts = [{ text: context }];
+  if (screenCapture) {
+    parts.push({ inlineData: { mimeType: screenCapture.mimeType, data: screenCapture.data } });
+  }
+  return [...history, { role: 'user', parts }];
+}
+
+function getScreenCapture(requestBody) {
+  const capture = requestBody?.screenCapture;
+  if (!capture || typeof capture !== 'object') return null;
+  if (!['image/jpeg', 'image/png'].includes(capture.mimeType)) return null;
+  if (typeof capture.data !== 'string' || capture.data.length < 1 || capture.data.length > SCREEN_CAPTURE_LIMIT) return null;
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(capture.data)) return null;
+  return { mimeType: capture.mimeType, data: capture.data };
 }
 
 function getRequestProvider(requestBody) {
@@ -95,7 +115,7 @@ function getGeminiOptions(requestBody) {
   };
 }
 
-async function sendGeminiChat(response, context, conversationHistory, options) {
+async function sendGeminiChat(response, context, conversationHistory, options, screenCapture) {
   if (!options.apiKey) {
     throw new Error('Gemini API キーが設定されていません。');
   }
@@ -110,7 +130,7 @@ async function sendGeminiChat(response, context, conversationHistory, options) {
       },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: toGeminiContents(conversationHistory, context),
+        contents: toGeminiContents(conversationHistory, context, screenCapture),
         generationConfig: {
           maxOutputTokens: 1024,
           temperature: 0.4,
@@ -138,7 +158,7 @@ async function sendGeminiChat(response, context, conversationHistory, options) {
   response.end();
 }
 
-async function sendOllamaChat(response, context, conversationHistory) {
+async function sendOllamaChat(response, context, conversationHistory, screenCapture) {
   const ollamaResponse = await fetch(`${config.ollamaUrl}/api/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -153,7 +173,11 @@ async function sendOllamaChat(response, context, conversationHistory) {
       messages: [
         { role: 'system', content: systemPrompt },
         ...conversationHistory,
-        { role: 'user', content: context },
+        {
+          role: 'user',
+          content: context,
+          ...(screenCapture ? { images: [screenCapture.data] } : {}),
+        },
       ],
     }),
     signal: AbortSignal.timeout(300_000),
@@ -265,8 +289,10 @@ app.post('/api/chat', async (request, response) => {
   }
   const message = typeof request.body?.message === 'string' ? request.body.message.trim() : '';
   const terminalHistory = typeof request.body?.terminalHistory === 'string'
-    ? request.body.terminalHistory.slice(-(config.historyLimit * 2))
+    ? request.body.terminalHistory.slice(-FULL_TERMINAL_HISTORY_LIMIT)
     : '';
+  const terminalHistoryMode = request.body?.terminalHistoryMode === 'full' ? 'full' : 'recent';
+  const screenCapture = getScreenCapture(request.body);
   const conversationHistory = sanitizeConversationHistory(request.body?.conversationHistory);
 
   if (!message || message.length > 4000) {
@@ -274,7 +300,7 @@ app.post('/api/chat', async (request, response) => {
     return;
   }
 
-  const quickReply = getQuickReply(message);
+  const quickReply = terminalHistory || screenCapture ? null : getQuickReply(message);
   if (quickReply) {
     response.status(200);
     response.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
@@ -294,13 +320,13 @@ app.post('/api/chat', async (request, response) => {
   response.flushHeaders();
 
   const provider = getRequestProvider(request.body);
-  const context = prepareContext(message, terminalHistory);
+  const context = prepareContext(message, terminalHistory, terminalHistoryMode);
 
   try {
     if (provider === 'gemini') {
-      await sendGeminiChat(response, context, conversationHistory, getGeminiOptions(request.body));
+      await sendGeminiChat(response, context, conversationHistory, getGeminiOptions(request.body), screenCapture);
     } else {
-      await sendOllamaChat(response, context, conversationHistory);
+      await sendOllamaChat(response, context, conversationHistory, screenCapture);
     }
   } catch (error) {
     console.error(`${provider} request failed:`, error.message);

@@ -1,4 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useState } from 'react';
+import html2canvas from 'html2canvas';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -19,7 +20,13 @@ interface Props {
   tabId: string;
   mode: 'local' | 'online';
   terminalHistory: string;
+  fullTerminalHistory: string;
   status: Status | null;
+}
+
+interface ScreenCapture {
+  mimeType: 'image/jpeg';
+  data: string;
 }
 
 const GEMINI_API_KEY_STORAGE = 'terminalbox:gemini-api-key';
@@ -66,12 +73,34 @@ function normalizeGeminiModel(value: string) {
   return !trimmed || trimmed === 'gemini-1.5-flash' ? DEFAULT_GEMINI_MODEL : trimmed;
 }
 
-export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }: Props) {
+async function captureTerminalBoxScreen(): Promise<ScreenCapture> {
+  const terminalBox = document.querySelector<HTMLElement>('.app-shell');
+  if (!terminalBox) throw new Error('TerminalBox画面を取得できませんでした。');
+
+  const sourceWidth = Math.max(terminalBox.scrollWidth, terminalBox.clientWidth, window.innerWidth);
+  const sourceHeight = Math.max(terminalBox.scrollHeight, terminalBox.clientHeight, window.innerHeight);
+  const scale = Math.min(1, 1600 / sourceWidth, 12000 / sourceHeight);
+  const canvas = await html2canvas(terminalBox, {
+    backgroundColor: '#070b09',
+    height: sourceHeight,
+    width: sourceWidth,
+    scale,
+    useCORS: true,
+    windowHeight: sourceHeight,
+    windowWidth: sourceWidth,
+  });
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+  return { mimeType: 'image/jpeg', data: dataUrl.split(',', 2)[1] ?? '' };
+}
+
+export function AssistantPanel({ panelId, tabId, mode, terminalHistory, fullTerminalHistory, status }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: getInitialMessage(mode) },
   ]);
   const [question, setQuestion] = useState('');
   const [includeTerminalHistory, setIncludeTerminalHistory] = useState(true);
+  const [includeFullTerminalHistory, setIncludeFullTerminalHistory] = useState(false);
+  const [includeScreenCapture, setIncludeScreenCapture] = useState(false);
   const [includeConversationHistory, setIncludeConversationHistory] = useState(true);
   const [loading, setLoading] = useState(false);
   const [apiKey, setApiKey] = useState(() => loadStoredValue(GEMINI_API_KEY_STORAGE, ''));
@@ -79,15 +108,19 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
     loadStoredValue(GEMINI_MODEL_STORAGE, DEFAULT_GEMINI_MODEL),
   ));
   const [clipboardMessage, setClipboardMessage] = useState('');
+  const [captureMessage, setCaptureMessage] = useState('');
 
   useEffect(() => {
     const managedGemini = status?.aiProvider === 'gemini' && status?.geminiConfigured === true;
     setMessages([{ role: 'assistant', content: getInitialMessage(mode, managedGemini) }]);
     setQuestion('');
     setIncludeTerminalHistory(true);
+    setIncludeFullTerminalHistory(false);
+    setIncludeScreenCapture(false);
     setIncludeConversationHistory(true);
     setLoading(false);
     setClipboardMessage('');
+    setCaptureMessage('');
   }, [mode, status?.aiProvider, status?.geminiConfigured]);
 
   useEffect(() => {
@@ -146,10 +179,10 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const typedMessage = question.trim();
-    const canAnalyzeTerminalHistory = mode === 'online' && includeTerminalHistory;
-    const message = typedMessage || (canAnalyzeTerminalHistory
-      ? '直近のターミナル履歴を分析し、実行内容、結果、エラー、次に行うべきことを説明してください。'
-      : '');
+    const hasTerminalAttachment = includeTerminalHistory || includeFullTerminalHistory;
+    const message = typedMessage || (hasTerminalAttachment
+      ? 'ターミナル記録を分析し、実行内容、結果、エラー、次に行うべきことを説明してください。'
+      : includeScreenCapture ? '添付したTerminalBox画面を読み取り、現在の状況と次に行うべきことを説明してください。' : '');
     if (!message || loading) return;
     if (mode === 'online' && !onlineAiReady) {
       setMessages((current) => [...current, {
@@ -166,12 +199,19 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
     setLoading(true);
 
     try {
+      setCaptureMessage('');
+      const screenCapture = includeScreenCapture ? await captureTerminalBoxScreen() : undefined;
+      if (screenCapture) setCaptureMessage('画面を取得してAIへ添付しました。');
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           message,
-          terminalHistory: includeTerminalHistory ? terminalHistory : '',
+          terminalHistory: includeFullTerminalHistory
+            ? fullTerminalHistory
+            : includeTerminalHistory ? terminalHistory : '',
+          terminalHistoryMode: includeFullTerminalHistory ? 'full' : 'recent',
+          screenCapture,
           conversationHistory,
           provider: mode === 'online' ? 'gemini' : 'ollama',
           geminiApiKey: mode === 'online' && apiKey.trim() ? apiKey.trim() : undefined,
@@ -367,10 +407,27 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, status }
               />
               直近のターミナル履歴を含める
             </label>
+            <label className="history-toggle">
+              <input
+                type="checkbox"
+                checked={includeFullTerminalHistory}
+                onChange={(event) => setIncludeFullTerminalHistory(event.target.checked)}
+              />
+              ターミナル全文
+            </label>
+            <label className="history-toggle history-toggle-capture">
+              <input
+                type="checkbox"
+                checked={includeScreenCapture}
+                onChange={(event) => setIncludeScreenCapture(event.target.checked)}
+              />
+              キャプチャ
+            </label>
+            {captureMessage && <p className="capture-note" role="status">{captureMessage}</p>}
           </div>
           <button
             type="submit"
-            disabled={loading || (!question.trim() && !(mode === 'online' && includeTerminalHistory)) || (mode === 'online' && !onlineAiReady)}
+            disabled={loading || (!question.trim() && !includeTerminalHistory && !includeFullTerminalHistory && !includeScreenCapture) || (mode === 'online' && !onlineAiReady)}
           >
             {loading ? '送信中' : '送信'} <span aria-hidden="true">→</span>
           </button>
