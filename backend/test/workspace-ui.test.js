@@ -75,6 +75,7 @@ test('AI attachment controls default to off and support full terminal text and c
   ]);
   assert.match(source, /includeFullTerminalHistory, setIncludeFullTerminalHistory\] = useState\(false\)/);
   assert.match(source, /includeScreenCapture, setIncludeScreenCapture\] = useState\(false\)/);
+  assert.match(source, /messages\.slice\(-6\)/);
   assert.match(source, />\s*ターミナル全文\s*</);
   assert.match(source, />\s*キャプチャ\s*</);
   assert.match(source, /html2canvas\(terminalBox/);

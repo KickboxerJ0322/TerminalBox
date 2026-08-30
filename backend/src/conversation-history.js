@@ -1,6 +1,6 @@
 export const conversationHistoryLimits = Object.freeze({
-  messages: 4,
-  characters: 1000,
+  messages: 6,
+  characters: 2400,
   charactersPerMessage: 400,
 });
 

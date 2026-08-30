@@ -192,7 +192,7 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, fullTerm
       return;
     }
 
-    const conversationHistory = includeConversationHistory ? messages.slice(-4) : [];
+    const conversationHistory = includeConversationHistory ? messages.slice(-6) : [];
     const selectedModel = normalizeGeminiModel(geminiModel);
     setQuestion('');
     setMessages((current) => [...current, { role: 'user', content: message }]);

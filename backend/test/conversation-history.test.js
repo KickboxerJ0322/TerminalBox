@@ -2,10 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { conversationHistoryLimits, sanitizeConversationHistory } from '../src/conversation-history.js';
 
+test('conversation history accepts six bounded messages', () => {
+  assert.equal(conversationHistoryLimits.messages, 6);
+  assert.equal(conversationHistoryLimits.characters, 2400);
+});
+
 test('conversation history keeps only recent user and assistant messages', () => {
   const history = [
     { role: 'system', content: 'ignore me' },
-    ...Array.from({ length: 6 }, (_, index) => ({
+    ...Array.from({ length: 8 }, (_, index) => ({
       role: index % 2 ? 'assistant' : 'user',
       content: `message-${index}`,
     })),
@@ -16,6 +21,8 @@ test('conversation history keeps only recent user and assistant messages', () =>
     { role: 'assistant', content: 'message-3' },
     { role: 'user', content: 'message-4' },
     { role: 'assistant', content: 'message-5' },
+    { role: 'user', content: 'message-6' },
+    { role: 'assistant', content: 'message-7' },
   ]);
 });
 
