@@ -35,6 +35,29 @@ test('learning tabs put targets before security tools', async () => {
   assert.ok(source.indexOf('id="tools-tab"') < source.indexOf('id="web-attacks-tab"'));
 });
 
+test('AI tabs are local, online, then Agent with online selected by default', async () => {
+  const [app, agent, styles] = await Promise.all([
+    readWebSource('App.tsx'),
+    readWebSource('AgentPanel.tsx'),
+    readWebSource('styles.css'),
+  ]);
+  assert.ok(app.indexOf('id="assistant-tab"') < app.indexOf('id="assistant-online-tab"'));
+  assert.ok(app.indexOf('id="assistant-online-tab"') < app.indexOf('id="assistant-agent-tab"'));
+  assert.match(app, /useState<AssistantTab>\('assistant-online'\)/);
+  assert.match(app, />\s*AI（ローカル）\s*</);
+  assert.match(agent, /fetch\('\/api\/agent\/chat'/);
+  assert.match(agent, /fetch\(allow \? '\/api\/agent\/approve' : '\/api\/agent\/cancel'/);
+  assert.doesNotMatch(agent, /ollama/i);
+  assert.match(styles, /\.assistant-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(3,/);
+});
+
+test('Live Training Target has iframe back navigation', async () => {
+  const source = await readWebSource('TargetPanel.tsx');
+  assert.match(source, /contentWindow\?\.history\.back\(\)/);
+  assert.match(source, />戻る<\/button>/);
+  assert.match(source, /sandbox="allow-forms allow-same-origin"/);
+});
+
 test('Web Attacks synchronizes problem 5, history detection, and eight answer challenges', async () => {
   const [app, panel, target, styles] = await Promise.all([
     readWebSource('App.tsx'),
@@ -69,8 +92,9 @@ test('Web Attacks synchronizes problem 5, history detection, and eight answer ch
 });
 
 test('AI attachment controls default to off and support full terminal text and capture', async () => {
-  const [source, styles] = await Promise.all([
+  const [source, attachments, styles] = await Promise.all([
     readWebSource('AssistantPanel.tsx'),
+    readWebSource('ai-attachments.ts'),
     readWebSource('styles.css'),
   ]);
   assert.match(source, /includeFullTerminalHistory, setIncludeFullTerminalHistory\] = useState\(false\)/);
@@ -78,9 +102,29 @@ test('AI attachment controls default to off and support full terminal text and c
   assert.match(source, /messages\.slice\(-6\)/);
   assert.match(source, />\s*ターミナル全文\s*</);
   assert.match(source, />\s*キャプチャ\s*</);
-  assert.match(source, /html2canvas\(terminalBox/);
-  assert.doesNotMatch(source, /getDisplayMedia/);
+  assert.match(attachments, /html2canvas\(terminalBox/);
+  assert.doesNotMatch(attachments, /getDisplayMedia/);
   assert.match(styles, /\.history-toggle-capture\s*\{\s*color:\s*var\(--text\)/);
+});
+
+test('AI Agent keeps its send controls visible and supports the same attachments', async () => {
+  const [source, app, styles] = await Promise.all([
+    readWebSource('AgentPanel.tsx'),
+    readWebSource('App.tsx'),
+    readWebSource('styles.css'),
+  ]);
+  assert.match(source, /includeConversationHistory, setIncludeConversationHistory\] = useState\(true\)/);
+  assert.match(source, /includeTerminalHistory, setIncludeTerminalHistory\] = useState\(true\)/);
+  assert.match(source, /includeFullTerminalHistory, setIncludeFullTerminalHistory\] = useState\(false\)/);
+  assert.match(source, /includeScreenCapture, setIncludeScreenCapture\] = useState\(false\)/);
+  assert.match(source, />\s*AI 会話履歴を含める\s*</);
+  assert.match(source, />\s*直近のターミナル履歴を含める\s*</);
+  assert.match(source, />\s*ターミナル全文\s*</);
+  assert.match(source, />\s*キャプチャ\s*</);
+  assert.match(source, /\{loading \? '送信中' : '送信'\}/);
+  assert.match(app, /terminalHistory=\{history\}[\s\S]*fullTerminalHistory=\{fullTerminalHistory\}/);
+  assert.match(styles, /\.agent-panel \.messages\s*\{\s*min-height:\s*0/);
+  assert.match(styles, /\.agent-panel \.chat-form\s*\{\s*flex:\s*0 0 auto/);
 });
 
 test('tutorial includes a bounded ping reply exercise', async () => {

@@ -34,6 +34,7 @@ start_process env \
   TARGET_URLS=http://target:3000,http://target2:3000,http://target3:3000,http://labtarget:3100 \
   KALI_GUI_URL=http://127.0.0.1:6080 \
   AI_SYSTEM_PROMPT_FILE=/opt/terminalbox/config/ai-system-prompt.txt \
+  AGENT_SYSTEM_PROMPT_FILE=/opt/terminalbox/config/agent-system-prompt.txt \
   ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://localhost}" \
   node /opt/terminalbox/backend/src/server.js
 

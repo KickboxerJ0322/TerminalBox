@@ -32,7 +32,7 @@ services:
     container_name: terminalbox-backend
     environment:
       PORT: 3001
-      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-LiquidAI/lfm2.5-1.2b-instruct:q4_k_m}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -42,10 +42,13 @@ services:
       TARGET_URLS: ${TARGET_URLS:-http://target:3000,http://target2:3000,http://target3:3000,http://labtarget:3100}
       KALI_GUI_URL: ${KALI_GUI_URL:-http://kali:6080}
       TERMINAL_HISTORY_LIMIT: ${TERMINAL_HISTORY_LIMIT:-6000}
+      MAX_AGENT_STEPS: ${MAX_AGENT_STEPS:-5}
+      AGENT_COMMAND_TIMEOUT_MS: ${AGENT_COMMAND_TIMEOUT_MS:-10000}
       KALI_CONTAINER: ${KALI_CONTAINER:-terminalbox-kali}
       WS_AUTH_TOKEN: ${WS_AUTH_TOKEN:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000},http://127.0.0.1:3000,http://terminalbox-web
       AI_SYSTEM_PROMPT_FILE: /app/config/ai-system-prompt.txt
+      AGENT_SYSTEM_PROMPT_FILE: /app/config/agent-system-prompt.txt
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -55,8 +58,6 @@ services:
         condition: service_healthy
       challenge-target:
         condition: service_healthy
-      ollama:
-        condition: service_started
     networks:
       - edge
       - lab
@@ -219,6 +220,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    profiles: ["local-ai", "model"]
     container_name: terminalbox-ollama
     volumes:
       - ollama-models:/root/.ollama

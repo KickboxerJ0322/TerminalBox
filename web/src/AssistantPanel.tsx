@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useState } from 'react';
-import html2canvas from 'html2canvas';
+import { captureTerminalBoxScreen } from './ai-attachments';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -22,11 +22,6 @@ interface Props {
   terminalHistory: string;
   fullTerminalHistory: string;
   status: Status | null;
-}
-
-interface ScreenCapture {
-  mimeType: 'image/jpeg';
-  data: string;
 }
 
 const GEMINI_API_KEY_STORAGE = 'terminalbox:gemini-api-key';
@@ -71,26 +66,6 @@ function loadStoredValue(key: string, fallback: string) {
 function normalizeGeminiModel(value: string) {
   const trimmed = value.trim();
   return !trimmed || trimmed === 'gemini-1.5-flash' ? DEFAULT_GEMINI_MODEL : trimmed;
-}
-
-async function captureTerminalBoxScreen(): Promise<ScreenCapture> {
-  const terminalBox = document.querySelector<HTMLElement>('.app-shell');
-  if (!terminalBox) throw new Error('TerminalBox画面を取得できませんでした。');
-
-  const sourceWidth = Math.max(terminalBox.scrollWidth, terminalBox.clientWidth, window.innerWidth);
-  const sourceHeight = Math.max(terminalBox.scrollHeight, terminalBox.clientHeight, window.innerHeight);
-  const scale = Math.min(1, 1600 / sourceWidth, 12000 / sourceHeight);
-  const canvas = await html2canvas(terminalBox, {
-    backgroundColor: '#070b09',
-    height: sourceHeight,
-    width: sourceWidth,
-    scale,
-    useCORS: true,
-    windowHeight: sourceHeight,
-    windowWidth: sourceWidth,
-  });
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
-  return { mimeType: 'image/jpeg', data: dataUrl.split(',', 2)[1] ?? '' };
 }
 
 export function AssistantPanel({ panelId, tabId, mode, terminalHistory, fullTerminalHistory, status }: Props) {
@@ -138,7 +113,7 @@ export function AssistantPanel({ panelId, tabId, mode, terminalHistory, fullTerm
   const onlineAiReady = managedGemini || apiKey.trim().length > 0;
   const aiReady = mode === 'online' ? onlineAiReady : localAiReady;
   const providerLabel = mode === 'online' ? 'ONLINE AI / GEMINI' : 'LOCAL AI / LFM2.5';
-  const title = mode === 'online' ? 'AI（オンライン）' : 'AI Assistant';
+  const title = mode === 'online' ? 'AI（オンライン）' : 'AI（ローカル）';
 
   const useRecommendedModel = () => {
     setGeminiModel(DEFAULT_GEMINI_MODEL);

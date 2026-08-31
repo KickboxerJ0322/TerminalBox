@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
   refreshSignal: number;
@@ -17,7 +17,9 @@ const targetDefinitions = {
 export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) {
   const [frameVersion, setFrameVersion] = useState(0);
   const [resetting, setResetting] = useState(false);
+  const frameRef = useRef<HTMLIFrameElement>(null);
   const refresh = useCallback(() => setFrameVersion((value) => value + 1), []);
+  const goBack = useCallback(() => frameRef.current?.contentWindow?.history.back(), []);
   const target = targetDefinitions[targetId];
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) 
       <div className="panel-heading target-heading">
         <div><span className="eyebrow">LIVE TRAINING TARGET</span><h2 id="target-panel-title">{target.label}</h2></div>
         <div className="target-actions">
+          <button type="button" onClick={goBack}>戻る</button>
           <button type="button" onClick={refresh}>再読み込み</button>
           <button type="button" onClick={resetTarget} disabled={resetting}>{resetting ? 'リセット中' : 'HPを復元'}</button>
         </div>
@@ -62,7 +65,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) 
         <input type="text" value={target.address} readOnly aria-label="ターゲットサイトのアドレス" />
         <button type="button" onClick={refresh} aria-label="ターゲットサイトを再読み込み" title="再読み込み">↻</button>
       </div>
-      <iframe key={`${targetId}-${frameVersion}`} className="target-frame" src={target.proxyPath} title={target.label} sandbox="allow-forms" />
+      <iframe ref={frameRef} key={`${targetId}-${frameVersion}`} className="target-frame" src={target.proxyPath} title={target.label} sandbox="allow-forms allow-same-origin" />
     </section>
   );
 }

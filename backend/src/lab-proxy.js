@@ -94,5 +94,18 @@ export function createLabProxy(config) {
     return response.json();
   }
 
-  return { fetchJson, proxyHttp, proxyWebSocket };
+  async function requestJson(pathname, payload) {
+    const url = new URL(pathname, `${config.labServiceUrl}/`);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { ...(await authorizationHeaders()), 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(35_000),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Lab returned ${response.status}`);
+    return body;
+  }
+
+  return { fetchJson, requestJson, proxyHttp, proxyWebSocket };
 }

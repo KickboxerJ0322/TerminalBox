@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AssistantPanel } from './AssistantPanel';
+import { AgentPanel } from './AgentPanel';
 import { BasicOperationsPanel } from './BasicOperationsPanel';
 import { ChallengePanel } from './ChallengePanel';
 import { CommandGuide } from './CommandGuide';
@@ -24,7 +25,7 @@ interface PasteRequest {
 }
 
 type LearningTab = 'operations' | 'tutorial' | 'targets' | 'tools' | 'web-attacks';
-type AssistantTab = 'assistant' | 'assistant-online';
+type AssistantTab = 'assistant' | 'assistant-online' | 'assistant-agent';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
 const OPERATIONS_STORAGE_KEY = 'terminalbox:operations-completed';
@@ -83,7 +84,7 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
             <article>
               <span>06</span>
               <h3>AIサポート</h3>
-              <p>初期状態ではGeminiのAI（オンライン）が選択されます。「直近のターミナル履歴を含める」も初期状態で有効です。</p>
+              <p>ローカル・オンラインの通常チャットに加え、安全ポリシーと承認を通してKaliコマンドを実行するAI Agentを利用できます。初期状態はAI（オンライン）です。</p>
             </article>
             <article>
               <span>07</span>
@@ -434,7 +435,7 @@ export default function App() {
                 className={assistantTab === 'assistant' ? 'active' : ''}
                 onClick={() => setAssistantTab('assistant')}
               >
-                AIアシスタント
+                AI（ローカル）
               </button>
               <button
                 id="assistant-online-tab"
@@ -446,6 +447,17 @@ export default function App() {
                 onClick={() => setAssistantTab('assistant-online')}
               >
                 AI（オンライン）
+              </button>
+              <button
+                id="assistant-agent-tab"
+                type="button"
+                role="tab"
+                aria-selected={assistantTab === 'assistant-agent'}
+                aria-controls="assistant-agent-panel"
+                className={assistantTab === 'assistant-agent' ? 'active' : ''}
+                onClick={() => setAssistantTab('assistant-agent')}
+              >
+                AI Agent
               </button>
             </div>
             {assistantTab === 'assistant' && (
@@ -465,6 +477,16 @@ export default function App() {
                 panelId="assistant-online-panel"
                 tabId="assistant-online-tab"
                 mode="online"
+                terminalHistory={history}
+                fullTerminalHistory={fullTerminalHistory}
+                status={status}
+              />
+            )}
+            {assistantTab === 'assistant-agent' && (
+              <AgentPanel
+                key={`assistant-agent-${resetSignal}`}
+                panelId="assistant-agent-panel"
+                tabId="assistant-agent-tab"
                 terminalHistory={history}
                 fullTerminalHistory={fullTerminalHistory}
                 status={status}

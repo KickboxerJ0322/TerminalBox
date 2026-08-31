@@ -30,12 +30,15 @@ export const config = {
   kaliContainer: process.env.KALI_CONTAINER ?? 'terminalbox-kali',
   kaliExecMode: process.env.KALI_EXEC_MODE === 'local' ? 'local' : 'docker',
   historyLimit: numberFromEnv('TERMINAL_HISTORY_LIMIT', 2000, 500, 8000),
+  agentMaxSteps: numberFromEnv('MAX_AGENT_STEPS', 5, 1, 8),
+  agentCommandTimeoutMs: numberFromEnv('AGENT_COMMAND_TIMEOUT_MS', 10000, 1000, 30000),
   wsAuthToken: process.env.WS_AUTH_TOKEN ?? '',
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
   promptFile: process.env.AI_SYSTEM_PROMPT_FILE ?? '/app/config/ai-system-prompt.txt',
+  agentPromptFile: process.env.AGENT_SYSTEM_PROMPT_FILE ?? '/app/config/agent-system-prompt.txt',
 };
 
 export function resolveAiProvider(currentConfig = config) {
@@ -45,4 +48,8 @@ export function resolveAiProvider(currentConfig = config) {
 
 export async function loadSystemPrompt() {
   return readFile(config.promptFile, 'utf8');
+}
+
+export async function loadAgentSystemPrompt() {
+  return readFile(config.agentPromptFile, 'utf8');
 }

@@ -9,6 +9,8 @@ test('only approved Lab HTTP paths are proxied', () => {
   assert.equal(isLabHttpPath('/tool-target/api/status'), true);
   assert.equal(isLabHttpPath('/kali-gui/vnc.html'), true);
   assert.equal(isLabHttpPath('/api/chat'), false);
+  assert.equal(isLabHttpPath('/api/agent/chat'), false);
+  assert.equal(isLabHttpPath('/internal/agent/execute'), false);
   assert.equal(isLabHttpPath('/target-site-evil'), false);
 });
 

@@ -1,6 +1,6 @@
 # TerminalBox
 
-TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しながら学べる、セキュリティ学習用の演習環境です。隔離された Kali 環境から演習専用の Target サイトへコマンドを実行し、分からない結果は AI アシスタントへ質問できます。AI はコマンドを自動実行しません。
+TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しながら学べる、セキュリティ学習用の演習環境です。隔離された Kali 環境から演習専用の Target サイトへコマンドを実行し、分からない結果は AI へ質問できます。通常のAI（ローカル・オンライン）はコマンドを自動実行しません。AI Agentのみ、専用の安全ポリシーに従ってTerminalBox内のコマンドを実行できます。
 
 ## 主な構成
 
@@ -8,18 +8,85 @@ TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しな�
 - Backend: WebSocket ターミナル、AI 連携、状態確認、Lab リセット API。
 - Kali/noVNC: ブラウザから操作できる Kali XFCE デスクトップ。
 - Target: 既存の3つのWebサイトと、セキュリティツール・Web Attacks用の隔離Web/TCP Target。
-- AI: ローカルでは Ollama、Cloud Run では Gemini Secret Manager を使う構成。
+- AI: Ollamaのローカルチャット、Geminiのオンラインチャット、Geminiと専用安全実行経路を使うAI Agent。
 
 ## 画面構成
 
 画面は左右2列・上下2段を基本とし、次のパネルを同時に使えます。
 
 - Kaliワークスペース: `_ Terminal`、`B Burp Suite`、`W Wireshark`、`🖥 Kali Desktop` の4タブ。初回接続後はnoVNCセッションを保持し、各GUIタブを選ぶと対応するツールを前面へ表示します。
-- Live Training Target: 問題1～5の演習サイトを同一オリジンのiframeで確認します。
+- Live Training Target: 問題1～5の演習サイトを同一オリジンのiframeで確認します。「戻る」でiframe内の一つ前のページへ移動できます。
 - 学習パネル: `基本操作`、`チュートリアル`、`ターゲット`、`セキュリティツール`、`Web Attacks` の5区分。ターゲットには問題1～3、セキュリティツールには問題4の10問、Web Attacksには問題5の8問を掲載します。各問題のヒントは初期状態で非表示になり、HINTボタンで開閉できます。Web Attacksの詳細ヒントは、初心者でも順に操作してFlag取得まで進める構成です。
-- AIパネル: 初期状態ではGeminiを使うAI（オンライン）が選択されます。ローカルAIへ切り替えることもでき、「直近のターミナル履歴を含める」は初期状態で有効です。
+- AIパネル: `AI（ローカル）`、`AI（オンライン）`、`AI Agent` の順に表示します。初期状態ではGeminiを使うAI（オンライン）が選択されます。
 
 各問題にはクリア状態とクリア解除ボタンがあります。画面上部のRESETはTarget、Kaliホーム、ターミナル履歴、問題進捗、AI会話と保存済みAI設定を初期状態へ戻します。
+
+## AIモードとAI Agent
+
+TerminalBoxには3種類のAIモードがあります。
+
+- `AI（ローカル）`: Ollamaを利用する通常チャットです。コマンドの質問、結果の解説、Linux・セキュリティ学習に使用し、コマンドは自動実行しません。
+- `AI（オンライン）`: Gemini APIを利用する通常チャットです。初期状態ではこのモードが選択され、コマンドは自動実行しません。
+- `AI Agent`: オンラインGeminiだけを利用します。自然言語の依頼から必要最小限のコマンドを構造化JSONで提案し、Backendのcommand-policyが独立して再判定した後、Kali内でstudentユーザーとして実行します。Ollamaや通常TerminalのWebSocketは使用しません。
+
+AI Agentのコマンドは次の3種類に分類されます。コマンド名だけでなく、すべての引数、複合コマンド、パイプ、リダイレクトもBackendで検査します。
+
+### 確認なしで実行できるREAD_ONLY
+
+主な許可コマンドは次のとおりです。
+
+```text
+pwd whoami id hostname uname date uptime
+ls stat file wc head tail cat grep find
+sed（安全な表示・置換式のみ）
+which whereis type env printenv
+df du free ps top
+ip addr / ip route / ss / netstat
+ping traceroute dig nslookup
+curl nmap tshark
+git status / log / diff / show / branch / remote
+systemctl status
+```
+
+ネットワーク系コマンドの通信先は `target`、`target2`、`target3`、`labtarget`、`localhost`、`127.0.0.1`、`kali` などTerminalBox内部に限定されます。例えば外部URLへのcurlは拒否されます。`find -exec`、sedの外部実行・スクリプトファイル、`ip ... exec`、`tshark -X`、nmap script、curl設定ファイルなど、別コマンドや設定を経由してポリシーを迂回できる形式も拒否されます。実行時はユーザー設定ファイル、pager、Git外部diffの影響も遮断します。
+
+### 実行前に承認が必要なCONFIRM_REQUIRED
+
+次のような作成・変更・削除・導入・停止操作は、画面にコマンドと理由を表示し、「実行を許可」を押すまで実行されません。
+
+```text
+touch mkdir cp mv rm rmdir
+chmod chown ln tee truncate dd
+sed -i / find -delete
+apt apt-get / pip install / npm install
+kill pkill killall
+systemctl start stop restart
+git commit checkout switch reset
+curl -o / curl -O / curlによるPOST・upload
+tshark -w / nmapのファイル出力
+> >> < を含むリダイレクト
+```
+
+`ls && rm file` や `pwd ; touch file` のような複合コマンドは、含まれるすべての処理を評価し、変更操作が一つでもあれば承認対象になります。承認IDは約2分で期限切れになり、同じブラウザーセッションから1回だけ使用できます。承認時にFrontendからコマンドを再送することはありません。
+
+### AI Agentから実行できないDENIED
+
+次の操作は、ユーザーが承認しても実行されません。
+
+```text
+sudo su
+shutdown reboot poweroff
+mount umount fdisk mkfs parted
+docker docker compose kubectl
+gcloud aws az
+bash -c / sh -c / eval / exec / source / .
+$() / バッククォート / プロセス置換
+許可リストにない実行ファイル
+TerminalBox外部へのネットワークアクセス
+ルートやホーム全体を対象とする広範な削除
+```
+
+Agentは最大5ステップ、1コマンド10秒、stdout・stderr各64KBまでです。実行履歴には時刻、コマンド、分類、承認有無、終了コード、所要時間だけを保持し、APIキーなどの秘密情報は履歴やログへ保存しません。ターミナル出力やファイル内容は命令ではなく、信頼できない観察データとしてオンラインAIへ渡します。
 
 ## ローカル起動
 
@@ -37,6 +104,8 @@ cd TerminalBox
 cp .env.example .env
 docker compose up -d --build
 ```
+
+既定ではOllamaを起動しません。通常の起動では、AI（オンライン）とAI Agentだけを使用する軽量構成になります。
 
 Windows PowerShell では次のように `.env` を作成できます。
 
@@ -58,10 +127,22 @@ http://localhost:3000/terminalbox/
 
 ## Ollama モデル
 
-ローカル AI として Ollama を使う場合、初回だけモデルを取得します。
+ローカルAIは任意機能です。使用するときは `.env` の `AI_PROVIDER=ollama` を設定し、初回だけモデルを取得します。このコマンドはOllamaも同時に起動します。
 
 ```bash
 docker compose --profile model run --rm model-loader
+```
+
+取得済みモデルでOllamaだけを起動する場合は次を実行します。
+
+```bash
+docker compose --profile local-ai up -d ollama
+```
+
+停止する場合は次を実行します。モデルデータのvolumeは削除されません。
+
+```bash
+docker compose stop ollama
 ```
 
 既定モデルは `.env` の `OLLAMA_MODEL` で変更できます。
@@ -173,7 +254,7 @@ docker compose down -v
 | 変数 | 既定値 | 用途 |
 |---|---|---|
 | `PORT` | `3000` | ブラウザからアクセスするローカルポート |
-| `AI_PROVIDER` | `ollama` | `ollama`、`gemini`、`auto` のいずれか |
+| `AI_PROVIDER` | `gemini` | `ollama`、`gemini`、`auto` のいずれか。ローカルAIを使う場合だけ`ollama`に変更 |
 | `OLLAMA_URL` | `http://ollama:11434` | Backend から見た Ollama API |
 | `OLLAMA_MODEL` | `LiquidAI/lfm2.5-1.2b-instruct:q4_k_m` | 使用する Ollama モデル |
 | `GEMINI_API_KEY` | 空 | Gemini をローカルで使う場合の API キー |
@@ -182,6 +263,9 @@ docker compose down -v
 | `TARGET_URLS` | `http://target:3000,http://target2:3000,http://target3:3000,http://labtarget:3100` | リセット対象の Target 一覧 |
 | `KALI_GUI_URL` | `http://kali:6080` | Backend から見た Kali noVNC |
 | `TERMINAL_HISTORY_LIMIT` | `2000` | AI に渡すターミナル履歴の最大文字数 |
+| `MAX_AGENT_STEPS` | `5` | AI Agentが1回の依頼で実行できる最大ステップ数 |
+| `AGENT_COMMAND_TIMEOUT_MS` | `10000` | Agent専用executorの1コマンドのタイムアウト（ミリ秒） |
+| `AGENT_SYSTEM_PROMPT_FILE` | `/app/config/agent-system-prompt.txt` | AI Agent専用System Prompt |
 | `KALI_CONTAINER` | `terminalbox-kali` | ローカルリセット時に操作する Kali コンテナ名 |
 | `WS_AUTH_TOKEN` | 空 | 将来の WebSocket 認証用トークン |
 | `ALLOWED_ORIGINS` | `http://localhost:3000` | WebSocket 接続を許可する Origin |
@@ -194,10 +278,10 @@ docker compose down -v
 
 Cloud Run では、Web と Lab を 2 つのサービスに分離します。
 
-- `terminalbox`: 公開サービス。Web UI、Basic 認証、AI Backend、Gemini Secret を持ちます。Gemini API への外部通信はこのサービスだけが行います。
-- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocketターミナル、既存3 Target、ツール演習とWeb Attacksを収容する共通Targetを持ちます。受講者が入力したコマンドはこのサービス内で実行されます。Cloud Runでは4 CPU・8GiBを割り当て、コンテナ入口に8081を使用してBurp Proxy用の8080を確保します。
+- `terminalbox`: 公開サービス。Web UI、Basic 認証、通常AI、AI Agent orchestration、command-policy、承認管理、Gemini Secretを持ちます。Gemini APIへの外部通信はこのサービスだけが行います。
+- `terminalbox-lab`: 非公開サービス。Kali/noVNC/WebSocketターミナル、既存3 Target、ツール演習とWeb Attacksを収容する共通Target、Agent専用executorを持ちます。Agentコマンドはここでもcommand-policyを再適用し、student権限で実行します。Cloud Runでは4 CPU・8GiBを割り当て、コンテナ入口に8081を使用してBurp Proxy用の8080を確保します。
 
-ブラウザは `terminalbox` にだけ接続します。Web Backend は Google 署名付き ID トークンを取得し、許可された HTTP/WebSocket パスだけを `terminalbox-lab` へプロキシします。Lab を呼び出せるのは Web 実行サービスアカウントだけです。Target サイトは公開 Web と同一オリジンのパスにプロキシされるため、ブラウザが `target` などの Lab 内部ホスト名へ直接接続することはありません。
+ブラウザは `terminalbox` にだけ接続します。Web Backend は Google 署名付き ID トークンを取得し、許可された HTTP/WebSocketパスと非公開のAgent実行リクエストだけを `terminalbox-lab` へ送ります。Labを呼び出せるのはWeb実行サービスアカウントだけです。Agent実行APIは公開プロキシ対象ではなく、LabからGeminiへ通信することもありません。Targetサイトは公開Webと同一オリジンのパスにプロキシされます。
 
 必要な Secret Manager シークレット:
 
