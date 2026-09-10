@@ -10,11 +10,13 @@ import { getAiStatus, getSystemStatus } from './status.js';
 import { resetLab } from './lab-reset.js';
 import { isAllowedWebSocketOrigin } from './origin.js';
 import { createLabProxy, isLabHttpPath, isLabWebSocketPath } from './lab-proxy.js';
+import { createTargetProxy } from './target-proxy.js';
 import { checkChallengeAnswer } from './challenge-check.js';
 import { AgentService, requestGeminiAgentAction, requestLocalAgentAction } from './agent/agent-service.js';
 import { ApprovalStore } from './agent/approval-store.js';
 import { classifyCommand, CommandClassification } from './agent/command-policy.js';
 import { executeAgentPlan } from './agent/command-executor.js';
+import { createDesktopManager } from './desktop-manager.js';
 import { appendSessionCookie, isValidSessionId, readSessionCookie } from './session/session-cookie.js';
 import { sessionManager } from './session/session-manager.js';
 import { startSessionCleanup } from './session/session-cleanup.js';
@@ -22,6 +24,8 @@ import { startSessionCleanup } from './session/session-cleanup.js';
 const isWebService = config.serviceRole === 'web';
 const isLabService = config.serviceRole === 'lab';
 const labProxy = isWebService ? createLabProxy(config) : null;
+const desktopManager = isWebService ? null : createDesktopManager(config);
+const targetProxy = isWebService ? null : createTargetProxy(config);
 
 const app = express();
 app.disable('x-powered-by');
@@ -34,6 +38,23 @@ if (isWebService) {
     }
     void terminalBoxSession(request, response)
       .then((session) => labProxy.proxyHttp(request, response, session.sessionId))
+      .catch((error) => response.status(error.status ?? 500).json({ error: error.message }));
+  });
+}
+if (!isWebService) {
+  app.use((request, response, next) => {
+    if (!isLabHttpPath(request.path) || request.path === '/api/lab/reset') {
+      next();
+      return;
+    }
+    void terminalBoxSession(request, response, { allowHeader: isLabService })
+      .then((session) => {
+        if (request.path.startsWith('/kali-gui')) {
+          return desktopManager.proxyHttp(request, response, session);
+        }
+        targetProxy.proxyHttp(request, response, session);
+        return null;
+      })
       .catch((error) => response.status(error.status ?? 500).json({ error: error.message }));
   });
 }
@@ -97,6 +118,7 @@ function getAgentOptions(requestBody) {
 startSessionCleanup(sessionManager, {
   onExpire: async (session) => {
     approvalStore.clearSession?.(session.sessionId);
+    if (desktopManager) await desktopManager.stop(session);
   },
 });
 
@@ -301,7 +323,8 @@ app.post('/api/session', async (request, response) => {
 
 app.get('/api/status', async (_request, response) => {
   if (!isWebService) {
-    response.json(await getSystemStatus(config));
+    const status = await getSystemStatus(config);
+    response.json({ ...status, kaliGui: true });
     return;
   }
 
@@ -337,6 +360,7 @@ app.post('/api/lab/reset', async (request, response) => {
   }
   try {
     const session = await terminalBoxSession(request, response);
+    if (desktopManager) await desktopManager.stop(session);
     const result = isWebService
       ? await labProxy.requestJson('/api/lab/reset', { reset: true }, session.sessionId)
       : await sessionManager.reset(session.sessionId).then(() => resetLab(config, session));
@@ -554,6 +578,19 @@ server.on('upgrade', (request, socket, head) => {
     }
     void sessionManager.getOrCreate(readSessionCookie(request))
       .then((session) => labProxy.proxyWebSocket(request, socket, head, session.sessionId))
+      .catch((error) => {
+        socket.write(`HTTP/1.1 ${error.status ?? 500} Error\r\nConnection: close\r\n\r\n`);
+        socket.destroy();
+      });
+    return;
+  }
+
+  if (!isWebService && url.pathname.startsWith('/kali-gui')) {
+    const headerSessionId = isLabService && isValidSessionId(request.headers['x-terminalbox-session'])
+      ? request.headers['x-terminalbox-session']
+      : null;
+    void sessionManager.getOrCreate(headerSessionId ?? readSessionCookie(request))
+      .then((session) => desktopManager.proxyWebSocket(request, socket, head, session))
       .catch((error) => {
         socket.write(`HTTP/1.1 ${error.status ?? 500} Error\r\nConnection: close\r\n\r\n`);
         socket.destroy();

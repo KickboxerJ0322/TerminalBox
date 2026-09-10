@@ -2,6 +2,7 @@
 set -eu
 
 display="${KALI_VNC_DISPLAY:-1}"
+novnc_port="${KALI_NOVNC_PORT:-6080}"
 geometry="${KALI_VNC_GEOMETRY:-1440x900}"
 depth="${KALI_VNC_DEPTH:-24}"
 password="${KALI_VNC_PASSWORD:-student}"
@@ -15,6 +16,18 @@ esac
 
 if [ "$display" -lt 1 ]; then
   echo "KALI_VNC_DISPLAY must be a positive integer" >&2
+  exit 1
+fi
+
+case "$novnc_port" in
+  ''|*[!0-9]*)
+    echo "KALI_NOVNC_PORT must be a positive integer" >&2
+    exit 1
+    ;;
+esac
+
+if [ "$novnc_port" -lt 1 ] || [ "$novnc_port" -gt 65535 ]; then
+  echo "KALI_NOVNC_PORT must be between 1 and 65535" >&2
   exit 1
 fi
 
@@ -32,7 +45,7 @@ chmod 0600 "$vnc_config_dir/passwd"
 tigervncserver ":$display" -kill >/dev/null 2>&1 || true
 rm -f "/tmp/.X${display}-lock" "/tmp/.X11-unix/X${display}"
 
-websockify --web=/usr/share/novnc 6080 "127.0.0.1:$((5900 + display))" &
+websockify --web=/usr/share/novnc "$novnc_port" "127.0.0.1:$((5900 + display))" &
 websockify_pid=$!
 
 cleanup() {

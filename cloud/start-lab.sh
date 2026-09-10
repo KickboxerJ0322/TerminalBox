@@ -30,7 +30,6 @@ start_process env \
   ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://localhost}" \
   node /opt/terminalbox/backend/src/server.js
 backend_pid="${pids##* }"
-start_process su -s /bin/sh student -c 'HOME=/home/student USER=student LOGNAME=student KALI_VNC_PASSWORD="${KALI_VNC_PASSWORD:-student}" KALI_VNC_GEOMETRY="${KALI_VNC_GEOMETRY:-1440x900}" /usr/local/bin/start-gui'
 
 until node -e "fetch('http://127.0.0.1:3001/api/health').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))"; do
   if ! kill -0 "$backend_pid" >/dev/null 2>&1; then

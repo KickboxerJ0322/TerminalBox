@@ -1,10 +1,21 @@
-import { mkdir, rm } from 'node:fs/promises';
+import { chown, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 const DEFAULT_ROOT = '/tmp/terminalbox-sessions';
 const DEFAULT_DISPLAY_START = 11;
 const DEFAULT_DISPLAY_END = 110;
+const STUDENT_UID = 1000;
+const STUDENT_GID = 1000;
+
+async function createSessionHome(homeDirectory) {
+  await mkdir(homeDirectory, { recursive: true });
+  try {
+    await chown(homeDirectory, STUDENT_UID, STUDENT_GID);
+  } catch {
+    // Some local hosts/filesystems do not support POSIX ownership.
+  }
+}
 
 export class SessionManager {
   constructor({
@@ -34,7 +45,7 @@ export class SessionManager {
     const displayNumber = this.allocateDisplayNumber();
     const baseDirectory = path.join(this.rootDirectory, id);
     const homeDirectory = path.join(baseDirectory, 'home');
-    await mkdir(homeDirectory, { recursive: true });
+    await createSessionHome(homeDirectory);
     const createdAt = this.now();
     const session = {
       sessionId: id,
@@ -47,6 +58,7 @@ export class SessionManager {
       novncPort: 6000 + displayNumber,
       status: 'active',
       terminalProcesses: new Set(),
+      desktopProcess: null,
     };
     this.sessions.set(id, session);
     return session;
@@ -79,7 +91,7 @@ export class SessionManager {
     }
     session.terminalProcesses.clear();
     await rm(session.homeDirectory, { recursive: true, force: true });
-    await mkdir(session.homeDirectory, { recursive: true });
+    await createSessionHome(session.homeDirectory);
     session.lastAccessAt = this.now();
     return session;
   }
