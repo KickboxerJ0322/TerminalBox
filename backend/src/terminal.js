@@ -1,5 +1,7 @@
 import Docker from 'dockerode';
 import { spawn } from 'node:child_process';
+import { readSessionCookie } from './session/session-cookie.js';
+import { sessionManager } from './session/session-manager.js';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
@@ -9,28 +11,29 @@ function isAuthorized(request, expectedToken) {
   return url.searchParams.get('token') === expectedToken;
 }
 
-function attachLocalTerminal(socket) {
+function attachLocalTerminal(socket, session) {
   let child;
   const send = (type, payload = {}) => {
     if (socket.readyState === 1) socket.send(JSON.stringify({ type, ...payload }));
   };
 
+  const homeDirectory = session.homeDirectory;
   try {
     child = spawn(
       '/usr/bin/script',
       ['-qfec', 'exec /bin/bash --noprofile --rcfile /etc/terminalbox.bashrc -i', '/dev/null'],
       {
-        cwd: '/home/student',
+        cwd: homeDirectory,
         uid: 1000,
         gid: 1000,
         env: {
-          HOME: '/home/student',
+          HOME: homeDirectory,
           USER: 'student',
           LOGNAME: 'student',
           SHELL: '/bin/bash',
           TERM: 'xterm-256color',
           COLORTERM: 'truecolor',
-          DISPLAY: ':1',
+          DISPLAY: `:${session.displayNumber}`,
           LANG: 'ja_JP.UTF-8',
           LANGUAGE: 'ja_JP:ja',
           LC_ALL: 'ja_JP.UTF-8',
@@ -39,6 +42,7 @@ function attachLocalTerminal(socket) {
         stdio: ['pipe', 'pipe', 'pipe'],
       },
     );
+    sessionManager.trackTerminal(session.sessionId, child);
     child.stdout.on('data', (chunk) => send('output', { data: chunk.toString('utf8') }));
     child.stderr.on('data', (chunk) => send('output', { data: chunk.toString('utf8') }));
     child.on('error', (error) => send('error', { message: `Terminal connection failed: ${error.message}` }));
@@ -68,16 +72,30 @@ function attachLocalTerminal(socket) {
   });
 }
 
+async function ensureDockerHome(container, homeDirectory) {
+  const execution = await container.exec({
+    Cmd: ['/bin/mkdir', '-p', homeDirectory],
+    User: 'student',
+    AttachStdout: true,
+    AttachStderr: true,
+  });
+  await execution.start({ hijack: true, stdin: false });
+}
+
 export function attachTerminalSocket(socket, request, config) {
   if (!isAuthorized(request, config.wsAuthToken)) {
     socket.close(1008, 'Unauthorized');
     return;
   }
 
-  if (config.kaliExecMode === 'local') {
-    attachLocalTerminal(socket);
-    return;
-  }
+  const startWithSession = async () => {
+    const session = await sessionManager.getOrCreate(readSessionCookie(request));
+    if (config.kaliExecMode === 'local') {
+      attachLocalTerminal(socket, session);
+      return;
+    }
+    await startDockerTerminal(session);
+  };
 
   let dockerStream;
   let exec;
@@ -86,20 +104,30 @@ export function attachTerminalSocket(socket, request, config) {
     if (socket.readyState === 1) socket.send(JSON.stringify({ type, ...payload }));
   };
 
-  const start = async () => {
+  const startDockerTerminal = async (session) => {
     try {
       const container = docker.getContainer(config.kaliContainer);
       const details = await container.inspect();
       if (!details.State.Running) throw new Error('Kali container is not running');
 
+      const homeDirectory = session.homeDirectory;
+      await ensureDockerHome(container, homeDirectory);
       exec = await container.exec({
         Cmd: ['/bin/bash', '--noprofile', '--rcfile', '/etc/terminalbox.bashrc', '-i'],
         User: 'student',
+        WorkingDir: homeDirectory,
         AttachStdin: true,
         AttachStdout: true,
         AttachStderr: true,
         Tty: true,
-        Env: ['TERM=xterm-256color', 'COLORTERM=truecolor'],
+        Env: [
+          `HOME=${homeDirectory}`,
+          'USER=student',
+          'LOGNAME=student',
+          `DISPLAY=:${session.displayNumber}`,
+          'TERM=xterm-256color',
+          'COLORTERM=truecolor',
+        ],
       });
       dockerStream = await exec.start({ hijack: true, stdin: true, Tty: true });
       dockerStream.on('data', (chunk) => send('output', { data: chunk.toString('utf8') }));
@@ -129,5 +157,8 @@ export function attachTerminalSocket(socket, request, config) {
   });
 
   socket.on('close', () => dockerStream?.destroy());
-  start();
+  startWithSession().catch((error) => {
+    send('error', { message: `Terminal connection failed: ${error.message}` });
+    socket.close(1011, 'Terminal unavailable');
+  });
 }

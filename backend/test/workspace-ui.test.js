@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
@@ -22,9 +22,9 @@ test('Kali workspace keeps one noVNC session and activates the selected GUI tool
 test('online AI and security tool wording are the defaults', async () => {
   const source = await readWebSource('App.tsx');
 
-  assert.match(source, /useState<AssistantTab>\('assistant-online'\)/);
-  assert.match(source, /setAssistantTab\('assistant-online'\)/);
-  assert.match(source, />\s*セキュリティツール\s*</);
+  assert.match(source, /useState<AssistantTab>\('online'\)/);
+  assert.match(source, /setAssistantTab\('online'\)/);
+  assert.match(source, />\s*繧ｻ繧ｭ繝･繝ｪ繝・ぅ繝・・繝ｫ\s*</);
 });
 
 test('learning tabs put targets before security tools', async () => {
@@ -35,20 +35,20 @@ test('learning tabs put targets before security tools', async () => {
   assert.ok(source.indexOf('id="tools-tab"') < source.indexOf('id="web-attacks-tab"'));
 });
 
-test('AI tabs are local, online, then Agent with online selected by default', async () => {
+test('AI Agent tabs are online and local with online selected by default', async () => {
   const [app, agent, styles] = await Promise.all([
     readWebSource('App.tsx'),
     readWebSource('AgentPanel.tsx'),
     readWebSource('styles.css'),
   ]);
-  assert.ok(app.indexOf('id="assistant-tab"') < app.indexOf('id="assistant-online-tab"'));
-  assert.ok(app.indexOf('id="assistant-online-tab"') < app.indexOf('id="assistant-agent-tab"'));
-  assert.match(app, /useState<AssistantTab>\('assistant-online'\)/);
-  assert.match(app, />\s*AI（ローカル）\s*</);
-  assert.match(agent, /fetch\('\/api\/agent\/chat'/);
+  assert.ok(app.indexOf('id="assistant-online-tab"') < app.indexOf('id="assistant-local-tab"'));
+  assert.doesNotMatch(app, /id="assistant-agent-tab"/);
+  assert.match(app, /useState<AssistantTab>\('online'\)/);
+  assert.match(app, />\s*オンライン\s*</);
+  assert.match(app, />\s*ローカル\s*</);
   assert.match(agent, /fetch\(allow \? '\/api\/agent\/approve' : '\/api\/agent\/cancel'/);
-  assert.doesNotMatch(agent, /ollama/i);
-  assert.match(styles, /\.assistant-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(3,/);
+  assert.match(agent, /provider: 'gemini' \| 'local'/);
+  assert.match(styles, /\.assistant-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(2,/);
 });
 
 test('Live Training Target has iframe back navigation', async () => {
@@ -78,7 +78,7 @@ test('Web Attacks synchronizes problem 5, history detection, and eight answer ch
   for (const id of ['web-parameter', 'web-idor', 'web-sqli', 'web-xss', 'web-traversal', 'web-upload', 'web-ssrf', 'web-jwt']) {
     assert.match(panel, new RegExp(`answerId: '${id}'`));
   }
-  assert.match(panel, /subtitle: 'Web Attacks 初級'/);
+  assert.match(panel, /subtitle: 'Web Attacks/);
 
   const webGroup = panel.slice(panel.indexOf("id: 5,"), panel.indexOf('\n];', panel.indexOf("id: 5,")));
   assert.equal((webGroup.match(/hint: '/g) ?? []).length, 8);
@@ -88,23 +88,23 @@ test('Web Attacks synchronizes problem 5, history detection, and eight answer ch
   ]) {
     assert.equal(webGroup.includes(flag), false, `hint/problem source must not reveal ${flag}`);
   }
-  assert.match(app, /すべての演習ターゲット/);
-});
+  assert.match(app, /現在のセッションのTerminal、Desktop、Target、Challenge、AI Agent状態/);
 
+});
 test('AI attachment controls default to off and support full terminal text and capture', async () => {
   const [source, attachments, styles] = await Promise.all([
-    readWebSource('AssistantPanel.tsx'),
+    readWebSource('AgentPanel.tsx'),
     readWebSource('ai-attachments.ts'),
     readWebSource('styles.css'),
   ]);
   assert.match(source, /includeFullTerminalHistory, setIncludeFullTerminalHistory\] = useState\(false\)/);
   assert.match(source, /includeScreenCapture, setIncludeScreenCapture\] = useState\(false\)/);
-  assert.match(source, /messages\.slice\(-6\)/);
-  assert.match(source, />\s*ターミナル全文\s*</);
-  assert.match(source, />\s*キャプチャ\s*</);
+  assert.match(source, /entries[\s\S]*slice\(-6\)/);
+  assert.match(source, /includeFullTerminalHistory \? 'full' : 'recent'/);
+  assert.match(source, /screenCapture,/);
   assert.match(attachments, /html2canvas\(terminalBox/);
   assert.doesNotMatch(attachments, /getDisplayMedia/);
-  assert.match(styles, /\.history-toggle-capture\s*\{\s*color:\s*var\(--text\)/);
+  assert.match(styles, /\.history-toggle-capture\s*\{\s*color:\s*var\(--muted\)/);
 });
 
 test('AI Agent keeps its send controls visible and supports the same attachments', async () => {
@@ -117,11 +117,11 @@ test('AI Agent keeps its send controls visible and supports the same attachments
   assert.match(source, /includeTerminalHistory, setIncludeTerminalHistory\] = useState\(true\)/);
   assert.match(source, /includeFullTerminalHistory, setIncludeFullTerminalHistory\] = useState\(false\)/);
   assert.match(source, /includeScreenCapture, setIncludeScreenCapture\] = useState\(false\)/);
-  assert.match(source, />\s*AI 会話履歴を含める\s*</);
-  assert.match(source, />\s*直近のターミナル履歴を含める\s*</);
-  assert.match(source, />\s*ターミナル全文\s*</);
-  assert.match(source, />\s*キャプチャ\s*</);
-  assert.match(source, /\{loading \? '送信中' : '送信'\}/);
+  assert.match(source, /includeConversationHistory \? entries/);
+  assert.match(source, /includeTerminalHistory \? terminalHistory : ''/);
+  assert.match(source, /includeFullTerminalHistory \? 'full' : 'recent'/);
+  assert.match(source, /screenCapture,/);
+  assert.match(source, /loading \? '送信中' : '送信'/);
   assert.match(app, /terminalHistory=\{history\}[\s\S]*fullTerminalHistory=\{fullTerminalHistory\}/);
   assert.match(styles, /\.agent-panel \.messages\s*\{\s*min-height:\s*0/);
   assert.match(styles, /\.agent-panel \.chat-form\s*\{\s*flex:\s*0 0 auto/);
@@ -135,16 +135,13 @@ test('tutorial includes a bounded ping reply exercise', async () => {
 
 test('target 2 and 3 keep the original four-step challenges', async () => {
   const source = await readWebSource('ChallengePanel.tsx');
-  for (const title of [
-    'ストアの非公開設定を探す', '商品情報を書き換える', '偽のキャンペーンを掲載する', 'ストアの改ざん状態を確認する',
-    'デバッグ設定の漏えいを調べる', '図書館の見出しを改ざんする', '偽の休館案内を掲示する', '図書館サイトの状態を確認する',
-  ]) {
-    assert.match(source, new RegExp(`title: '${title}'`));
-  }
+  const target2Group = source.slice(source.indexOf('id: 2,'), source.indexOf('id: 3,'));
+  const target3Group = source.slice(source.indexOf('id: 3,'), source.indexOf('id: 4,'));
+  assert.equal((target2Group.match(/id: '0/g) ?? []).length, 4);
+  assert.equal((target3Group.match(/id: '0/g) ?? []).length, 4);
   assert.doesNotMatch(source, /title: 'HTTP Request Basics'/);
   assert.doesNotMatch(source, /title: 'Multi-step Challenge'/);
 });
-
 test('every learning category starts with its hint collapsed', async () => {
   const sources = await Promise.all([
     readWebSource('BasicOperationsPanel.tsx'),

@@ -28,15 +28,16 @@ function parseRunnerOutput(raw, command, startedAt) {
   };
 }
 
-function executeLocal(plan, command, timeoutMs) {
+function executeLocal(plan, command, timeoutMs, session) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
+    const homeDirectory = session?.homeDirectory ?? '/home/student';
     const child = spawn(EXECUTOR_PATH, [encodePlan(plan)], {
-      cwd: '/home/student',
+      cwd: homeDirectory,
       uid: 1000,
       gid: 1000,
       env: {
-        HOME: '/nonexistent', XDG_CONFIG_HOME: '/nonexistent', XDG_DATA_HOME: '/nonexistent',
+        HOME: homeDirectory, XDG_CONFIG_HOME: `${homeDirectory}/.config`, XDG_DATA_HOME: `${homeDirectory}/.local/share`,
         USER: 'student', LOGNAME: 'student', LANG: 'ja_JP.UTF-8', PAGER: 'cat',
         GIT_PAGER: 'cat', SYSTEMD_PAGER: 'cat', GIT_CONFIG_NOSYSTEM: '1',
         GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0',
@@ -67,21 +68,29 @@ function executeLocal(plan, command, timeoutMs) {
   });
 }
 
-async function executeDocker(plan, command, config, timeoutMs) {
+async function executeDocker(plan, command, config, timeoutMs, session) {
   const startedAt = Date.now();
   const container = docker.getContainer(config.kaliContainer);
   const details = await container.inspect();
   if (!details.State.Running) throw new Error('Kali container is not running');
   const timeoutSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
+  const homeDirectory = session?.homeDirectory ?? '/home/student';
+  const prepare = await container.exec({
+    Cmd: ['/bin/mkdir', '-p', homeDirectory],
+    User: 'student',
+    AttachStdout: true,
+    AttachStderr: true,
+  });
+  await prepare.start({ hijack: true, stdin: false });
   const execution = await container.exec({
     Cmd: ['/usr/bin/timeout', '--signal=KILL', `${timeoutSeconds}s`, EXECUTOR_PATH, encodePlan(plan)],
     User: 'student',
-    WorkingDir: '/home/student',
+    WorkingDir: homeDirectory,
     AttachStdout: true,
     AttachStderr: true,
     Tty: true,
     Env: [
-      'HOME=/nonexistent', 'XDG_CONFIG_HOME=/nonexistent', 'XDG_DATA_HOME=/nonexistent',
+      `HOME=${homeDirectory}`, `XDG_CONFIG_HOME=${homeDirectory}/.config`, `XDG_DATA_HOME=${homeDirectory}/.local/share`,
       'USER=student', 'LOGNAME=student', 'LANG=ja_JP.UTF-8', 'PAGER=cat', 'GIT_PAGER=cat',
       'SYSTEMD_PAGER=cat', 'GIT_CONFIG_NOSYSTEM=1', 'GIT_CONFIG_GLOBAL=/dev/null',
       'GIT_OPTIONAL_LOCKS=0', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
@@ -101,8 +110,8 @@ async function executeDocker(plan, command, config, timeoutMs) {
   return parseRunnerOutput(output, command, startedAt);
 }
 
-export function executeAgentPlan(plan, command, config, timeoutMs = 10_000) {
+export function executeAgentPlan(plan, command, config, timeoutMs = 10_000, session = null) {
   return config.kaliExecMode === 'local'
-    ? executeLocal(plan, command, timeoutMs)
-    : executeDocker(plan, command, config, timeoutMs);
+    ? executeLocal(plan, command, timeoutMs, session)
+    : executeDocker(plan, command, config, timeoutMs, session);
 }

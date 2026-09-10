@@ -2,7 +2,9 @@ import { FormEvent, KeyboardEvent, useState } from 'react';
 import { captureTerminalBoxScreen } from './ai-attachments';
 
 interface Status {
+  ollama?: boolean;
   model: string;
+  modelInstalled?: boolean;
   aiProvider?: string;
   aiReady?: boolean;
   geminiConfigured?: boolean;
@@ -46,6 +48,8 @@ interface Entry {
 interface Props {
   panelId: string;
   tabId: string;
+  provider: 'gemini' | 'local';
+  label: string;
   terminalHistory: string;
   fullTerminalHistory: string;
   status: Status | null;
@@ -96,7 +100,7 @@ function entryContent(entry: Entry) {
   ].filter(Boolean).join('\n')).join('\n') ?? '';
 }
 
-export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistory, status }: Props) {
+export function AgentPanel({ panelId, tabId, provider, label, terminalHistory, fullTerminalHistory, status }: Props) {
   const [question, setQuestion] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [includeConversationHistory, setIncludeConversationHistory] = useState(true);
@@ -108,7 +112,9 @@ export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistor
   const [apiKey] = useState(() => storedValue(GEMINI_API_KEY_STORAGE, ''));
   const [geminiModel] = useState(() => storedValue(GEMINI_MODEL_STORAGE, DEFAULT_GEMINI_MODEL));
   const managedGemini = status?.aiProvider === 'gemini' && status?.geminiConfigured === true;
-  const ready = managedGemini || apiKey.trim().length > 0;
+  const ready = provider === 'local'
+    ? status?.ollama === true && status?.modelInstalled === true
+    : managedGemini || apiKey.trim().length > 0;
   let pending: AgentResponse | undefined;
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     if (entries[index].response?.status === 'approval_required') {
@@ -166,6 +172,7 @@ export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistor
           terminalHistoryMode: includeFullTerminalHistory ? 'full' : 'recent',
           screenCapture,
           conversationHistory,
+          provider,
           geminiApiKey: managedGemini ? undefined : apiKey,
           geminiModel: managedGemini ? undefined : geminiModel || DEFAULT_GEMINI_MODEL,
         }),
@@ -206,7 +213,7 @@ export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistor
   return (
     <section className="panel assistant-panel agent-panel" id={panelId} role="tabpanel" aria-labelledby={tabId}>
       <div className="panel-heading">
-        <div><span className="eyebrow">ONLINE AI / SAFE EXECUTOR</span><h2>AI Agent</h2></div>
+        <div><span className="eyebrow">AI AGENT / {label}</span><h2>AI Agent</h2></div>
         <span className={`ai-badge ${ready ? '' : 'ai-badge-wait'}`}>{ready ? '実行できます' : '設定待ち'}</span>
       </div>
       <div className="agent-notice">

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AssistantPanel } from './AssistantPanel';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { AgentPanel } from './AgentPanel';
 import { BasicOperationsPanel } from './BasicOperationsPanel';
 import { ChallengePanel } from './ChallengePanel';
@@ -25,7 +24,7 @@ interface PasteRequest {
 }
 
 type LearningTab = 'operations' | 'tutorial' | 'targets' | 'tools' | 'web-attacks';
-type AssistantTab = 'assistant' | 'assistant-online' | 'assistant-agent';
+type AssistantTab = 'online' | 'local';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
 const OPERATIONS_STORAGE_KEY = 'terminalbox:operations-completed';
@@ -48,49 +47,17 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
             <span className="eyebrow">ABOUT TERMINALBOX</span>
             <h2 id="info-title">TerminalBoxでできること</h2>
           </div>
-          <button type="button" aria-label="閉じる" onClick={onClose}>×</button>
+          <button type="button" aria-label="閉じる" onClick={onClose}>x</button>
         </div>
         <div className="info-content">
           <p>
-            TerminalBox は、隔離された Kali Linux 環境でLinuxの基本操作、Webターゲット調査、
-            セキュリティツール演習を安全に学ぶためのアプリです。TerminalとKali Desktopは同じ環境を操作します。
+            TerminalBox は、匿名セッションごとにTerminal、Target、Challenge、AI Agentの状態を分けて使う学習Labです。
           </p>
           <div className="info-grid">
-            <article>
-              <span>01</span>
-              <h3>Kaliワークスペース</h3>
-              <p>Terminal、Burp Suite、Wireshark、Kali Desktopをタブで切り替えられます。GUI接続を保持し、選択したツールを前面へ表示します。</p>
-            </article>
-            <article>
-              <span>02</span>
-              <h3>基本操作・チュートリアル</h3>
-              <p>ファイル操作とLinuxコマンドをミッション形式で学べます。提示コマンドはTerminalへ貼り付けできます。</p>
-            </article>
-            <article>
-              <span>03</span>
-              <h3>ターゲット問題</h3>
-              <p>問題1～3では研修サイト、オンラインストア、図書館サイトを調査し、隔離環境内でAPIの安全性を学びます。</p>
-            </article>
-            <article>
-              <span>04</span>
-              <h3>セキュリティツール問題</h3>
-              <p>問題4ではBurp Suite、Wireshark/tshark、Gobuster、Nikto、sqlmap、John、Hashcat、Netcat、Hydra、Metasploitを使います。</p>
-            </article>
-            <article>
-              <span>05</span>
-              <h3>Web Attacks 初級</h3>
-              <p>問題5ではTBX Marketの8つの演習を通じて、初歩的なWeb脆弱性を安全な模擬環境で学びます。</p>
-            </article>
-            <article>
-              <span>06</span>
-              <h3>AIサポート</h3>
-              <p>ローカル・オンラインの通常チャットに加え、安全ポリシーと承認を通してKaliコマンドを実行するAI Agentを利用できます。初期状態はAI（オンライン）です。</p>
-            </article>
-            <article>
-              <span>07</span>
-              <h3>進捗とリセット</h3>
-              <p>各問題は回答確認、クリア、クリア解除ができます。RESETはターゲット、Kaliホーム、履歴、進捗、AI設定を初期化します。</p>
-            </article>
+            <article><span>01</span><h3>Kaliワークスペース</h3><p>TerminalとKali Desktopを同じセッションの作業領域で利用できます。</p></article>
+            <article><span>02</span><h3>ターゲット演習</h3><p>問題1から3の研修サイトを調査し、Web APIの安全性を学びます。</p></article>
+            <article><span>03</span><h3>Web Attacks</h3><p>TBX Marketの演習で基本的なWeb脆弱性を確認します。</p></article>
+            <article><span>04</span><h3>AI Agent</h3><p>オンラインとローカルの2種類のAgentが同じ承認ポリシーでTerminal操作を支援します。</p></article>
           </div>
         </div>
       </section>
@@ -120,18 +87,18 @@ function ResetDialog({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="info-heading">
-          <div><span className="eyebrow">RESET WORKSPACE</span><h2 id="reset-title">すべて初期化しますか？</h2></div>
+          <div><span className="eyebrow">RESET WORKSPACE</span><h2 id="reset-title">このLabをリセット</h2></div>
         </div>
         <div className="reset-content">
           <p id="reset-description">
-            すべての演習ターゲット、Kaliで作成した学習ファイル、ターミナル履歴、問題の進捗、AI会話と保存済みAPI設定を初期状態へ戻します。
+            現在のセッションのTerminal、Desktop、Target、Challenge、AI Agent状態を初期状態に戻します。他の利用者には影響しません。
           </p>
           <p className="reset-warning">この操作は取り消せません。</p>
           {error && <p className="reset-error" role="alert">{error}</p>}
           <div className="reset-actions">
             <button type="button" className="secondary" onClick={onCancel} disabled={resetting}>キャンセル</button>
             <button type="button" className="danger" onClick={onConfirm} disabled={resetting}>
-              {resetting ? '初期化しています...' : 'すべて初期化する'}
+              {resetting ? 'リセットしています...' : 'このLabをリセット'}
             </button>
           </div>
         </div>
@@ -139,13 +106,14 @@ function ResetDialog({
     </div>
   );
 }
-
 export default function App() {
   const [history, setHistory] = useState('');
   const [fullTerminalHistory, setFullTerminalHistory] = useState('');
   const [status, setStatus] = useState<Status | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState('');
   const [learningTab, setLearningTab] = useState<LearningTab>('operations');
-  const [assistantTab, setAssistantTab] = useState<AssistantTab>('assistant-online');
+  const [assistantTab, setAssistantTab] = useState<AssistantTab>('online');
   const [infoOpen, setInfoOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -162,6 +130,7 @@ export default function App() {
 
   const loadStatus = useCallback(async () => {
     try {
+      await fetch('/api/session', { method: 'POST', credentials: 'include', cache: 'no-store' });
       const response = await fetch('/api/status', { cache: 'no-store' });
       if (!response.ok) throw new Error(`Status request failed: ${response.status}`);
       const nextStatus: Status = await response.json();
@@ -175,12 +144,22 @@ export default function App() {
     let active = true;
     const load = async () => {
       try {
+        const sessionResponse = await fetch('/api/session', { method: 'POST', credentials: 'include', cache: 'no-store' });
+        if (!sessionResponse.ok) throw new Error(`Session request failed: ${sessionResponse.status}`);
+        if (active) {
+          setSessionReady(true);
+          setSessionError('');
+        }
         const response = await fetch('/api/status', { cache: 'no-store' });
         if (!response.ok) throw new Error(`Status request failed: ${response.status}`);
         const nextStatus: Status = await response.json();
         if (active) setStatus(nextStatus);
       } catch {
-        if (active) setStatus(null);
+        if (active) {
+          setStatus(null);
+          setSessionReady(false);
+          setSessionError('Session initialization failed');
+        }
       }
     };
 
@@ -248,7 +227,7 @@ export default function App() {
     setFullTerminalHistory('');
     setPasteRequest(null);
     setLearningTab('operations');
-    setAssistantTab('assistant-online');
+    setAssistantTab('online');
     setChallengeTargetId(1);
     targetEventCountRef.current = 0;
     setResetSignal((value) => value + 1);
@@ -261,6 +240,7 @@ export default function App() {
     try {
       const response = await fetch('/api/lab/reset', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'x-terminalbox-reset': 'confirmed' },
       });
       if (!response.ok) {
@@ -271,7 +251,7 @@ export default function App() {
       setTargetRefreshSignal((value) => value + 1);
       setResetOpen(false);
     } catch (error) {
-      setResetError(error instanceof Error ? error.message : '初期化に失敗しました。');
+      setResetError(error instanceof Error ? error.message : 'リセットに失敗しました。');
     } finally {
       setResetting(false);
     }
@@ -285,7 +265,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/terminalbox/" aria-label="TerminalBox ホーム">
+        <a className="brand" href="/terminalbox/" aria-label="TerminalBox 繝帙・繝">
           <span className="brand-mark" aria-hidden="true">&gt;_</span>
           <span>Terminal<span>Box</span></span>
         </a>
@@ -331,8 +311,8 @@ export default function App() {
             />
           </div>
           <div className="workspace-column workspace-column-right">
-            <aside className="side-workspace learning-workspace" aria-label="学習パネル">
-            <div className="workspace-tabs" role="tablist" aria-label="学習パネル">
+            <aside className="side-workspace learning-workspace" aria-label="蟄ｦ鄙偵ヱ繝阪Ν">
+            <div className="workspace-tabs" role="tablist" aria-label="蟄ｦ鄙偵ヱ繝阪Ν">
               <button
                 id="operations-tab"
                 type="button"
@@ -342,8 +322,7 @@ export default function App() {
                 className={learningTab === 'operations' ? 'active' : ''}
                 onClick={() => setLearningTab('operations')}
               >
-                基本操作
-              </button>
+                蝓ｺ譛ｬ謫堺ｽ・              </button>
               <button
                 id="tutorial-tab"
                 type="button"
@@ -353,7 +332,7 @@ export default function App() {
                 className={learningTab === 'tutorial' ? 'active' : ''}
                 onClick={() => setLearningTab('tutorial')}
               >
-                チュートリアル
+                繝√Η繝ｼ繝医Μ繧｢繝ｫ
               </button>
               <button
                 id="targets-tab"
@@ -364,7 +343,7 @@ export default function App() {
                 className={learningTab === 'targets' ? 'active' : ''}
                 onClick={() => { setLearningTab('targets'); if (challengeTargetId === 4 || challengeTargetId === 5) setChallengeTargetId(1); }}
               >
-                ターゲット
+                繧ｿ繝ｼ繧ｲ繝・ヨ
               </button>
               <button
                 id="tools-tab"
@@ -375,7 +354,7 @@ export default function App() {
                 className={learningTab === 'tools' ? 'active' : ''}
                 onClick={() => { setLearningTab('tools'); setChallengeTargetId(4); }}
               >
-                セキュリティツール
+                繧ｻ繧ｭ繝･繝ｪ繝・ぅ繝・・繝ｫ
               </button>
               <button
                 id="web-attacks-tab"
@@ -424,69 +403,56 @@ export default function App() {
             )}
             </aside>
 
-            <aside className="side-workspace assistant-workspace" aria-label="AIパネル">
-            <div className="workspace-tabs" role="tablist" aria-label="AIパネル">
-              <button
-                id="assistant-tab"
-                type="button"
-                role="tab"
-                aria-selected={assistantTab === 'assistant'}
-                aria-controls="assistant-panel"
-                className={assistantTab === 'assistant' ? 'active' : ''}
-                onClick={() => setAssistantTab('assistant')}
-              >
-                AI（ローカル）
-              </button>
+            <aside className="side-workspace assistant-workspace" aria-label="AI Agent">
+            <div className="workspace-tabs" role="tablist" aria-label="AI Agent">
               <button
                 id="assistant-online-tab"
                 type="button"
                 role="tab"
-                aria-selected={assistantTab === 'assistant-online'}
+                aria-selected={assistantTab === 'online'}
                 aria-controls="assistant-online-panel"
-                className={assistantTab === 'assistant-online' ? 'active' : ''}
-                onClick={() => setAssistantTab('assistant-online')}
+                className={assistantTab === 'online' ? 'active' : ''}
+                onClick={() => setAssistantTab('online')}
               >
-                AI（オンライン）
+                オンライン
               </button>
               <button
-                id="assistant-agent-tab"
+                id="assistant-local-tab"
                 type="button"
                 role="tab"
-                aria-selected={assistantTab === 'assistant-agent'}
-                aria-controls="assistant-agent-panel"
-                className={assistantTab === 'assistant-agent' ? 'active' : ''}
-                onClick={() => setAssistantTab('assistant-agent')}
+                aria-selected={assistantTab === 'local'}
+                aria-controls="assistant-local-panel"
+                className={assistantTab === 'local' ? 'active' : ''}
+                onClick={() => setAssistantTab('local')}
               >
-                AI Agent
+                ローカル
               </button>
             </div>
-            {assistantTab === 'assistant' && (
-              <AssistantPanel
-                key={`assistant-local-${resetSignal}`}
-                panelId="assistant-panel"
-                tabId="assistant-tab"
-                mode="local"
-                terminalHistory={history}
-                fullTerminalHistory={fullTerminalHistory}
-                status={status}
-              />
+            {!sessionReady && (
+              <section className="panel assistant-panel" role="tabpanel">
+                <div className="panel-heading"><div><span className="eyebrow">AI AGENT</span><h2>AI Agent</h2></div></div>
+                <div className="messages"><article className="message message-assistant"><span className="message-role">SYSTEM</span><div>{sessionError || 'Session を準備しています。'}</div></article></div>
+              </section>
             )}
-            {assistantTab === 'assistant-online' && (
-              <AssistantPanel
+            {sessionReady && assistantTab === 'online' && (
+              <AgentPanel
                 key={`assistant-online-${resetSignal}`}
                 panelId="assistant-online-panel"
                 tabId="assistant-online-tab"
-                mode="online"
+                provider="gemini"
+                label="オンライン"
                 terminalHistory={history}
                 fullTerminalHistory={fullTerminalHistory}
                 status={status}
               />
             )}
-            {assistantTab === 'assistant-agent' && (
+            {sessionReady && assistantTab === 'local' && (
               <AgentPanel
-                key={`assistant-agent-${resetSignal}`}
-                panelId="assistant-agent-panel"
-                tabId="assistant-agent-tab"
+                key={`assistant-local-${resetSignal}`}
+                panelId="assistant-local-panel"
+                tabId="assistant-local-tab"
+                provider="local"
+                label="ローカル"
                 terminalHistory={history}
                 fullTerminalHistory={fullTerminalHistory}
                 status={status}

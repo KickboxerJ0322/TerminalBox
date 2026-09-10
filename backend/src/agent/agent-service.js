@@ -90,6 +90,46 @@ export async function requestGeminiAgentAction({ state, options, systemPrompt, f
   return parseAgentAction(extractGeminiText(await response.json()));
 }
 
+export async function requestLocalAgentAction({ state, options, systemPrompt, fetchImpl = fetch }) {
+  const observations = state.steps.map((step) => ({
+    command: step.command,
+    classification: step.classification,
+    approved: step.approved,
+    result: step.result ? {
+      stdout: step.result.stdout.slice(0, 12_000),
+      stderr: step.result.stderr.slice(0, 6_000),
+      exitCode: step.result.exitCode,
+    } : null,
+  }));
+  const prompt = [
+    systemPrompt,
+    '',
+    'Return only JSON. Use {"action":"final_answer","message":"..."} for explanations or completed work.',
+    'Use {"action":"execute_command","command":"...","reason":"..."} only when a terminal command is needed.',
+    `User request: ${state.message}`,
+    `Observations: ${JSON.stringify(observations)}`,
+  ].join('\n');
+  const response = await fetchImpl(`${options.url}/api/chat`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: options.model,
+      stream: false,
+      think: false,
+      keep_alive: '30m',
+      format: 'json',
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 500);
+    throw new Error(`Ollama returned ${response.status}: ${detail}`);
+  }
+  const body = await response.json();
+  return parseAgentAction(body.message?.content ?? body.response ?? '');
+}
+
 export class AgentService {
   constructor({ approvalStore, proposeAction, execute, maxSteps = 5 }) {
     this.approvalStore = approvalStore;
@@ -138,7 +178,7 @@ export class AgentService {
         return { ...approval, status: 'approval_required', steps: state.steps };
       }
 
-      const result = await this.execute(proposal.command, policy, false);
+      const result = await this.execute(proposal.command, policy, false, state.session);
       const completedStep = { ...step, result };
       state.steps.push(completedStep);
       this.approvalStore.recordExecution(state.sessionId, {
@@ -165,7 +205,7 @@ export class AgentService {
     if (policy.classification !== CommandClassification.CONFIRM_REQUIRED) {
       return { ok: false, error: 'approval_policy_changed', status: 409 };
     }
-    const result = await this.execute(approval.command, policy, true);
+    const result = await this.execute(approval.command, policy, true, continuation.state.session);
     const state = continuation.state;
     const pendingStep = state.steps.at(-1);
     state.steps[state.steps.length - 1] = { ...pendingStep, approved: true, result };

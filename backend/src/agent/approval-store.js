@@ -68,6 +68,13 @@ export class ApprovalStore {
     this.history.clear();
   }
 
+  clearSession(sessionId) {
+    for (const [approvalId, record] of this.records) {
+      if (record.sessionId === sessionId) this.records.delete(approvalId);
+    }
+    this.history.delete(sessionId);
+  }
+
   publicRecord(record) {
     return {
       approvalId: record.approvalId,

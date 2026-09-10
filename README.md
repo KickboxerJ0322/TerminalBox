@@ -1,5 +1,28 @@
 # TerminalBox
 
+## Anonymous Multi-User Lab
+
+TerminalBox now issues an anonymous `tbx_session` cookie on first access. The frontend initializes the session with `POST /api/session` before starting Terminal, Target, Desktop, or AI Agent views, and the session ID is not stored in `localStorage`.
+
+Phase 1 separates the normal lab workflow by session while preserving the existing Docker / Cloud Run shape:
+
+- Terminal and AI Agent commands run with the session HOME, for example `/tmp/terminalbox-sessions/<sessionId>/home`.
+- Target state is keyed by the internal `X-TerminalBox-Session` header, which the backend overwrites before proxying.
+- Challenge comments/uploads and reset behavior are session-scoped.
+- Lab reset affects only the current `tbx_session` and clears that session's Agent approval/history.
+- Idle sessions are tracked by the backend session manager and are eligible for cleanup after 30 minutes.
+
+Set `MAX_ACTIVE_SESSIONS` to control anonymous session capacity. The default is `20`. `PUBLIC_DEMO_MODE=true` is reserved for anonymous public deployments where Basic authentication should be skipped.
+
+## AI Agent Backends
+
+TerminalBox provides two AI Agent backends:
+
+- Online Agent — Gemini API
+- Local Agent — local LLM / Ollama
+
+Both agents use the same TerminalBox agent engine, command policy, approval flow, and session workspace. The UI exposes these as the two tabs `オンライン` and `ローカル`; the previous split between standalone online/local chat and Agent mode is consolidated into the shared Agent flow.
+
 TerminalBox は、ブラウザ上で Linux/Kali Linux を実際に操作しながら学べる、セキュリティ学習用の演習環境です。隔離された Kali 環境から演習専用の Target サイトへコマンドを実行し、分からない結果は AI へ質問できます。通常のAI（ローカル・オンライン）はコマンドを自動実行しません。AI Agentのみ、専用の安全ポリシーに従ってTerminalBox内のコマンドを実行できます。
 
 ## 主な構成

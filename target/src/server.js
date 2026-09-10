@@ -23,7 +23,19 @@ const profiles = {
 };
 
 const profile = profiles[PROFILE_ID];
-let siteState = { ...profile.defaultState };
+const SESSION_HEADER = 'x-terminalbox-session';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const siteStates = new Map();
+
+const getSessionId = (request) => {
+  const value = request.headers[SESSION_HEADER];
+  return UUID_PATTERN.test(value ?? '') ? value : 'anonymous';
+};
+
+const getSiteState = (sessionId) => {
+  if (!siteStates.has(sessionId)) siteStates.set(sessionId, { ...profile.defaultState });
+  return siteStates.get(sessionId);
+};
 
 const escapeHtml = (value) => String(value)
   .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -46,9 +58,9 @@ const readJson = async (request) => {
   catch { throw new Error('invalid_json'); }
 };
 
-const isModified = () => JSON.stringify(siteState) !== JSON.stringify(profile.defaultState);
+const isModified = (siteState) => JSON.stringify(siteState) !== JSON.stringify(profile.defaultState);
 
-const themeColors = () => {
+const themeColors = (siteState) => {
   const compromised = siteState.theme === 'compromised';
   const maintenance = siteState.theme === 'maintenance';
   return {
@@ -72,8 +84,8 @@ main{min-height:330px;padding:46px 34px;text-align:center}h1{margin:0 0 16px;fon
 nav a{margin:0 8px;color:${colors.compromised ? '#ff9dab' : '#147348'}}.alert{font-weight:700;color:#ffb1bb}
 `;
 
-const renderTraining = () => {
-  const colors = themeColors();
+const renderTraining = (siteState) => {
+  const colors = themeColors(siteState);
   const description = colors.compromised
     ? '<span class="alert">セキュリティ警告: 公開された管理APIを通じてサイトが改ざんされました。</span>'
     : colors.maintenance ? '現在、システムメンテナンスを実施しています。' : 'このサイトはTerminalBoxの隔離されたセキュリティ演習用ターゲットです。';
@@ -83,23 +95,23 @@ ${siteState.notice ? `<div class="notice">${escapeHtml(siteState.notice)}</div>`
 <div class="card"><strong>研修サイトへようこそ</strong><p>安全なサービス運用には、日々のセキュリティ対策が欠かせません。</p><nav><a href="about">サイト概要</a><a href="login">従業員ログイン</a><a href="api/status">API状態</a></nav></div></main></body></html>`;
 };
 
-const renderStore = () => {
-  const colors = themeColors();
+const renderStore = (siteState) => {
+  const colors = themeColors(siteState);
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(siteState.headline)}</title><style>${sharedStyles(colors)}.price{color:#b5232d;font-size:28px;font-weight:800}</style></head>
 <body><header>${profile.brand}</header><main><h1>${escapeHtml(siteState.headline)}</h1><p class="lead">産地から届いた旬の食材を、毎日の食卓へお届けします。</p>
 ${siteState.notice ? `<div class="notice">${escapeHtml(siteState.notice)}</div>` : ''}
 <div class="card"><small>今週のおすすめ</small><h2>${escapeHtml(siteState.product)}</h2><div class="price">¥${Number(siteState.price).toLocaleString('ja-JP')}</div><div class="meta"><div><strong>${escapeHtml(siteState.stock)}</strong><span>在庫数</span></div><div><strong>送料無料</strong><span>5,000円以上</span></div></div></div></main></body></html>`;
 };
 
-const renderLibrary = () => {
-  const colors = themeColors();
+const renderLibrary = (siteState) => {
+  const colors = themeColors(siteState);
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(siteState.headline)}</title><style>${sharedStyles(colors)}.event{font-size:19px;font-weight:700;color:#235f8c}</style></head>
 <body><header>${profile.brand}</header><main><h1>${escapeHtml(siteState.headline)}</h1><p class="lead">本と人が出会い、地域の学びが広がる場所です。</p>
 ${siteState.notice ? `<div class="notice">${escapeHtml(siteState.notice)}</div>` : ''}
 <div class="card"><small>図書館からのお知らせ</small><p class="event">${escapeHtml(siteState.event)}</p><nav><a href="guide">利用案内</a><a href="calendar">開館カレンダー</a><a href="api/status">システム状態</a></nav></div></main></body></html>`;
 };
 
-const renderHome = () => PROFILE_ID === '2' ? renderStore() : PROFILE_ID === '3' ? renderLibrary() : renderTraining();
+const renderHome = (siteState) => PROFILE_ID === '2' ? renderStore(siteState) : PROFILE_ID === '3' ? renderLibrary(siteState) : renderTraining(siteState);
 
 const requireAdmin = (request, response) => {
   if (request.headers['x-admin-key'] === profile.adminKey) return true;
@@ -107,28 +119,28 @@ const requireAdmin = (request, response) => {
   return false;
 };
 
-const handleAdminRequest = async (request, response, path) => {
+const handleAdminRequest = async (request, response, path, siteState) => {
   if (!requireAdmin(request, response)) return true;
   try {
     const body = await readJson(request);
     if (PROFILE_ID === '1' && path === '/api/admin/banner') {
       if (typeof body.headline !== 'string' || body.headline.length < 1 || body.headline.length > 60 || !['default', 'compromised', 'maintenance'].includes(body.theme)) throw new Error('invalid_site_state');
-      siteState = { ...siteState, headline: body.headline, theme: body.theme };
+      Object.assign(siteState, { headline: body.headline, theme: body.theme });
     } else if (PROFILE_ID === '1' && path === '/api/admin/notice') {
       if (typeof body.notice !== 'string' || body.notice.length < 1 || body.notice.length > 100) throw new Error('invalid_notice');
-      siteState = { ...siteState, notice: body.notice };
+      Object.assign(siteState, { notice: body.notice });
     } else if (PROFILE_ID === '2' && path === '/api/admin/product') {
       if (typeof body.product !== 'string' || body.product.length < 1 || body.product.length > 50 || !Number.isInteger(body.price) || body.price < 0 || body.price > 999999 || !Number.isInteger(body.stock) || body.stock < 0 || body.stock > 9999) throw new Error('invalid_product');
-      siteState = { ...siteState, product: body.product, price: body.price, stock: body.stock };
+      Object.assign(siteState, { product: body.product, price: body.price, stock: body.stock });
     } else if (PROFILE_ID === '2' && path === '/api/admin/campaign') {
       if (typeof body.notice !== 'string' || body.notice.length < 1 || body.notice.length > 100) throw new Error('invalid_campaign');
-      siteState = { ...siteState, notice: body.notice };
+      Object.assign(siteState, { notice: body.notice });
     } else if (PROFILE_ID === '3' && path === '/api/admin/hero') {
       if (typeof body.headline !== 'string' || body.headline.length < 1 || body.headline.length > 60 || !['default', 'compromised', 'maintenance'].includes(body.theme)) throw new Error('invalid_site_state');
-      siteState = { ...siteState, headline: body.headline, theme: body.theme };
+      Object.assign(siteState, { headline: body.headline, theme: body.theme });
     } else if (PROFILE_ID === '3' && path === '/api/admin/alert') {
       if (typeof body.notice !== 'string' || body.notice.length < 1 || body.notice.length > 100) throw new Error('invalid_alert');
-      siteState = { ...siteState, notice: body.notice };
+      Object.assign(siteState, { notice: body.notice });
     } else { return false; }
     sendJson(response, 200, { status: 'updated', site: siteState });
   } catch (error) {
@@ -145,8 +157,10 @@ const secretPayload = () => {
 
 const server = http.createServer(async (request, response) => {
   const path = new URL(request.url ?? '/', 'http://target').pathname;
+  const sessionId = getSessionId(request);
+  const siteState = getSiteState(sessionId);
   if (request.method === 'GET' && path === '/api/status') {
-    sendJson(response, 200, { status: 'ok', service: profile.service, profile: PROFILE_ID, modified: isModified(), site: siteState, time: new Date().toISOString() });
+    sendJson(response, 200, { status: 'ok', service: profile.service, profile: PROFILE_ID, modified: isModified(siteState), site: siteState, time: new Date().toISOString() });
     return;
   }
   if (request.method === 'GET' && path === '/robots.txt') {
@@ -156,16 +170,16 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === 'GET' && path === profile.secretPath) { sendJson(response, 200, secretPayload()); return; }
   if (request.method === 'POST' && path === '/api/lab/reset') {
-    siteState = { ...profile.defaultState };
-    sendJson(response, 200, { status: 'reset', site: siteState });
+    siteStates.set(sessionId, { ...profile.defaultState });
+    sendJson(response, 200, { status: 'reset', site: siteStates.get(sessionId) });
     return;
   }
   if (request.method === 'POST' && path.startsWith('/api/admin/')) {
-    if (await handleAdminRequest(request, response, path)) return;
+    if (await handleAdminRequest(request, response, path, siteState)) return;
   }
   if (request.method === 'GET' && path === '/') {
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-terminalbox-target': 'training-only' });
-    response.end(renderHome());
+    response.end(renderHome(siteState));
     return;
   }
   if (request.method === 'GET' && ['/about', '/login', '/guide', '/calendar'].includes(path)) {

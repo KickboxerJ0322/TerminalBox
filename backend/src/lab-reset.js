@@ -7,11 +7,8 @@ const execFileAsync = promisify(execFile);
 
 export const HOME_RESET_SCRIPT = String.raw`
 set -eu
-home=/home/student
+home="${'${'}TBX_SESSION_HOME:-/home/student}"
 desktop="$home/Desktop"
-
-# Stop interactive training shells first so they cannot rewrite old history.
-pkill -u "$(id -u)" -x bash 2>/dev/null || true
 
 mkdir -p "$desktop"
 find "$desktop" -mindepth 1 -maxdepth 1 ! -name TerminalBox.desktop -exec rm -rf -- {} +
@@ -42,7 +39,7 @@ async function collectExecOutput(stream) {
   return output.trim();
 }
 
-async function resetKaliHome(containerName) {
+async function resetKaliHome(containerName, session) {
   const container = docker.getContainer(containerName);
   const details = await container.inspect();
   if (!details.State.Running) throw new Error('Kali container is not running');
@@ -50,6 +47,7 @@ async function resetKaliHome(containerName) {
   const exec = await container.exec({
     Cmd: ['/bin/sh', '-c', HOME_RESET_SCRIPT],
     User: 'student',
+    Env: [`TBX_SESSION_HOME=${session.homeDirectory}`],
     AttachStdout: true,
     AttachStderr: true,
     Tty: true,
@@ -62,30 +60,32 @@ async function resetKaliHome(containerName) {
   }
 }
 
-async function resetLocalKaliHome() {
+async function resetLocalKaliHome(session) {
   await execFileAsync('/bin/sh', ['-c', HOME_RESET_SCRIPT], {
     uid: 1000,
     gid: 1000,
+    env: { ...process.env, TBX_SESSION_HOME: session.homeDirectory },
     timeout: 15_000,
     maxBuffer: 4096,
   });
 }
 
-async function resetTarget(url) {
+async function resetTarget(url, session) {
   const response = await fetch(`${url}/api/lab/reset`, {
     method: 'POST',
+    headers: { 'x-terminalbox-session': session.sessionId },
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
   return response.json();
 }
 
-export async function resetLab(config) {
+export async function resetLab(config, session) {
   const [targets] = await Promise.all([
-    Promise.all(config.targetUrls.map(resetTarget)),
+    Promise.all(config.targetUrls.map((url) => resetTarget(url, session))),
     config.kaliExecMode === 'local'
-      ? resetLocalKaliHome()
-      : resetKaliHome(config.kaliContainer),
+      ? resetLocalKaliHome(session)
+      : resetKaliHome(config.kaliContainer, session),
   ]);
-  return { status: 'reset', targets: targets.length, kaliHome: true };
+  return { status: 'reset', sessionId: session.sessionId, targets: targets.length, kaliHome: true };
 }

@@ -60,9 +60,11 @@ export function createLabProxy(config) {
     return toHeaderObject(headers);
   }
 
-  async function proxyHttp(request, response) {
+  async function proxyHttp(request, response, sessionId = null) {
     try {
       const headers = await authorizationHeaders();
+      delete request.headers['x-terminalbox-session'];
+      if (sessionId) headers['x-terminalbox-session'] = sessionId;
       proxy.web(request, response, { headers });
     } catch (error) {
       console.error(`Could not authorize Lab request: ${error.message}`);
@@ -70,12 +72,14 @@ export function createLabProxy(config) {
     }
   }
 
-  async function proxyWebSocket(request, socket, head) {
+  async function proxyWebSocket(request, socket, head, sessionId = null) {
     try {
       const headers = await authorizationHeaders();
       // The public Origin was already validated by the Web service. The Lab
       // validates its internal hop against the rewritten Host header.
       headers.origin = config.labServiceUrl;
+      delete request.headers['x-terminalbox-session'];
+      if (sessionId) headers['x-terminalbox-session'] = sessionId;
       proxy.ws(request, socket, head, { headers });
     } catch (error) {
       console.error(`Could not authorize Lab WebSocket: ${error.message}`);
@@ -84,22 +88,22 @@ export function createLabProxy(config) {
     }
   }
 
-  async function fetchJson(pathname) {
+  async function fetchJson(pathname, sessionId = null) {
     const url = new URL(pathname, `${config.labServiceUrl}/`);
     const response = await fetch(url, {
-      headers: await authorizationHeaders(),
+      headers: { ...(await authorizationHeaders()), ...(sessionId ? { 'x-terminalbox-session': sessionId } : {}) },
       signal: AbortSignal.timeout(5_000),
     });
     if (!response.ok) throw new Error(`Lab returned ${response.status}`);
     return response.json();
   }
 
-  async function requestJson(pathname, payload) {
+  async function requestJson(pathname, payload, sessionId = null) {
     const url = new URL(pathname, `${config.labServiceUrl}/`);
     const response = await fetch(url, {
       method: 'POST',
-      headers: { ...(await authorizationHeaders()), 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers: { ...(await authorizationHeaders()), ...(sessionId ? { 'x-terminalbox-session': sessionId } : {}), 'content-type': 'application/json' },
+      body: JSON.stringify({ ...payload, ...(sessionId ? { sessionId } : {}) }),
       signal: AbortSignal.timeout(35_000),
     });
     const body = await response.json().catch(() => ({}));

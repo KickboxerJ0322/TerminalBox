@@ -13,6 +13,8 @@ const providerFromEnv = () => {
 export const config = {
   port: numberFromEnv('PORT', 3001, 1, 65535),
   serviceRole: (process.env.SERVICE_ROLE ?? 'combined').toLowerCase(),
+  publicDemoMode: (process.env.PUBLIC_DEMO_MODE ?? 'false').toLowerCase() === 'true',
+  maxActiveSessions: numberFromEnv('MAX_ACTIVE_SESSIONS', 20, 1, 100),
   labServiceUrl: (process.env.LAB_SERVICE_URL ?? '').replace(/\/$/, ''),
   labServiceAudience: (process.env.LAB_SERVICE_AUDIENCE ?? process.env.LAB_SERVICE_URL ?? '').replace(/\/$/, ''),
   aiProvider: providerFromEnv(),

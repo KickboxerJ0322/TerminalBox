@@ -72,7 +72,7 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 
 .side-workspace { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .workspace-tabs { min-height: 42px; padding: 5px; border: 1px solid var(--border); background: #090d0b; border-radius: 5px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
-.assistant-workspace > .workspace-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.assistant-workspace > .workspace-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .learning-workspace > .workspace-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .kali-workspace-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .workspace-tabs button { border: 1px solid transparent; border-radius: 3px; color: var(--muted); background: transparent; font-size: 10px; cursor: pointer; }
@@ -144,9 +144,9 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .chat-form textarea::placeholder { color: #536159; }
 .form-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
 .history-options { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
-.history-toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 8px; cursor: pointer; }
+.ai-context-option, .history-toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-family: inherit; font-size: 8px; font-weight: inherit; line-height: normal; letter-spacing: 0; cursor: pointer; }
 .history-toggle input { accent-color: var(--accent); }
-.history-toggle-capture { color: var(--text); }
+.history-toggle-capture { color: var(--muted); }
 
 .agent-panel .messages { min-height: 0; }
 .agent-panel .chat-form { flex: 0 0 auto; }
