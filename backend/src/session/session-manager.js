@@ -55,7 +55,7 @@ export class SessionManager {
       homeDirectory,
       displayNumber,
       vncPort: 5900 + displayNumber,
-      novncPort: 6000 + displayNumber,
+      novncPort: 6100 + displayNumber,
       status: 'active',
       terminalProcesses: new Set(),
       desktopProcess: null,

@@ -24,7 +24,7 @@ test('online AI and security tool wording are the defaults', async () => {
 
   assert.match(source, /useState<AssistantTab>\('online'\)/);
   assert.match(source, /setAssistantTab\('online'\)/);
-  assert.match(source, />\s*繧ｻ繧ｭ繝･繝ｪ繝・ぅ繝・・繝ｫ\s*</);
+  assert.match(source, />\s*セキュリティツール\s*</);
 });
 
 test('learning tabs put targets before security tools', async () => {

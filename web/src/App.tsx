@@ -265,7 +265,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/terminalbox/" aria-label="TerminalBox 繝帙・繝">
+        <a className="brand" href="/terminalbox/" aria-label="TerminalBox ホーム">
           <span className="brand-mark" aria-hidden="true">&gt;_</span>
           <span>Terminal<span>Box</span></span>
         </a>
@@ -311,8 +311,8 @@ export default function App() {
             />
           </div>
           <div className="workspace-column workspace-column-right">
-            <aside className="side-workspace learning-workspace" aria-label="蟄ｦ鄙偵ヱ繝阪Ν">
-            <div className="workspace-tabs" role="tablist" aria-label="蟄ｦ鄙偵ヱ繝阪Ν">
+            <aside className="side-workspace learning-workspace" aria-label="学習パネル">
+            <div className="workspace-tabs" role="tablist" aria-label="学習パネル">
               <button
                 id="operations-tab"
                 type="button"
@@ -322,7 +322,8 @@ export default function App() {
                 className={learningTab === 'operations' ? 'active' : ''}
                 onClick={() => setLearningTab('operations')}
               >
-                蝓ｺ譛ｬ謫堺ｽ・              </button>
+                基本操作
+              </button>
               <button
                 id="tutorial-tab"
                 type="button"
@@ -332,7 +333,7 @@ export default function App() {
                 className={learningTab === 'tutorial' ? 'active' : ''}
                 onClick={() => setLearningTab('tutorial')}
               >
-                繝√Η繝ｼ繝医Μ繧｢繝ｫ
+                チュートリアル
               </button>
               <button
                 id="targets-tab"
@@ -343,7 +344,7 @@ export default function App() {
                 className={learningTab === 'targets' ? 'active' : ''}
                 onClick={() => { setLearningTab('targets'); if (challengeTargetId === 4 || challengeTargetId === 5) setChallengeTargetId(1); }}
               >
-                繧ｿ繝ｼ繧ｲ繝・ヨ
+                ターゲット
               </button>
               <button
                 id="tools-tab"
@@ -354,7 +355,7 @@ export default function App() {
                 className={learningTab === 'tools' ? 'active' : ''}
                 onClick={() => { setLearningTab('tools'); setChallengeTargetId(4); }}
               >
-                繧ｻ繧ｭ繝･繝ｪ繝・ぅ繝・・繝ｫ
+                セキュリティツール
               </button>
               <button
                 id="web-attacks-tab"

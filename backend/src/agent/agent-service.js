@@ -138,8 +138,8 @@ export class AgentService {
     this.maxSteps = maxSteps;
   }
 
-  async chat({ message, sessionId, options, screenCapture = null }) {
-    return this.continue({ message, sessionId, options, screenCapture, steps: [] });
+  async chat({ message, sessionId, session = null, options, screenCapture = null }) {
+    return this.continue({ message, sessionId, session, options, screenCapture, steps: [] });
   }
 
   async continue(state) {

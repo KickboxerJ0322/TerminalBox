@@ -86,3 +86,28 @@ test('Agent Gemini request uses the online endpoint and never Ollama', async () 
   assert.deepEqual(requestBody.contents[0].parts[1], { inlineData: { mimeType: 'image/jpeg', data: 'YWJj' } });
   assert.equal(action.action, 'final_answer');
 });
+
+test('read-only execution receives the active browser session', async () => {
+  const session = { sessionId: 'session-a', homeDirectory: '/tmp/session-a/home' };
+  let receivedSession = null;
+  const service = new AgentService({
+    approvalStore: new ApprovalStore(),
+    proposeAction: async (state) => (state.steps.length === 0
+      ? { action: 'execute_command', command: 'whoami', reason: 'check user' }
+      : { action: 'final_answer', message: 'student' }),
+    execute: async (command, _policy, _approved, activeSession) => {
+      receivedSession = activeSession;
+      return { command, stdout: 'student\n', stderr: '', exitCode: 0, durationMs: 2 };
+    },
+  });
+
+  const result = await service.chat({
+    message: 'check user',
+    sessionId: session.sessionId,
+    session,
+    options: {},
+  });
+
+  assert.equal(result.status, 'completed');
+  assert.equal(receivedSession, session);
+});
