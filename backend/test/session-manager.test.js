@@ -14,6 +14,7 @@ test('anonymous sessions allocate noVNC ports outside the X11 display port range
     assert.equal(session.displayNumber, 11);
     assert.equal(session.vncPort, 5911);
     assert.equal(session.novncPort, 6111);
+    assert.equal(session.desktopStartPromise, null);
   } finally {
     await rm(rootDirectory, { recursive: true, force: true });
   }

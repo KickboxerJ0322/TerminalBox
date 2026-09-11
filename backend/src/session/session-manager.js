@@ -59,6 +59,7 @@ export class SessionManager {
       status: 'active',
       terminalProcesses: new Set(),
       desktopProcess: null,
+      desktopStartPromise: null,
     };
     this.sessions.set(id, session);
     return session;

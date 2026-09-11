@@ -125,35 +125,31 @@ export function createDesktopManager(config) {
   });
 
   async function ensureStarted(session) {
-    if (session.desktopProcess) {
+    if (session.desktopStartPromise) return session.desktopStartPromise;
+
+    session.desktopStartPromise = (async () => {
       try {
+        if (session.desktopProcess) {
+          try {
+            await waitForReady(desktopTargetUrl(config, session));
+            return;
+          } catch {
+            await stop(session);
+          }
+        }
+        if (config.kaliExecMode === 'local') startLocalDesktop(session);
+        else await startDockerDesktop(config, session);
         await waitForReady(desktopTargetUrl(config, session));
-        return;
-      } catch {
-        await stop(session);
+      } finally {
+        session.desktopStartPromise = null;
       }
-    }
-    if (config.kaliExecMode === 'local') startLocalDesktop(session);
-    else await startDockerDesktop(config, session);
-    await waitForReady(desktopTargetUrl(config, session));
-  }
+    })();
 
-  async function proxyHttp(request, response, session) {
-    await ensureStarted(session);
-    const restoreUrl = rewriteKaliGuiUrl(request);
-    proxy.web(request, response, { target: desktopTargetUrl(config, session) });
-    response.once('finish', restoreUrl);
-    response.once('close', restoreUrl);
-  }
-
-  async function proxyWebSocket(request, socket, head, session) {
-    await ensureStarted(session);
-    const restoreUrl = rewriteKaliGuiUrl(request);
-    proxy.ws(request, socket, head, { target: desktopTargetUrl(config, session) });
-    socket.once('close', restoreUrl);
+    return session.desktopStartPromise;
   }
 
   async function stop(session) {
+    session.desktopStartPromise = null;
     const process = session.desktopProcess;
     session.desktopProcess = null;
     if (!process) return;
@@ -169,6 +165,21 @@ export function createDesktopManager(config) {
       AttachStderr: true,
     });
     await execution.start({ hijack: true, stdin: false });
+  }
+
+  async function proxyHttp(request, response, session) {
+    await ensureStarted(session);
+    const restoreUrl = rewriteKaliGuiUrl(request);
+    proxy.web(request, response, { target: desktopTargetUrl(config, session) });
+    response.once('finish', restoreUrl);
+    response.once('close', restoreUrl);
+  }
+
+  async function proxyWebSocket(request, socket, head, session) {
+    await ensureStarted(session);
+    const restoreUrl = rewriteKaliGuiUrl(request);
+    proxy.ws(request, socket, head, { target: desktopTargetUrl(config, session) });
+    socket.once('close', restoreUrl);
   }
 
   return { ensureStarted, proxyHttp, proxyWebSocket, stop };
