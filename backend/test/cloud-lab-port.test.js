@@ -20,3 +20,10 @@ test('Cloud Lab keeps port 8080 available for the Burp proxy', async () => {
   assert.match(cloudBuild, /- \$\{_LAB_SERVICE\}[\s\S]*?- --port=8081/);
   assert.match(challengePanel, /HTTP Proxyを127\.0\.0\.1、Portを8080/);
 });
+
+test('Cloud Run concurrency is high enough for noVNC parallel assets', async () => {
+  const cloudBuild = await readRepositoryFile('cloudbuild.yaml');
+
+  assert.match(cloudBuild, /--concurrency=80/);
+  assert.match(cloudBuild, /--max-instances=1/);
+});
