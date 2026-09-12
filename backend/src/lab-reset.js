@@ -47,7 +47,15 @@ async function resetKaliHome(containerName, session) {
   const exec = await container.exec({
     Cmd: ['/bin/sh', '-c', HOME_RESET_SCRIPT],
     User: 'student',
-    Env: [`TBX_SESSION_HOME=${session.homeDirectory}`],
+    Env: [
+      `TBX_SESSION_HOME=${session.homeDirectory}`,
+      `HOME=${session.homeDirectory}`,
+      `XDG_CONFIG_HOME=${session.homeDirectory}/.config`,
+      `XDG_DATA_HOME=${session.homeDirectory}/.local/share`,
+      `XDG_RUNTIME_DIR=${session.runtimeDirectory}`,
+      `TMPDIR=${session.runtimeDirectory}`,
+      `DISPLAY=:${session.displayNumber}`,
+    ],
     AttachStdout: true,
     AttachStderr: true,
     Tty: true,
@@ -64,7 +72,16 @@ async function resetLocalKaliHome(session) {
   await execFileAsync('/bin/sh', ['-c', HOME_RESET_SCRIPT], {
     uid: 1000,
     gid: 1000,
-    env: { ...process.env, TBX_SESSION_HOME: session.homeDirectory },
+    env: {
+      ...process.env,
+      TBX_SESSION_HOME: session.homeDirectory,
+      HOME: session.homeDirectory,
+      XDG_CONFIG_HOME: `${session.homeDirectory}/.config`,
+      XDG_DATA_HOME: `${session.homeDirectory}/.local/share`,
+      XDG_RUNTIME_DIR: session.runtimeDirectory,
+      TMPDIR: session.runtimeDirectory,
+      DISPLAY: `:${session.displayNumber}`,
+    },
     timeout: 15_000,
     maxBuffer: 4096,
   });

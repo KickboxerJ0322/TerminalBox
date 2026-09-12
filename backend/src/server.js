@@ -118,7 +118,20 @@ function getAgentOptions(requestBody) {
 startSessionCleanup(sessionManager, {
   onExpire: async (session) => {
     approvalStore.clearSession?.(session.sessionId);
-    if (desktopManager) await desktopManager.stop(session);
+    if (desktopManager) {
+      await desktopManager.stop(session);
+      try {
+        await resetLab(config, session);
+      } catch (error) {
+        console.warn(`Could not reset expired Lab session ${session.sessionId}: ${error.message}`);
+      }
+    } else if (labProxy) {
+      try {
+        await labProxy.requestJson('/api/lab/reset', { expired: true }, session.sessionId);
+      } catch (error) {
+        console.warn(`Could not reset expired remote Lab session ${session.sessionId}: ${error.message}`);
+      }
+    }
   },
 });
 
@@ -180,6 +193,30 @@ function getRequestProvider(requestBody) {
   const requested = typeof requestBody?.provider === 'string' ? requestBody.provider.trim().toLowerCase() : '';
   if (requested === 'ollama' || requested === 'gemini') return requested;
   return resolveAiProvider(config);
+}
+
+const CHALLENGE_COMPLETION_PATTERN = /^[1-5]:[0-9]{2}$/;
+
+function isChallengeCompletionId(value) {
+  return typeof value === 'string' && CHALLENGE_COMPLETION_PATTERN.test(value);
+}
+
+function updateProgressSummary(session, completionId) {
+  const target = completionId.split(':')[0];
+  if (['1', '2', '3', '4', '5'].includes(target)) {
+    session.progress[`target${target}`] = [...session.completedChallengeIds].some((id) => id.startsWith(`${target}:`));
+  }
+}
+
+function setChallengeCompletion(session, completionId, completed) {
+  if (!isChallengeCompletionId(completionId)) {
+    const error = new Error('Invalid challenge completion id');
+    error.status = 400;
+    throw error;
+  }
+  if (completed) session.completedChallengeIds.add(completionId);
+  else session.completedChallengeIds.delete(completionId);
+  updateProgressSummary(session, completionId);
 }
 
 function getGeminiOptions(requestBody) {
@@ -359,7 +396,7 @@ app.post('/api/lab/reset', async (request, response) => {
     return;
   }
   try {
-    const session = await terminalBoxSession(request, response);
+    const session = await terminalBoxSession(request, response, { allowHeader: isLabService });
     if (desktopManager) await desktopManager.stop(session);
     const result = isWebService
       ? await labProxy.requestJson('/api/lab/reset', { reset: true }, session.sessionId)
@@ -372,9 +409,45 @@ app.post('/api/lab/reset', async (request, response) => {
   }
 });
 
-app.post('/api/challenges/check', (request, response) => {
-  const result = checkChallengeAnswer(request.body?.id, request.body?.answer);
-  response.status(result.status).json(result.body);
+app.get('/api/challenges/progress', async (request, response) => {
+  try {
+    const session = await terminalBoxSession(request, response);
+    response.json({
+      completedIds: [...session.completedChallengeIds],
+      progress: session.progress,
+    });
+  } catch (error) {
+    response.status(error.status ?? 500).json({ error: error.message });
+  }
+});
+
+app.post('/api/challenges/progress', async (request, response) => {
+  try {
+    const session = await terminalBoxSession(request, response);
+    const completionId = request.body?.completionId;
+    setChallengeCompletion(session, completionId, request.body?.completed === true);
+    response.json({
+      completedIds: [...session.completedChallengeIds],
+      progress: session.progress,
+    });
+  } catch (error) {
+    response.status(error.status ?? 500).json({ error: error.message });
+  }
+});
+
+app.post('/api/challenges/check', async (request, response) => {
+  try {
+    const session = await terminalBoxSession(request, response);
+    const result = checkChallengeAnswer(request.body?.id, request.body?.answer);
+    if (result.body.correct && isChallengeCompletionId(request.body?.completionId)) {
+      setChallengeCompletion(session, request.body.completionId, true);
+      result.body.completedIds = [...session.completedChallengeIds];
+      result.body.progress = session.progress;
+    }
+    response.status(result.status).json(result.body);
+  } catch (error) {
+    response.status(error.status ?? 500).json({ error: error.message });
+  }
 });
 
 app.post('/internal/agent/execute', async (request, response) => {

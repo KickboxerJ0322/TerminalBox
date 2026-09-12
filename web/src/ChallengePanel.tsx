@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface Challenge {
   id: string;
@@ -265,16 +265,6 @@ const challengeGroups: ChallengeGroup[] = [
   },
 ];
 
-const STORAGE_KEY = 'terminalbox:challenge-completed';
-
-function loadCompleted() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]');
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((id): id is string => typeof id === 'string').map((id) => id.includes(':') ? id : `1:${id}`);
-  } catch { return []; }
-}
-
 export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTargetChange, scope }: Props) {
   const availableGroups = scope === 'tools'
     ? challengeGroups.filter((item) => item.id === 4)
@@ -284,7 +274,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const group = availableGroups.find((item) => item.id === targetId) ?? availableGroups[0];
   const [selectedId, setSelectedId] = useState(group.challenges[0].id);
   const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
-  const [completedIds, setCompletedIds] = useState<string[]>(loadCompleted);
+  const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [answer, setAnswer] = useState('');
   const [checking, setChecking] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -295,9 +285,32 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const completed = completedSet.has(completionId);
   const groupCompleted = group.challenges.filter((item) => completedSet.has(`${group.id}:${item.id}`)).length;
 
-  useEffect(() => window.localStorage.setItem(STORAGE_KEY, JSON.stringify(completedIds)), [completedIds]);
+  const loadProgress = useCallback(async () => {
+    const response = await fetch('/api/challenges/progress', { credentials: 'include', cache: 'no-store' });
+    if (!response.ok) return;
+    const result = await response.json();
+    if (Array.isArray(result.completedIds)) {
+      setCompletedIds(result.completedIds.filter((id: unknown): id is string => typeof id === 'string'));
+    }
+  }, []);
+
+  const setCompletion = useCallback(async (nextCompletionId: string, nextCompleted: boolean) => {
+    setCompletedIds((current) => {
+      if (nextCompleted) return current.includes(nextCompletionId) ? current : [...current, nextCompletionId];
+      return current.filter((id) => id !== nextCompletionId);
+    });
+    const response = await fetch('/api/challenges/progress', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ completionId: nextCompletionId, completed: nextCompleted }),
+    });
+    if (!response.ok) await loadProgress();
+  }, [loadProgress]);
+
+  useEffect(() => { void loadProgress(); }, [loadProgress, resetSignal]);
   useEffect(() => { setSelectedId(group.challenges[0].id); setQueuedCommand(null); setAnswer(''); setFeedback(''); }, [group]);
-  useEffect(() => { setSelectedId(group.challenges[0].id); setCompletedIds(loadCompleted()); setAnswer(''); setFeedback(''); }, [group, resetSignal]);
+  useEffect(() => { setSelectedId(group.challenges[0].id); setAnswer(''); setFeedback(''); }, [group, resetSignal]);
   useEffect(() => setHintVisible(false), [selectedId, resetSignal]);
 
   const queueCommand = (command: string) => {
@@ -314,13 +327,17 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
       const response = await fetch('/api/challenges/check', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id: challenge.answerId, answer }),
+        body: JSON.stringify({ id: challenge.answerId, answer, completionId }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
       setFeedback(result.message);
       if (result.correct) {
-        setCompletedIds((current) => current.includes(completionId) ? current : [...current, completionId]);
+        if (Array.isArray(result.completedIds)) {
+          setCompletedIds(result.completedIds.filter((id: unknown): id is string => typeof id === 'string'));
+        } else {
+          setCompletedIds((current) => current.includes(completionId) ? current : [...current, completionId]);
+        }
       }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : '回答の確認に失敗しました。');
@@ -330,7 +347,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   };
 
   const clearChallenge = () => {
-    setCompletedIds((current) => current.filter((id) => id !== completionId));
+    void setCompletion(completionId, false);
     setAnswer('');
     setFeedback('');
   };
@@ -376,7 +393,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
             </div>
           ) : (
             <div className="lesson-actions">
-              <button type="button" disabled={completed} onClick={() => setCompletedIds((current) => current.includes(completionId) ? current : [...current, completionId])}>クリアにする</button>
+              <button type="button" disabled={completed} onClick={() => void setCompletion(completionId, true)}>クリアにする</button>
               <button type="button" className="secondary" disabled={!completed} onClick={clearChallenge}>クリア解除</button>
             </div>
           )}

@@ -106,8 +106,9 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .target-actions button { padding: 7px 9px; border: 1px solid var(--border); border-radius: 3px; color: var(--accent); background: #080c0a; font-size: 9px; cursor: pointer; }
 .target-actions button:hover { border-color: var(--accent-dim); background: #0c1310; }
 .target-actions button:disabled { opacity: .45; cursor: wait; }
-.target-address-bar { flex: 0 0 auto; padding: 7px 9px; border-bottom: 1px solid var(--border); background: #111815; display: grid; grid-template-columns: auto minmax(0, 1fr) 30px; align-items: center; gap: 8px; }
+.target-address-bar { flex: 0 0 auto; padding: 7px 9px; border-bottom: 1px solid var(--border); background: #111815; display: grid; grid-template-columns: auto auto minmax(0, 1fr) 30px; align-items: center; gap: 8px; }
 .target-address-bar > span { color: var(--accent); font-size: 7px; }
+.target-address-bar > strong { color: var(--muted); font-size: 9px; white-space: nowrap; }
 .target-address-bar input { width: 100%; min-width: 0; height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 3px; color: #bac9c1; background: #080c0a; font-size: 10px; }
 .target-address-bar button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--border); border-radius: 3px; color: var(--accent); background: #080c0a; font-size: 16px; cursor: pointer; }
 .target-address-bar button:hover { border-color: var(--accent-dim); background: #0c1310; }

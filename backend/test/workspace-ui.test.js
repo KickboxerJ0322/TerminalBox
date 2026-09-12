@@ -81,8 +81,11 @@ test('Web Attacks synchronizes problem 5, history detection, and eight answer ch
   assert.ok(app.indexOf("const webAttacksUrl = 'http://labtarget:3100/web-attacks'") < app.indexOf("historyWithoutWebAttacksUrl.lastIndexOf('labtarget')"));
   assert.match(app, /replaceAll\(webAttacksUrl, ' '\.repeat\(webAttacksUrl\.length\)\)/);
   assert.match(target, /http:\/\/labtarget:3100\/web-attacks\//);
+  assert.match(target, /addressLabel: 'Kali内部アドレス'/);
   assert.match(target, /proxyPath: '\/tool-target\/web-attacks\/'/);
   assert.match(target, /\(\[1, 2, 3, 4, 5\] as const\)/);
+  assert.match(panel, /\/api\/challenges\/progress/);
+  assert.match(panel, /completionId/);
   assert.match(styles, /\.target-site-tabs[^\n]+repeat\(5,/);
 
   for (const id of ['web-parameter', 'web-idor', 'web-sqli', 'web-xss', 'web-traversal', 'web-upload', 'web-ssrf', 'web-jwt']) {

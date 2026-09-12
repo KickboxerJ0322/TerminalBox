@@ -1,4 +1,4 @@
-import { chown, mkdir, rm } from 'node:fs/promises';
+import { chmod, chown, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -8,13 +8,35 @@ const DEFAULT_DISPLAY_END = 110;
 const STUDENT_UID = 1000;
 const STUDENT_GID = 1000;
 
-async function createSessionHome(homeDirectory) {
-  await mkdir(homeDirectory, { recursive: true });
+const INITIAL_PROGRESS = Object.freeze({
+  target1: false,
+  target2: false,
+  target3: false,
+  target4: false,
+  target5: false,
+});
+
+async function prepareStudentDirectory(directory, mode = 0o700) {
+  await mkdir(directory, { recursive: true, mode });
+  await chmod(directory, mode);
   try {
-    await chown(homeDirectory, STUDENT_UID, STUDENT_GID);
+    await chown(directory, STUDENT_UID, STUDENT_GID);
   } catch {
     // Some local hosts/filesystems do not support POSIX ownership.
   }
+}
+
+async function prepareSessionDirectories(session) {
+  await Promise.all([
+    prepareStudentDirectory(session.homeDirectory),
+    prepareStudentDirectory(session.runtimeDirectory),
+    prepareStudentDirectory(session.logDirectory),
+    prepareStudentDirectory(session.stateDirectory),
+  ]);
+}
+
+function initialProgress() {
+  return { ...INITIAL_PROGRESS };
 }
 
 export class SessionManager {
@@ -44,23 +66,27 @@ export class SessionManager {
     const id = sessionId ?? randomUUID();
     const displayNumber = this.allocateDisplayNumber();
     const baseDirectory = path.join(this.rootDirectory, id);
-    const homeDirectory = path.join(baseDirectory, 'home');
-    await createSessionHome(homeDirectory);
     const createdAt = this.now();
     const session = {
       sessionId: id,
       createdAt,
       lastAccessAt: createdAt,
       baseDirectory,
-      homeDirectory,
+      homeDirectory: path.join(baseDirectory, 'home'),
+      runtimeDirectory: path.join(baseDirectory, 'run'),
+      logDirectory: path.join(baseDirectory, 'logs'),
+      stateDirectory: path.join(baseDirectory, 'state'),
       displayNumber,
       vncPort: 5900 + displayNumber,
       novncPort: 6100 + displayNumber,
       status: 'active',
+      progress: initialProgress(),
+      completedChallengeIds: new Set(),
       terminalProcesses: new Set(),
       desktopProcess: null,
       desktopStartPromise: null,
     };
+    await prepareSessionDirectories(session);
     this.sessions.set(id, session);
     return session;
   }
@@ -91,8 +117,15 @@ export class SessionManager {
       child.kill?.('SIGHUP');
     }
     session.terminalProcesses.clear();
-    await rm(session.homeDirectory, { recursive: true, force: true });
-    await createSessionHome(session.homeDirectory);
+    await Promise.all([
+      rm(session.homeDirectory, { recursive: true, force: true }),
+      rm(session.runtimeDirectory, { recursive: true, force: true }),
+      rm(session.logDirectory, { recursive: true, force: true }),
+      rm(session.stateDirectory, { recursive: true, force: true }),
+    ]);
+    await prepareSessionDirectories(session);
+    session.progress = initialProgress();
+    session.completedChallengeIds.clear();
     session.lastAccessAt = this.now();
     return session;
   }

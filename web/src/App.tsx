@@ -31,6 +31,7 @@ const OPERATIONS_STORAGE_KEY = 'terminalbox:operations-completed';
 const CHALLENGE_STORAGE_KEY = 'terminalbox:challenge-completed';
 const GEMINI_API_KEY_STORAGE_KEY = 'terminalbox:gemini-api-key';
 const GEMINI_MODEL_STORAGE_KEY = 'terminalbox:gemini-model';
+const KALI_GUI_URL = '/kali-gui/vnc.html?autoconnect=1&resize=remote&path=kali-gui/websockify';
 
 function InfoDialog({ onClose }: { onClose: () => void }) {
   return (
@@ -273,7 +274,7 @@ export default function App() {
           <span>ISOLATED LAB</span>
           <a
             className="gui-link"
-            href="/kali-gui/?autoconnect=1&resize=remote"
+            href={KALI_GUI_URL}
             target="_blank"
             rel="noopener noreferrer"
           >

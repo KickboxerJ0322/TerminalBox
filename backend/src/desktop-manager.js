@@ -1,9 +1,20 @@
 import Docker from 'dockerode';
 import httpProxy from 'http-proxy';
 import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const DESKTOP_READY_TIMEOUT_MS = 20_000;
+
+function desktopLogContext(session, process, extra = {}) {
+  return JSON.stringify({
+    sessionId: session.sessionId,
+    displayNumber: session.displayNumber,
+    novncPort: session.novncPort,
+    process,
+    ...extra,
+  });
+}
 
 function desktopTargetUrl(config, session) {
   const url = new URL(config.kaliGuiUrl);
@@ -36,39 +47,61 @@ async function waitForReady(url) {
   throw new Error('Kali Desktop did not become ready in time');
 }
 
+function desktopEnvironment(session) {
+  return {
+    HOME: session.homeDirectory,
+    XDG_CONFIG_HOME: `${session.homeDirectory}/.config`,
+    XDG_DATA_HOME: `${session.homeDirectory}/.local/share`,
+    XDG_RUNTIME_DIR: session.runtimeDirectory,
+    TMPDIR: session.runtimeDirectory,
+    USER: 'student',
+    LOGNAME: 'student',
+    LANG: 'ja_JP.UTF-8',
+    LANGUAGE: 'ja_JP:ja',
+    LC_ALL: 'ja_JP.UTF-8',
+    DISPLAY: `:${session.displayNumber}`,
+    KALI_VNC_DISPLAY: String(session.displayNumber),
+    KALI_NOVNC_PORT: String(session.novncPort),
+    KALI_VNC_GEOMETRY: process.env.KALI_VNC_GEOMETRY ?? '1440x900',
+    KALI_VNC_PASSWORD: process.env.KALI_VNC_PASSWORD ?? 'student',
+    TBX_SESSION_ID: session.sessionId,
+    TBX_SESSION_LOG_DIR: session.logDirectory,
+    TBX_DESKTOP_LOG: `${session.logDirectory}/desktop.log`,
+  };
+}
+
+async function prepareDockerSessionDirectories(container, session) {
+  const execution = await container.exec({
+    Cmd: ['/bin/sh', '-lc', [
+      'mkdir -p "$1" "$2" "$3" "$4"',
+      'chown 1000:1000 "$1" "$2" "$3" "$4"',
+      'chmod 700 "$1" "$2" "$3" "$4"',
+    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory],
+    User: 'root',
+    AttachStdout: true,
+    AttachStderr: true,
+  });
+  await execution.start({ hijack: true, stdin: false });
+}
+
 async function startDockerDesktop(config, session) {
   const container = docker.getContainer(config.kaliContainer);
   const details = await container.inspect();
   if (!details.State.Running) throw new Error('Kali container is not running');
 
-  const prepare = await container.exec({
-    Cmd: ['/bin/mkdir', '-p', session.homeDirectory],
-    User: 'student',
-    AttachStdout: true,
-    AttachStderr: true,
-  });
-  await prepare.start({ hijack: true, stdin: false });
+  await prepareDockerSessionDirectories(container, session);
+  const env = desktopEnvironment(session);
 
   const execution = await container.exec({
-    Cmd: ['/bin/sh', '-lc', `/usr/local/bin/start-gui >/tmp/terminalbox-gui-${session.sessionId}.log 2>&1 & echo $!`],
+    Cmd: ['/bin/sh', '-lc', 'exec /usr/local/bin/start-gui >> "$TBX_DESKTOP_LOG" 2>&1 & echo $!'],
     User: 'student',
     WorkingDir: session.homeDirectory,
     AttachStdout: true,
     AttachStderr: true,
     Tty: true,
-    Env: [
-      `HOME=${session.homeDirectory}`,
-      `XDG_CONFIG_HOME=${session.homeDirectory}/.config`,
-      `XDG_DATA_HOME=${session.homeDirectory}/.local/share`,
-      'USER=student',
-      'LOGNAME=student',
-      'LANG=ja_JP.UTF-8',
-      `KALI_VNC_DISPLAY=${session.displayNumber}`,
-      `KALI_NOVNC_PORT=${session.novncPort}`,
-      `KALI_VNC_GEOMETRY=${process.env.KALI_VNC_GEOMETRY ?? '1440x900'}`,
-      `KALI_VNC_PASSWORD=${process.env.KALI_VNC_PASSWORD ?? 'student'}`,
-    ],
+    Env: Object.entries(env).map(([name, value]) => `${name}=${value}`),
   });
+  console.log(`Kali Desktop start requested ${desktopLogContext(session, 'start-gui', { mode: 'docker' })}`);
   const stream = await execution.start({ hijack: true, stdin: false, Tty: true });
   let output = '';
   await new Promise((resolve, reject) => {
@@ -79,29 +112,27 @@ async function startDockerDesktop(config, session) {
   const pid = output.trim().split(/\s+/).pop();
   if (!/^\d+$/.test(pid ?? '')) throw new Error('Could not start Kali Desktop');
   session.desktopProcess = { type: 'docker', pid };
+  console.log(`Kali Desktop process started ${desktopLogContext(session, 'start-gui', { mode: 'docker', pid })}`);
 }
 
-function startLocalDesktop(session) {
-  const child = spawn('su', ['-s', '/bin/sh', 'student', '-c', 'exec /usr/local/bin/start-gui'], {
+async function startLocalDesktop(session) {
+  await mkdir(session.logDirectory, { recursive: true, mode: 0o700 });
+  const env = desktopEnvironment(session);
+  const child = spawn('/bin/sh', ['-lc', 'exec /usr/local/bin/start-gui >> "$TBX_DESKTOP_LOG" 2>&1'], {
     cwd: session.homeDirectory,
+    uid: 1000,
+    gid: 1000,
     env: {
       ...process.env,
-      HOME: session.homeDirectory,
-      XDG_CONFIG_HOME: `${session.homeDirectory}/.config`,
-      XDG_DATA_HOME: `${session.homeDirectory}/.local/share`,
-      USER: 'student',
-      LOGNAME: 'student',
-      LANG: 'ja_JP.UTF-8',
-      KALI_VNC_DISPLAY: String(session.displayNumber),
-      KALI_NOVNC_PORT: String(session.novncPort),
-      KALI_VNC_GEOMETRY: process.env.KALI_VNC_GEOMETRY ?? '1440x900',
-      KALI_VNC_PASSWORD: process.env.KALI_VNC_PASSWORD ?? 'student',
+      ...env,
     },
     stdio: 'ignore',
   });
+  console.log(`Kali Desktop start requested ${desktopLogContext(session, 'start-gui', { mode: 'local', pid: child.pid })}`);
   child.unref();
   session.desktopProcess = { type: 'local', child };
-  child.once('exit', () => {
+  child.once('exit', (exitCode) => {
+    console.warn(`Kali Desktop process exited ${desktopLogContext(session, 'start-gui', { mode: 'local', exitCode })}`);
     if (session.desktopProcess?.child === child) session.desktopProcess = null;
   });
 }
@@ -137,9 +168,13 @@ export function createDesktopManager(config) {
             await stop(session);
           }
         }
-        if (config.kaliExecMode === 'local') startLocalDesktop(session);
+        if (config.kaliExecMode === 'local') await startLocalDesktop(session);
         else await startDockerDesktop(config, session);
         await waitForReady(desktopTargetUrl(config, session));
+        console.log(`Kali Desktop ready ${desktopLogContext(session, 'noVNC')}`);
+      } catch (error) {
+        console.error(`Kali Desktop start failed ${desktopLogContext(session, 'noVNC', { error: error.message })}`);
+        throw error;
       } finally {
         session.desktopStartPromise = null;
       }

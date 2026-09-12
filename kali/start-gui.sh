@@ -6,6 +6,17 @@ novnc_port="${KALI_NOVNC_PORT:-6080}"
 geometry="${KALI_VNC_GEOMETRY:-1440x900}"
 depth="${KALI_VNC_DEPTH:-24}"
 password="${KALI_VNC_PASSWORD:-student}"
+session_log_dir="${TBX_SESSION_LOG_DIR:-$HOME/.terminalbox/logs}"
+runtime_dir="${XDG_RUNTIME_DIR:-$HOME/.terminalbox/run}"
+tmp_dir="${TMPDIR:-$runtime_dir}"
+
+mkdir -p "$session_log_dir" "$runtime_dir" "$tmp_dir" "$HOME/.config" "$HOME/.local/share"
+chmod 700 "$runtime_dir" "$tmp_dir" "$session_log_dir" || true
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_RUNTIME_DIR="$runtime_dir"
+export TMPDIR="$tmp_dir"
+export DISPLAY=":$display"
 
 case "$display" in
   ''|*[!0-9]*)
@@ -45,7 +56,8 @@ chmod 0600 "$vnc_config_dir/passwd"
 tigervncserver ":$display" -kill >/dev/null 2>&1 || true
 rm -f "/tmp/.X${display}-lock" "/tmp/.X11-unix/X${display}"
 
-websockify --web=/usr/share/novnc "$novnc_port" "127.0.0.1:$((5900 + display))" &
+echo "starting websockify session=${TBX_SESSION_ID:-unknown} display=$display novnc_port=$novnc_port" >&2
+websockify --web=/usr/share/novnc "$novnc_port" "127.0.0.1:$((5900 + display))" >> "$session_log_dir/websockify.log" 2>&1 &
 websockify_pid=$!
 
 cleanup() {
@@ -57,8 +69,9 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
+echo "starting tigervnc session=${TBX_SESSION_ID:-unknown} display=$display vnc_port=$((5900 + display))" >&2
 tigervncserver ":$display" -fg -localhost yes -SecurityTypes VncAuth \
-  -geometry "$geometry" -depth "$depth" -xstartup /usr/local/bin/start-xfce &
+  -geometry "$geometry" -depth "$depth" -xstartup /usr/local/bin/start-xfce >> "$session_log_dir/tigervnc.log" 2>&1 &
 vnc_pid=$!
 
 while kill -0 "$websockify_pid" >/dev/null 2>&1 \

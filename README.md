@@ -179,7 +179,7 @@ LiquidAI/lfm2.5-1.2b-instruct:q4_k_m
 Kaliワークスペースの `Kali Desktop` タブ、または画面上部の `KALI DESKTOP` からKaliデスクトップを開けます。直接開く場合は次のURLです。
 
 ```text
-http://localhost:3000/kali-gui/?autoconnect=1&resize=remote
+http://localhost:3000/kali-gui/vnc.html?autoconnect=1&resize=remote&path=kali-gui/websockify
 ```
 
 noVNC のパスワードは既定で `student` です。`.env` の `KALI_VNC_PASSWORD` で変更できます。
@@ -406,6 +406,34 @@ env | grep -E 'GEMINI|TERMINALBOX_PASSWORD'
 - 4つのTarget APIは成功する。
 - `https://example.com/` への外部通信はタイムアウトまたは接続エラーで失敗する。
 - `GEMINI` や `TERMINALBOX_PASSWORD` を含む環境変数は表示されない。
+
+匿名セッション分離を確認する場合は、2つのシークレットウィンドウで公開 Web サービスの `/terminalbox/` を同時に開きます。`labtarget` は Lab コンテナ内部専用名なので、Windows や通常ブラウザのアドレスバーで `http://labtarget:3100/` を直接開かないでください。ブラウザ内の Target 表示は `/tool-target/` と `/tool-target/web-attacks/` を Web service → Lab service 経由で使用します。
+
+Session A で次を実行します。
+
+```bash
+touch ~/A.txt
+curl -X POST http://target:3000/api/admin/banner \
+  -H 'Content-Type: application/json' \
+  -H 'X-Admin-Key: training-admin-2026' \
+  -d '{"headline":"A only","theme":"compromised"}'
+curl -X POST -d 'author=A&comment=A-session-only' http://labtarget:3100/web-attacks/comments
+```
+
+Session B で次を確認します。
+
+```bash
+test ! -e ~/A.txt
+curl -fsS http://target:3000/api/status
+curl -fsS http://labtarget:3100/web-attacks/comments
+```
+
+期待する結果:
+
+- Session B に `~/A.txt` は存在しない。
+- Session B の Target 1 は初期状態のまま。
+- Session B の Web Attacks コメントに `A-session-only` は表示されない。
+- 両方のウィンドウで Kali Desktop を開くと、それぞれ独立した DISPLAY/noVNC セッションが表示される。
 
 公開 Web 側では、画面表示と AI を確認します。
 

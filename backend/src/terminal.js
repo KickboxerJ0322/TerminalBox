@@ -18,6 +18,23 @@ function attachLocalTerminal(socket, session) {
   };
 
   const homeDirectory = session.homeDirectory;
+  const sessionEnv = {
+    HOME: homeDirectory,
+    XDG_CONFIG_HOME: `${homeDirectory}/.config`,
+    XDG_DATA_HOME: `${homeDirectory}/.local/share`,
+    XDG_RUNTIME_DIR: session.runtimeDirectory,
+    TMPDIR: session.runtimeDirectory,
+    USER: 'student',
+    LOGNAME: 'student',
+    SHELL: '/bin/bash',
+    TERM: 'xterm-256color',
+    COLORTERM: 'truecolor',
+    DISPLAY: `:${session.displayNumber}`,
+    LANG: 'ja_JP.UTF-8',
+    LANGUAGE: 'ja_JP:ja',
+    LC_ALL: 'ja_JP.UTF-8',
+    PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+  };
   try {
     child = spawn(
       '/usr/bin/script',
@@ -26,19 +43,7 @@ function attachLocalTerminal(socket, session) {
         cwd: homeDirectory,
         uid: 1000,
         gid: 1000,
-        env: {
-          HOME: homeDirectory,
-          USER: 'student',
-          LOGNAME: 'student',
-          SHELL: '/bin/bash',
-          TERM: 'xterm-256color',
-          COLORTERM: 'truecolor',
-          DISPLAY: `:${session.displayNumber}`,
-          LANG: 'ja_JP.UTF-8',
-          LANGUAGE: 'ja_JP:ja',
-          LC_ALL: 'ja_JP.UTF-8',
-          PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-        },
+        env: sessionEnv,
         stdio: ['pipe', 'pipe', 'pipe'],
       },
     );
@@ -82,6 +87,20 @@ async function ensureDockerHome(container, homeDirectory) {
   await execution.start({ hijack: true, stdin: false });
 }
 
+async function ensureDockerSessionDirectories(container, session) {
+  const execution = await container.exec({
+    Cmd: ['/bin/sh', '-lc', [
+      'mkdir -p "$1" "$2" "$3" "$4"',
+      'chown 1000:1000 "$1" "$2" "$3" "$4"',
+      'chmod 700 "$1" "$2" "$3" "$4"',
+    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory],
+    User: 'root',
+    AttachStdout: true,
+    AttachStderr: true,
+  });
+  await execution.start({ hijack: true, stdin: false });
+}
+
 export function attachTerminalSocket(socket, request, config) {
   if (!isAuthorized(request, config.wsAuthToken)) {
     socket.close(1008, 'Unauthorized');
@@ -112,6 +131,7 @@ export function attachTerminalSocket(socket, request, config) {
 
       const homeDirectory = session.homeDirectory;
       await ensureDockerHome(container, homeDirectory);
+      await ensureDockerSessionDirectories(container, session);
       exec = await container.exec({
         Cmd: ['/bin/bash', '--noprofile', '--rcfile', '/etc/terminalbox.bashrc', '-i'],
         User: 'student',
@@ -122,6 +142,10 @@ export function attachTerminalSocket(socket, request, config) {
         Tty: true,
         Env: [
           `HOME=${homeDirectory}`,
+          `XDG_CONFIG_HOME=${homeDirectory}/.config`,
+          `XDG_DATA_HOME=${homeDirectory}/.local/share`,
+          `XDG_RUNTIME_DIR=${session.runtimeDirectory}`,
+          `TMPDIR=${session.runtimeDirectory}`,
           'USER=student',
           'LOGNAME=student',
           `DISPLAY=:${session.displayNumber}`,

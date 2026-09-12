@@ -36,12 +36,13 @@ FLAGS = {
 db_lock = threading.Lock()
 database = None
 market_token_nonce = ""
+market_token_nonces = {}
 UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.I)
 DEFAULT_SESSION_ID = "anonymous"
 
 
 def reset_database():
-    global database, market_token_nonce
+    global database, market_token_nonce, market_token_nonces
     with db_lock:
         if database is not None:
             database.close()
@@ -56,12 +57,16 @@ def reset_database():
             CREATE TABLE market_uploads (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, filename TEXT, content_type TEXT, size INTEGER);
             INSERT INTO products(name, description) VALUES
               ('apple', 'Aomori apple'), ('orange', 'Ehime orange'), ('melon', 'Hokkaido melon');
-            INSERT INTO market_products(id, name, description, price) VALUES
-              (1, 'TBX繝弱・繝・C繧ｹ繧ｿ繝ｳ繝・, '貍皮ｿ偵ョ繧ｹ繧ｯ蜷代￠縺ｮ霆ｽ驥上せ繧ｿ繝ｳ繝・, 3200),
-              (2, 'USB繧ｻ繧ｭ繝･繝ｪ繝・ぅ繧ｭ繝ｼ', '遐比ｿｮ逕ｨ縺ｮ隱崎ｨｼ繝・ヰ繧､繧ｹ', 4800),
-              (3, '繝阪ャ繝医Ρ繝ｼ繧ｯ蜈･髢譖ｸ', '蛻晏ｭｦ閠・髄縺代ぎ繧､繝・, 2400),
-              (4, 'Apple蟇ｾ蠢弑SB繧ｱ繝ｼ繝悶Ν', '蟄ｦ鄙堤ｫｯ譛ｫ蜷代￠繧｢繧ｯ繧ｻ繧ｵ繝ｪ繝ｼ', 1800);
             """
+        )
+        database.executemany(
+            "INSERT INTO market_products(id, name, description, price) VALUES (?, ?, ?, ?)",
+            [
+                (1, "TBX Note C Stand", "Lightweight stand for training desks", 3200),
+                (2, "USB Security Key", "Training authentication device", 4800),
+                (3, "Network Starter Guide", "Beginner guide for lab users", 2400),
+                (4, "Apple USB Cable", "Accessory for learning devices", 1800),
+            ],
         )
         database.execute(
             "INSERT INTO secrets(label, value) VALUES (?, ?)",
@@ -77,6 +82,7 @@ def reset_database():
         )
         database.commit()
         market_token_nonce = secrets.token_urlsafe(9)
+        market_token_nonces = {DEFAULT_SESSION_ID: market_token_nonce}
 
 
 reset_database()
@@ -84,6 +90,8 @@ reset_database()
 
 def seed_session_state(session_id):
     with db_lock:
+        if session_id not in market_token_nonces:
+            market_token_nonces[session_id] = secrets.token_urlsafe(9)
         exists = database.execute(
             "SELECT 1 FROM market_comments WHERE session_id = ? LIMIT 1",
             (session_id,),
@@ -99,6 +107,7 @@ def seed_session_state(session_id):
 
 def reset_session_state(session_id):
     with db_lock:
+        market_token_nonces[session_id] = secrets.token_urlsafe(9)
         database.execute("DELETE FROM market_comments WHERE session_id = ?", (session_id,))
         database.execute("DELETE FROM market_uploads WHERE session_id = ?", (session_id,))
         database.execute(
@@ -106,6 +115,13 @@ def reset_session_state(session_id):
             (session_id, "TBX Market operator", "Welcome to TBX Market."),
         )
         database.commit()
+
+
+def market_nonce_for_session(session_id):
+    with db_lock:
+        if session_id not in market_token_nonces:
+            market_token_nonces[session_id] = secrets.token_urlsafe(9)
+        return market_token_nonces[session_id]
 
 TOOL_PREFIX = "/tool-target"
 
@@ -397,7 +413,7 @@ class ChallengeHandler(BaseHTTPRequestHandler):
         elif path == "/web-attacks/admin":
             token = self.market_token(parsed)
             payload = decode_market_token(token)
-            if payload and payload.get("nonce") == market_token_nonce and payload.get("role") == "admin":
+            if payload and payload.get("nonce") == market_nonce_for_session(session_id) and payload.get("role") == "admin":
                 self.send_json(200, {"authenticated": True, "user": payload.get("user", "student"), "role": "admin", "flag": FLAGS["web_jwt"]})
             else:
                 self.send_json(403, {"authenticated": False, "error": "admin_role_required"})
@@ -460,7 +476,7 @@ class ChallengeHandler(BaseHTTPRequestHandler):
             username = values.get("username", [""])[0]
             password = values.get("password", [""])[0]
             if username == "student" and password == "market123":
-                token = encode_market_token({"user": username, "role": "user", "nonce": market_token_nonce})
+                token = encode_market_token({"user": username, "role": "user", "nonce": market_nonce_for_session(session_id)})
                 self.send_json(200, {
                     "authenticated": True,
                     "token": token,

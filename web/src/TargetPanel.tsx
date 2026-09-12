@@ -7,11 +7,11 @@ interface Props {
 }
 
 const targetDefinitions = {
-  1: { address: 'http://target:3000/', proxyPath: '/target-site/', label: '問題1 研修サイト' },
-  2: { address: 'http://target2:3000/', proxyPath: '/target-site-2/', label: '問題2 オンラインストア' },
-  3: { address: 'http://target3:3000/', proxyPath: '/target-site-3/', label: '問題3 図書館サイト' },
-  4: { address: 'http://labtarget:3100/', proxyPath: '/tool-target/', label: '問題4 セキュリティツール演習' },
-  5: { address: 'http://labtarget:3100/web-attacks/', proxyPath: '/tool-target/web-attacks/', label: '問題5 Web Attacks' },
+  1: { address: 'http://target:3000/', proxyPath: '/target-site/', label: '問題1 研修サイト', addressLabel: 'Kali内部アドレス' },
+  2: { address: 'http://target2:3000/', proxyPath: '/target-site-2/', label: '問題2 オンラインストア', addressLabel: 'Kali内部アドレス' },
+  3: { address: 'http://target3:3000/', proxyPath: '/target-site-3/', label: '問題3 図書館サイト', addressLabel: 'Kali内部アドレス' },
+  4: { address: 'http://labtarget:3100/', proxyPath: '/tool-target/', label: '問題4 セキュリティツール演習', addressLabel: 'Kali内部アドレス' },
+  5: { address: 'http://labtarget:3100/web-attacks/', proxyPath: '/tool-target/web-attacks/', label: '問題5 Web Attacks', addressLabel: 'Kali内部アドレス' },
 } as const;
 
 export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) {
@@ -62,6 +62,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) 
       </div>
       <div className="target-address-bar">
         <span aria-hidden="true">●</span>
+        <strong>{target.addressLabel}</strong>
         <input type="text" value={target.address} readOnly aria-label="ターゲットサイトのアドレス" />
         <button type="button" onClick={refresh} aria-label="ターゲットサイトを再読み込み" title="再読み込み">↻</button>
       </div>

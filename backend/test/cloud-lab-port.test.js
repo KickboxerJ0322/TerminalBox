@@ -27,3 +27,15 @@ test('Cloud Run concurrency is high enough for noVNC parallel assets', async () 
   assert.match(cloudBuild, /--concurrency=80/);
   assert.match(cloudBuild, /--max-instances=1/);
 });
+
+test('Cloud Lab target routes go through the session-aware backend proxy', async () => {
+  const nginxConfig = await readRepositoryFile('cloud/nginx-lab.conf');
+
+  for (const route of ['/target-site/', '/target-site-2/', '/target-site-3/', '/tool-target/']) {
+    const blockStart = nginxConfig.indexOf(`location ${route} {`);
+    assert.notEqual(blockStart, -1, `${route} location exists`);
+    const block = nginxConfig.slice(blockStart, nginxConfig.indexOf('\n  }', blockStart));
+    assert.match(block, /proxy_pass http:\/\/127\.0\.0\.1:3001/);
+    assert.doesNotMatch(block, /proxy_pass http:\/\/127\.0\.0\.[2-5]/);
+  }
+});

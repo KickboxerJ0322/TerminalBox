@@ -1,7 +1,14 @@
 #!/bin/sh
 unset SESSION_MANAGER
 unset DBUS_SESSION_BUS_ADDRESS
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/1000}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-$HOME/.terminalbox/run}"
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export TMPDIR="${TMPDIR:-$XDG_RUNTIME_DIR}"
+session_log_dir="${TBX_SESSION_LOG_DIR:-$HOME/.terminalbox/logs}"
+mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$TMPDIR" "$session_log_dir"
+chmod 700 "$XDG_RUNTIME_DIR" "$TMPDIR" "$session_log_dir" || true
+export TBX_SESSION_LOG_DIR="$session_log_dir"
 export LANG=ja_JP.UTF-8
 export LANGUAGE=ja_JP:ja
 export LC_ALL=ja_JP.UTF-8
@@ -37,13 +44,13 @@ chmod 0755 "$desktop_dir/TerminalBox.desktop"
 xdg-mime default org.xfce.mousepad.desktop text/plain || true
 
 exec dbus-launch --exit-with-session sh -c '
-  fcitx5 -d >/tmp/fcitx5.log 2>&1 || true
+  fcitx5 -d >> "$TBX_SESSION_LOG_DIR/fcitx5.log" 2>&1 || true
   (
     attempt=0
     while [ "$attempt" -lt 30 ]; do
       if fcitx5-remote >/dev/null 2>&1; then
-        fcitx5-remote -o >/tmp/fcitx5-remote.log 2>&1 || true
-        fcitx5-remote -s mozc >>/tmp/fcitx5-remote.log 2>&1 || true
+        fcitx5-remote -o >> "$TBX_SESSION_LOG_DIR/fcitx5-remote.log" 2>&1 || true
+        fcitx5-remote -s mozc >> "$TBX_SESSION_LOG_DIR/fcitx5-remote.log" 2>&1 || true
         exit 0
       fi
       attempt=$((attempt + 1))
