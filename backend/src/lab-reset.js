@@ -1,5 +1,6 @@
 import Docker from 'dockerode';
 import { execFile } from 'node:child_process';
+import path from 'node:path';
 import { promisify } from 'node:util';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
@@ -39,10 +40,26 @@ async function collectExecOutput(stream) {
   return output.trim();
 }
 
+async function ensureDockerSessionDirectories(container, session) {
+  const execution = await container.exec({
+    Cmd: ['/bin/sh', '-lc', [
+      'mkdir -p "$5" "$6" "$1" "$2" "$3" "$4"',
+      'chmod 711 "$5"',
+      'chown 1000:1000 "$6" "$1" "$2" "$3" "$4"',
+      'chmod 700 "$6" "$1" "$2" "$3" "$4"',
+    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory, path.dirname(session.baseDirectory), session.baseDirectory],
+    User: 'root',
+    AttachStdout: true,
+    AttachStderr: true,
+  });
+  await execution.start({ hijack: true, stdin: false });
+}
+
 async function resetKaliHome(containerName, session) {
   const container = docker.getContainer(containerName);
   const details = await container.inspect();
   if (!details.State.Running) throw new Error('Kali container is not running');
+  await ensureDockerSessionDirectories(container, session);
 
   const exec = await container.exec({
     Cmd: ['/bin/sh', '-c', HOME_RESET_SCRIPT],

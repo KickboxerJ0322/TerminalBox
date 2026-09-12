@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import path from 'node:path';
 import Docker from 'dockerode';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
@@ -68,6 +69,21 @@ function executeLocal(plan, command, timeoutMs, session) {
   });
 }
 
+async function ensureDockerSessionDirectories(container, session) {
+  const execution = await container.exec({
+    Cmd: ['/bin/sh', '-lc', [
+      'mkdir -p "$5" "$6" "$1" "$2" "$3" "$4"',
+      'chmod 711 "$5"',
+      'chown 1000:1000 "$6" "$1" "$2" "$3" "$4"',
+      'chmod 700 "$6" "$1" "$2" "$3" "$4"',
+    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory, path.dirname(session.baseDirectory), session.baseDirectory],
+    User: 'root',
+    AttachStdout: true,
+    AttachStderr: true,
+  });
+  await execution.start({ hijack: true, stdin: false });
+}
+
 async function executeDocker(plan, command, config, timeoutMs, session) {
   const startedAt = Date.now();
   const container = docker.getContainer(config.kaliContainer);
@@ -75,13 +91,7 @@ async function executeDocker(plan, command, config, timeoutMs, session) {
   if (!details.State.Running) throw new Error('Kali container is not running');
   const timeoutSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
   const homeDirectory = session?.homeDirectory ?? '/home/student';
-  const prepare = await container.exec({
-    Cmd: ['/bin/mkdir', '-p', homeDirectory],
-    User: 'student',
-    AttachStdout: true,
-    AttachStderr: true,
-  });
-  await prepare.start({ hijack: true, stdin: false });
+  if (session) await ensureDockerSessionDirectories(container, session);
   const execution = await container.exec({
     Cmd: ['/usr/bin/timeout', '--signal=KILL', `${timeoutSeconds}s`, EXECUTOR_PATH, encodePlan(plan)],
     User: 'student',

@@ -11,9 +11,15 @@ test('anonymous sessions allocate noVNC ports outside the X11 display port range
   try {
     const manager = new SessionManager({ rootDirectory, maxSessions: 1 });
     const session = await manager.getOrCreate();
+    const rootMode = (await stat(rootDirectory)).mode & 0o777;
+    const baseMode = (await stat(session.baseDirectory)).mode & 0o777;
     assert.equal(session.displayNumber, 11);
     assert.equal(session.vncPort, 5911);
     assert.equal(session.novncPort, 6111);
+    if (process.platform !== 'win32') {
+      assert.equal(rootMode, 0o711);
+      assert.equal(baseMode, 0o700);
+    }
     assert.equal(session.desktopStartPromise, null);
     assert.equal(session.runtimeDirectory, path.join(session.baseDirectory, 'run'));
     assert.equal(session.logDirectory, path.join(session.baseDirectory, 'logs'));

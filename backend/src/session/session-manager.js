@@ -7,6 +7,8 @@ const DEFAULT_DISPLAY_START = 11;
 const DEFAULT_DISPLAY_END = 110;
 const STUDENT_UID = 1000;
 const STUDENT_GID = 1000;
+const SESSION_ROOT_MODE = 0o711;
+const SESSION_DIRECTORY_MODE = 0o700;
 
 const INITIAL_PROGRESS = Object.freeze({
   target1: false,
@@ -16,7 +18,12 @@ const INITIAL_PROGRESS = Object.freeze({
   target5: false,
 });
 
-async function prepareStudentDirectory(directory, mode = 0o700) {
+async function prepareSessionRoot(directory) {
+  await mkdir(directory, { recursive: true, mode: SESSION_ROOT_MODE });
+  await chmod(directory, SESSION_ROOT_MODE);
+}
+
+async function prepareStudentDirectory(directory, mode = SESSION_DIRECTORY_MODE) {
   await mkdir(directory, { recursive: true, mode });
   await chmod(directory, mode);
   try {
@@ -27,6 +34,8 @@ async function prepareStudentDirectory(directory, mode = 0o700) {
 }
 
 async function prepareSessionDirectories(session) {
+  await prepareSessionRoot(path.dirname(session.baseDirectory));
+  await prepareStudentDirectory(session.baseDirectory);
   await Promise.all([
     prepareStudentDirectory(session.homeDirectory),
     prepareStudentDirectory(session.runtimeDirectory),

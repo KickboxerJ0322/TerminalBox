@@ -2,9 +2,10 @@ import Docker from 'dockerode';
 import httpProxy from 'http-proxy';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
-const DESKTOP_READY_TIMEOUT_MS = 20_000;
+const DESKTOP_READY_TIMEOUT_MS = Number.parseInt(process.env.KALI_DESKTOP_READY_TIMEOUT_MS ?? '120000', 10) || 120_000;
 
 function desktopLogContext(session, process, extra = {}) {
   return JSON.stringify({
@@ -31,6 +32,10 @@ function rewriteKaliGuiUrl(request) {
   return () => {
     request.url = originalUrl;
   };
+}
+
+function configRootDirectory(session) {
+  return path.dirname(session.baseDirectory);
 }
 
 async function waitForReady(url) {
@@ -73,10 +78,11 @@ function desktopEnvironment(session) {
 async function prepareDockerSessionDirectories(container, session) {
   const execution = await container.exec({
     Cmd: ['/bin/sh', '-lc', [
-      'mkdir -p "$1" "$2" "$3" "$4"',
-      'chown 1000:1000 "$1" "$2" "$3" "$4"',
-      'chmod 700 "$1" "$2" "$3" "$4"',
-    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory],
+      'mkdir -p "$5" "$6" "$1" "$2" "$3" "$4"',
+      'chmod 711 "$5"',
+      'chown 1000:1000 "$6" "$1" "$2" "$3" "$4"',
+      'chmod 700 "$6" "$1" "$2" "$3" "$4"',
+    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory, configRootDirectory(session), session.baseDirectory],
     User: 'root',
     AttachStdout: true,
     AttachStderr: true,

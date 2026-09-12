@@ -31,7 +31,7 @@ const OPERATIONS_STORAGE_KEY = 'terminalbox:operations-completed';
 const CHALLENGE_STORAGE_KEY = 'terminalbox:challenge-completed';
 const GEMINI_API_KEY_STORAGE_KEY = 'terminalbox:gemini-api-key';
 const GEMINI_MODEL_STORAGE_KEY = 'terminalbox:gemini-model';
-const KALI_GUI_URL = '/kali-gui/vnc.html?autoconnect=1&resize=remote&path=kali-gui/websockify';
+const KALI_GUI_URL = '/kali-gui/vnc.html?autoconnect=1&resize=remote&password=student&path=kali-gui/websockify';
 
 function InfoDialog({ onClose }: { onClose: () => void }) {
   return (

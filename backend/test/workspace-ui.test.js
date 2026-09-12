@@ -18,6 +18,7 @@ test('Kali workspace keeps one noVNC session and activates the selected GUI tool
   assert.match(source, /terminalbox-activate-tool wireshark/);
   assert.match(source, /terminalbox-activate-tool desktop/);
   assert.match(source, /path=kali-gui\/websockify/);
+  assert.match(source, /password=student/);
   assert.match(styles, /\.kali-gui-panel\.kali-view-hidden\s*\{\s*display:\s*none/);
 });
 

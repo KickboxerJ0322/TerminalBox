@@ -179,7 +179,7 @@ LiquidAI/lfm2.5-1.2b-instruct:q4_k_m
 Kaliワークスペースの `Kali Desktop` タブ、または画面上部の `KALI DESKTOP` からKaliデスクトップを開けます。直接開く場合は次のURLです。
 
 ```text
-http://localhost:3000/kali-gui/vnc.html?autoconnect=1&resize=remote&path=kali-gui/websockify
+http://localhost:3000/kali-gui/vnc.html?autoconnect=1&resize=remote&password=student&path=kali-gui/websockify
 ```
 
 noVNC のパスワードは既定で `student` です。`.env` の `KALI_VNC_PASSWORD` で変更できます。

@@ -1,5 +1,6 @@
 import Docker from 'dockerode';
 import { spawn } from 'node:child_process';
+import path from 'node:path';
 import { readSessionCookie } from './session/session-cookie.js';
 import { sessionManager } from './session/session-manager.js';
 
@@ -77,23 +78,14 @@ function attachLocalTerminal(socket, session) {
   });
 }
 
-async function ensureDockerHome(container, homeDirectory) {
-  const execution = await container.exec({
-    Cmd: ['/bin/mkdir', '-p', homeDirectory],
-    User: 'student',
-    AttachStdout: true,
-    AttachStderr: true,
-  });
-  await execution.start({ hijack: true, stdin: false });
-}
-
 async function ensureDockerSessionDirectories(container, session) {
   const execution = await container.exec({
     Cmd: ['/bin/sh', '-lc', [
-      'mkdir -p "$1" "$2" "$3" "$4"',
-      'chown 1000:1000 "$1" "$2" "$3" "$4"',
-      'chmod 700 "$1" "$2" "$3" "$4"',
-    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory],
+      'mkdir -p "$5" "$6" "$1" "$2" "$3" "$4"',
+      'chmod 711 "$5"',
+      'chown 1000:1000 "$6" "$1" "$2" "$3" "$4"',
+      'chmod 700 "$6" "$1" "$2" "$3" "$4"',
+    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory, path.dirname(session.baseDirectory), session.baseDirectory],
     User: 'root',
     AttachStdout: true,
     AttachStderr: true,
@@ -130,7 +122,6 @@ export function attachTerminalSocket(socket, request, config) {
       if (!details.State.Running) throw new Error('Kali container is not running');
 
       const homeDirectory = session.homeDirectory;
-      await ensureDockerHome(container, homeDirectory);
       await ensureDockerSessionDirectories(container, session);
       exec = await container.exec({
         Cmd: ['/bin/bash', '--noprofile', '--rcfile', '/etc/terminalbox.bashrc', '-i'],

@@ -27,7 +27,7 @@ const launchCommands: Partial<Record<WorkspaceTab, string>> = {
   desktop: 'terminalbox-activate-tool desktop\r',
 };
 
-const kaliGuiUrl = '/kali-gui/vnc.html?autoconnect=1&resize=remote&path=kali-gui/websockify';
+const kaliGuiUrl = '/kali-gui/vnc.html?autoconnect=1&resize=remote&password=student&path=kali-gui/websockify';
 
 export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, pasteRequest }: Props) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('terminal');
