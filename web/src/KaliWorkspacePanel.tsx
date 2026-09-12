@@ -27,6 +27,8 @@ const launchCommands: Partial<Record<WorkspaceTab, string>> = {
   desktop: 'terminalbox-activate-tool desktop\r',
 };
 
+const kaliGuiUrl = '/kali-gui/vnc.html?autoconnect=1&resize=remote&path=kali-gui/websockify';
+
 export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, pasteRequest }: Props) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('terminal');
   const [guiInitialized, setGuiInitialized] = useState(false);
@@ -69,14 +71,14 @@ export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, paste
         <section className={guiVisible ? 'panel kali-gui-panel' : 'panel kali-gui-panel kali-view-hidden'} role="tabpanel" aria-label={activeDefinition.label} aria-hidden={!guiVisible}>
           <div className="panel-heading">
             <div><span className="eyebrow">WORKSPACE / KALI</span><h2>{activeDefinition.label}</h2></div>
-            <a className="gui-link" href="/kali-gui/?autoconnect=1&resize=remote" target="_blank" rel="noopener noreferrer">別画面で開く</a>
+            <a className="gui-link" href={kaliGuiUrl} target="_blank" rel="noopener noreferrer">別画面で開く</a>
           </div>
           <p className="kali-gui-note">
             {activeTab === 'desktop' ? 'Kali Desktopを表示しています。' : `${activeDefinition.label}をKali Desktopで起動しています。表示まで数秒かかることがあります。`}
           </p>
           <iframe
             className="kali-gui-frame"
-            src="/kali-gui/?autoconnect=1&resize=remote"
+            src={kaliGuiUrl}
             title={activeDefinition.label}
           />
         </section>

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const readWebSource = (file) => readFile(new URL(`../../web/src/${file}`, import.meta.url), 'utf8');
+const readRootSource = (file) => readFile(new URL(`../../${file}`, import.meta.url), 'utf8');
 
 test('Kali workspace keeps one noVNC session and activates the selected GUI tool', async () => {
   const [source, styles] = await Promise.all([
@@ -16,7 +17,16 @@ test('Kali workspace keeps one noVNC session and activates the selected GUI tool
   assert.match(source, /terminalbox-activate-tool burp/);
   assert.match(source, /terminalbox-activate-tool wireshark/);
   assert.match(source, /terminalbox-activate-tool desktop/);
+  assert.match(source, /path=kali-gui\/websockify/);
   assert.match(styles, /\.kali-gui-panel\.kali-view-hidden\s*\{\s*display:\s*none/);
+});
+
+test('Kali noVNC can connect and render inside the workspace frame', async () => {
+  const nginx = await readRootSource('web/nginx.conf');
+  const kaliLocation = nginx.slice(nginx.indexOf('location /kali-gui/ {'), nginx.indexOf('\n  }', nginx.indexOf('location /kali-gui/ {')));
+
+  assert.match(kaliLocation, /proxy_set_header Upgrade \$http_upgrade/);
+  assert.match(kaliLocation, /add_header X-Frame-Options SAMEORIGIN always/);
 });
 
 test('online AI and security tool wording are the defaults', async () => {
