@@ -49,7 +49,6 @@ interface Props {
   panelId: string;
   tabId: string;
   provider: 'gemini' | 'local';
-  label: string;
   terminalHistory: string;
   fullTerminalHistory: string;
   status: Status | null;
@@ -100,7 +99,7 @@ function entryContent(entry: Entry) {
   ].filter(Boolean).join('\n')).join('\n') ?? '';
 }
 
-export function AgentPanel({ panelId, tabId, provider, label, terminalHistory, fullTerminalHistory, status }: Props) {
+export function AgentPanel({ panelId, tabId, provider, terminalHistory, fullTerminalHistory, status }: Props) {
   const [question, setQuestion] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [includeConversationHistory, setIncludeConversationHistory] = useState(true);
@@ -213,7 +212,7 @@ export function AgentPanel({ panelId, tabId, provider, label, terminalHistory, f
   return (
     <section className="panel assistant-panel agent-panel" id={panelId} role="tabpanel" aria-labelledby={tabId}>
       <div className="panel-heading">
-        <div><span className="eyebrow">AI AGENT / {label}</span><h2>AI Agent</h2></div>
+        <h2 id={tabId}>AI Agent</h2>
         <span className={`ai-badge ${ready ? '' : 'ai-badge-wait'}`}>{ready ? '実行できます' : '設定待ち'}</span>
       </div>
       <div className="agent-notice">

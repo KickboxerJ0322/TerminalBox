@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { AgentPanel } from './AgentPanel';
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { ChallengePanel } from './ChallengePanel';
 import { CommandGuide } from './CommandGuide';
 import { KaliWorkspacePanel } from './KaliWorkspacePanel';
@@ -23,13 +24,26 @@ interface PasteRequest {
 }
 
 type LearningTab = 'tutorial' | 'targets' | 'tools' | 'web-attacks';
-type AssistantTab = 'online' | 'local';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
 const CHALLENGE_STORAGE_KEY = 'terminalbox:challenge-completed';
 const GEMINI_API_KEY_STORAGE_KEY = 'terminalbox:gemini-api-key';
 const GEMINI_MODEL_STORAGE_KEY = 'terminalbox:gemini-model';
 const KALI_GUI_URL = '/kali-gui/vnc.html?autoconnect=1&resize=remote&password=student&path=kali-gui/websockify';
+const MIN_PANE_PERCENT = 24;
+const MAX_PANE_PERCENT = 76;
+
+type ResizeTarget = 'columns' | 'leftRows' | 'rightRows';
+
+interface PaneSizes {
+  leftColumn: number;
+  leftTop: number;
+  rightTop: number;
+}
+
+function clampPanePercent(value: number) {
+  return Math.min(MAX_PANE_PERCENT, Math.max(MIN_PANE_PERCENT, value));
+}
 
 function InfoDialog({ onClose }: { onClose: () => void }) {
   return (
@@ -56,7 +70,7 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
             <article><span>01</span><h3>Kaliワークスペース</h3><p>TerminalとKali Desktopを同じセッションの作業領域で利用できます。</p></article>
             <article><span>02</span><h3>ターゲット演習</h3><p>問題1から3の研修サイトを調査し、Web APIの安全性を学びます。</p></article>
             <article><span>03</span><h3>Web Attacks</h3><p>TBX Marketの演習で基本的なWeb脆弱性を確認します。</p></article>
-            <article><span>04</span><h3>AI Agent</h3><p>オンラインとローカルの2種類のAgentが同じ承認ポリシーでTerminal操作を支援します。</p></article>
+            <article><span>04</span><h3>AI Agent</h3><p>オンラインAgentが承認ポリシーに沿ってTerminal操作を支援します。</p></article>
           </div>
         </div>
       </section>
@@ -112,7 +126,6 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionError, setSessionError] = useState('');
   const [learningTab, setLearningTab] = useState<LearningTab>('tutorial');
-  const [assistantTab, setAssistantTab] = useState<AssistantTab>('online');
   const [infoOpen, setInfoOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -122,6 +135,10 @@ export default function App() {
   const [resetSignal, setResetSignal] = useState(0);
   const [targetRefreshSignal, setTargetRefreshSignal] = useState(0);
   const [challengeTargetId, setChallengeTargetId] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [paneSizes, setPaneSizes] = useState<PaneSizes>({ leftColumn: 50, leftTop: 50, rightTop: 50 });
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const leftColumnRef = useRef<HTMLDivElement>(null);
+  const rightColumnRef = useRef<HTMLDivElement>(null);
   const targetEventCountRef = useRef(0);
 
   const updateHistory = useCallback((value: string) => setHistory(value), []);
@@ -225,7 +242,6 @@ export default function App() {
     setFullTerminalHistory('');
     setPasteRequest(null);
     setLearningTab('tutorial');
-    setAssistantTab('online');
     setChallengeTargetId(1);
     targetEventCountRef.current = 0;
     setResetSignal((value) => value + 1);
@@ -260,6 +276,65 @@ export default function App() {
     && status.target
     && status.aiReady === true;
 
+  const workspaceStyle = {
+    '--workspace-left-fr': `${paneSizes.leftColumn}fr`,
+    '--workspace-right-fr': `${100 - paneSizes.leftColumn}fr`,
+  } as CSSProperties;
+
+  const leftColumnStyle = {
+    '--workspace-top-fr': `${paneSizes.leftTop}fr`,
+    '--workspace-bottom-fr': `${100 - paneSizes.leftTop}fr`,
+  } as CSSProperties;
+
+  const rightColumnStyle = {
+    '--workspace-top-fr': `${paneSizes.rightTop}fr`,
+    '--workspace-bottom-fr': `${100 - paneSizes.rightTop}fr`,
+  } as CSSProperties;
+
+  const beginResize = (target: ResizeTarget, event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const measureElement = target === 'columns'
+      ? workspaceRef.current
+      : target === 'leftRows' ? leftColumnRef.current : rightColumnRef.current;
+    if (!measureElement) return;
+
+    const move = (moveEvent: PointerEvent) => {
+      const rect = measureElement.getBoundingClientRect();
+      const rawPercent = target === 'columns'
+        ? ((moveEvent.clientX - rect.left) / rect.width) * 100
+        : ((moveEvent.clientY - rect.top) / rect.height) * 100;
+      const nextPercent = clampPanePercent(rawPercent);
+      setPaneSizes((current) => target === 'columns'
+        ? { ...current, leftColumn: nextPercent }
+        : target === 'leftRows'
+          ? { ...current, leftTop: nextPercent }
+          : { ...current, rightTop: nextPercent });
+    };
+
+    const end = () => {
+      document.body.classList.remove('is-resizing-pane');
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+    };
+
+    document.body.classList.add('is-resizing-pane');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end, { once: true });
+  };
+
+  const resizeWithKeyboard = (target: ResizeTarget, event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const horizontalKeys = target === 'columns' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight');
+    const verticalKeys = target !== 'columns' && (event.key === 'ArrowUp' || event.key === 'ArrowDown');
+    if (!horizontalKeys && !verticalKeys) return;
+    event.preventDefault();
+    const direction = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -4 : 4;
+    setPaneSizes((current) => target === 'columns'
+      ? { ...current, leftColumn: clampPanePercent(current.leftColumn + direction) }
+      : target === 'leftRows'
+        ? { ...current, leftTop: clampPanePercent(current.leftTop + direction) }
+        : { ...current, rightTop: clampPanePercent(current.rightTop + direction) });
+  };
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -293,13 +368,25 @@ export default function App() {
       </header>
 
       <main className="workspace-main">
-        <div className="workspace-grid four-pane-workspace">
-          <div className="workspace-column workspace-column-left">
+        <div className="workspace-grid four-pane-workspace" ref={workspaceRef} style={workspaceStyle}>
+          <div className="workspace-column workspace-column-left" ref={leftColumnRef} style={leftColumnStyle}>
             <KaliWorkspacePanel
               key={`terminal-${resetSignal}`}
               onHistoryChange={updateHistory}
               onFullHistoryChange={updateFullHistory}
               pasteRequest={pasteRequest}
+            />
+            <div
+              className="pane-resizer pane-resizer-horizontal"
+              role="separator"
+              aria-label="Terminal と Target の高さを調整"
+              aria-orientation="horizontal"
+              aria-valuemin={MIN_PANE_PERCENT}
+              aria-valuemax={MAX_PANE_PERCENT}
+              aria-valuenow={Math.round(paneSizes.leftTop)}
+              tabIndex={0}
+              onPointerDown={(event) => beginResize('leftRows', event)}
+              onKeyDown={(event) => resizeWithKeyboard('leftRows', event)}
             />
             <TargetPanel
               key={`target-${resetSignal}`}
@@ -308,7 +395,19 @@ export default function App() {
               onTargetChange={selectChallengeTarget}
             />
           </div>
-          <div className="workspace-column workspace-column-right">
+          <div
+            className="pane-resizer pane-resizer-vertical"
+            role="separator"
+            aria-label="左右の画面幅を調整"
+            aria-orientation="vertical"
+            aria-valuemin={MIN_PANE_PERCENT}
+            aria-valuemax={MAX_PANE_PERCENT}
+            aria-valuenow={Math.round(paneSizes.leftColumn)}
+            tabIndex={0}
+            onPointerDown={(event) => beginResize('columns', event)}
+            onKeyDown={(event) => resizeWithKeyboard('columns', event)}
+          />
+          <div className="workspace-column workspace-column-right" ref={rightColumnRef} style={rightColumnStyle}>
             <aside className="side-workspace learning-workspace" aria-label="学習パネル">
             <div className="workspace-tabs" role="tablist" aria-label="学習パネル">
               <button
@@ -388,56 +487,32 @@ export default function App() {
             )}
             </aside>
 
+            <div
+              className="pane-resizer pane-resizer-horizontal"
+              role="separator"
+              aria-label="学習パネルと AI Agent の高さを調整"
+              aria-orientation="horizontal"
+              aria-valuemin={MIN_PANE_PERCENT}
+              aria-valuemax={MAX_PANE_PERCENT}
+              aria-valuenow={Math.round(paneSizes.rightTop)}
+              tabIndex={0}
+              onPointerDown={(event) => beginResize('rightRows', event)}
+              onKeyDown={(event) => resizeWithKeyboard('rightRows', event)}
+            />
+
             <aside className="side-workspace assistant-workspace" aria-label="AI Agent">
-            <div className="workspace-tabs" role="tablist" aria-label="AI Agent">
-              <button
-                id="assistant-online-tab"
-                type="button"
-                role="tab"
-                aria-selected={assistantTab === 'online'}
-                aria-controls="assistant-online-panel"
-                className={assistantTab === 'online' ? 'active' : ''}
-                onClick={() => setAssistantTab('online')}
-              >
-                オンライン
-              </button>
-              <button
-                id="assistant-local-tab"
-                type="button"
-                role="tab"
-                aria-selected={assistantTab === 'local'}
-                aria-controls="assistant-local-panel"
-                className={assistantTab === 'local' ? 'active' : ''}
-                onClick={() => setAssistantTab('local')}
-              >
-                ローカル
-              </button>
-            </div>
             {!sessionReady && (
-              <section className="panel assistant-panel" role="tabpanel">
-                <div className="panel-heading"><div><span className="eyebrow">AI AGENT</span><h2>AI Agent</h2></div></div>
+              <section className="panel assistant-panel" id="assistant-online-panel" role="tabpanel" aria-labelledby="assistant-online-title">
+                <div className="panel-heading"><h2 id="assistant-online-title">AI Agent</h2></div>
                 <div className="messages"><article className="message message-assistant"><span className="message-role">SYSTEM</span><div>{sessionError || 'Session を準備しています。'}</div></article></div>
               </section>
             )}
-            {sessionReady && assistantTab === 'online' && (
+            {sessionReady && (
               <AgentPanel
                 key={`assistant-online-${resetSignal}`}
                 panelId="assistant-online-panel"
-                tabId="assistant-online-tab"
+                tabId="assistant-online-title"
                 provider="gemini"
-                label="オンライン"
-                terminalHistory={history}
-                fullTerminalHistory={fullTerminalHistory}
-                status={status}
-              />
-            )}
-            {sessionReady && assistantTab === 'local' && (
-              <AgentPanel
-                key={`assistant-local-${resetSignal}`}
-                panelId="assistant-local-panel"
-                tabId="assistant-local-tab"
-                provider="local"
-                label="ローカル"
                 terminalHistory={history}
                 fullTerminalHistory={fullTerminalHistory}
                 status={status}

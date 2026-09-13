@@ -304,7 +304,6 @@ export function TutorialPanel({ onInsertCommand, resetSignal }: Props) {
     <section className="panel tutorial-panel" id="tutorial-panel" role="tabpanel" aria-labelledby="tutorial-tab">
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">GUIDED PRACTICE</span>
           <h2>チュートリアル</h2>
         </div>
         <span className="ai-badge">{completedIds.length}/{lessons.length} CLEAR</span>

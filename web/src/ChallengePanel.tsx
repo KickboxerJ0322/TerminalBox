@@ -355,7 +355,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   return (
     <section className="panel tutorial-panel challenge-panel" id="challenge-panel" role="tabpanel" aria-labelledby={scope === 'tools' ? 'tools-tab' : scope === 'web-attacks' ? 'web-attacks-tab' : 'targets-tab'}>
       <div className="panel-heading">
-        <div><span className="eyebrow">{scope === 'tools' ? 'SECURITY TOOL MISSIONS' : scope === 'web-attacks' ? 'WEB ATTACK MISSIONS' : 'TARGET MISSIONS'}</span><h2>{group.subtitle}</h2></div>
+        <h2>{group.subtitle}</h2>
         <span className="ai-badge">{groupCompleted}/{group.challenges.length} CLEAR</span>
       </div>
       {scope === 'targets' && <div className="challenge-target-tabs" role="tablist" aria-label="ターゲット問題を選択">

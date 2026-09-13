@@ -175,7 +175,6 @@ export function TerminalPanel({ onHistoryChange, onFullHistoryChange, pasteReque
     <section className="panel terminal-panel" aria-labelledby="terminal-title">
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">WORKSPACE / KALI</span>
           <h2 id="terminal-title">Terminal</h2>
         </div>
         <span className={`connection connection-${connection}`}>

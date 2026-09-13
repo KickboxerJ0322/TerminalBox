@@ -39,7 +39,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) 
   return (
     <section className="panel target-panel" id="target-panel" aria-labelledby="target-panel-title">
       <div className="panel-heading target-heading">
-        <div><span className="eyebrow">LIVE TRAINING TARGET</span><h2 id="target-panel-title">{target.label}</h2></div>
+        <h2 id="target-panel-title">{target.label}</h2>
         <div className="target-actions">
           <button type="button" onClick={goBack}>戻る</button>
           <button type="button" onClick={refresh}>再読み込み</button>

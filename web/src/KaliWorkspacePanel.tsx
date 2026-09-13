@@ -70,7 +70,7 @@ export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, paste
       {guiInitialized && (
         <section className={guiVisible ? 'panel kali-gui-panel' : 'panel kali-gui-panel kali-view-hidden'} role="tabpanel" aria-label={activeDefinition.label} aria-hidden={!guiVisible}>
           <div className="panel-heading">
-            <div><span className="eyebrow">WORKSPACE / KALI</span><h2>{activeDefinition.label}</h2></div>
+            <div><h2>{activeDefinition.label}</h2></div>
             <a className="gui-link" href={kaliGuiUrl} target="_blank" rel="noopener noreferrer">別画面で開く</a>
           </div>
           <p className="kali-gui-note">
