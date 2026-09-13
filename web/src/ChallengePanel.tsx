@@ -29,67 +29,81 @@ const challengeGroups: ChallengeGroup[] = [
   {
     id: 1,
     title: '問題1',
-    subtitle: '研修サイトの管理API',
+    subtitle: '研修サイトの管理APIとFlag',
     challenges: [
       {
-        id: '01', title: '隠されたバックアップを探す',
-        goal: '`robots.txt` を調べ、公開されてはいけない設定ファイルから管理APIとキーを特定してください。',
+        id: '01', title: '公開バックアップを見つける',
+        goal: '`robots.txt` を調べ、公開されてしまったバックアップ設定から管理APIと管理キーを特定してください。',
         commands: ["curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/robots.txt", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/backup/config.json"],
-        hint: '`Disallow` は検索エンジンへのお願いであり、アクセス制御ではありません。',
-        result: '設定JSONに `adminApi` と `adminKey` が表示されれば調査成功です。',
+        hint: '`Disallow` は検索エンジンへのお願いで、アクセス制御ではありません。表示されたJSONの `adminApi` と `adminKey` を確認します。',
+        result: '設定JSONから管理APIのパスと管理キーを確認できれば次へ進めます。',
       },
       {
-        id: '02', title: 'トップページを改ざんする', goal: '漏えいしたキーで管理APIを呼び、見出しと配色を変更してください。',
-        commands: ["curl -X POST http://target:3000/api/admin/banner -H 'Content-Type: application/json' -H 'X-Admin-Key: training-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"headline\":\"演習サイトは改ざんされました\",\"theme\":\"compromised\"}'"],
-        hint: 'JSONを送るときは `Content-Type`、認証値は `X-Admin-Key` ヘッダーに指定します。',
-        result: '左下のサイトが赤くなり、見出しが「演習サイトは改ざんされました」になれば成功です。',
+        id: '02', title: '管理APIで表示を変更する', goal: '漏えいした管理キーを使い、管理APIでTarget 1の見出しとテーマを変更してください。',
+        commands: ["curl -X POST http://target:3000/api/admin/banner -H 'Content-Type: application/json' -H 'X-Admin-Key: training-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"headline\":\"研修サイトは改ざんされました\",\"theme\":\"compromised\"}'"],
+        hint: 'JSONを送るので `Content-Type` を指定し、認証値は `X-Admin-Key` ヘッダーへ入れます。',
+        result: '左下のサイトが赤い警告テーマへ変われば、改ざん条件の一部を満たしています。',
       },
       {
-        id: '03', title: '偽のメンテナンス画面にする', goal: '同じ脆弱なAPIから、サイトをメンテナンス表示へ切り替えてください。',
-        commands: ["curl -X POST http://target:3000/api/admin/banner -H 'Content-Type: application/json' -H 'X-Admin-Key: training-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"headline\":\"システムメンテナンス中\",\"theme\":\"maintenance\"}'"],
-        hint: '攻撃者が管理機能を使えると、偽のお知らせや誘導画面にも悪用できます。',
-        result: '左下のサイトが黄色のメンテナンス表示へ変われば成功です。',
-      },
-      {
-        id: '04', title: '偽の緊急メッセージを掲示する', goal: '漏えいしたキーを使い、トップページへ任意の緊急メッセージを追加してください。',
+        id: '03', title: '警告メッセージを追加する', goal: '同じ管理キーで通知APIを呼び、トップページへ任意の警告メッセージを追加してください。',
         commands: ["curl -X POST http://target:3000/api/admin/notice -H 'Content-Type: application/json' -H 'X-Admin-Key: training-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"notice\":\"直ちにパスワードを変更してください\"}'"],
-        hint: '管理APIで更新できる項目が多いほど、キー漏えい時の被害も広がります。',
-        result: '左下のサイトに赤い緊急メッセージが追加されれば成功です。',
+        hint: '管理APIで更新できる項目が多いほど、キー漏えい時の影響も広がります。',
+        result: 'トップページに赤い警告メッセージが追加されれば成功です。',
       },
       {
-        id: '05', title: '改ざん状態を確認する', goal: 'APIから現在の改ざん状態を取得し、画面とレスポンスが一致するか確認してください。',
-        commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/status"], hint: '見た目だけでなく、APIの状態も証拠として記録します。',
-        result: '`modified` が `true` で、現在のサイト状態がJSONに含まれていれば成功です。',
+        id: '04', title: '攻略状態を確認する', goal: 'APIから現在の状態を取得し、Target 1が改ざん済みになっていることを確認してください。',
+        commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/status"],
+        hint: '見た目だけでなく、APIの `modified` が `true` になっていることも証拠になります。',
+        result: '`modified` が `true` で、更新した `site` 情報が返ればFlag取得条件を満たしています。',
+      },
+      {
+        id: '05', title: 'Flagを取得して回答する', answerId: 'target1',
+        goal: '改ざん条件を満たした後、Target 1からセッション専用Flagを取得し、下の回答欄へ入力してください。',
+        commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/flag"],
+        hint: 'RESETすると攻略状態とFlagは初期化されます。他セッションのFlagはこの回答では使えません。',
+        result: 'Target 1が返した `TBX{target1_...}` を回答欄へ入力し、正解時だけCLEARになります。',
       },
     ],
   },
   {
     id: 2,
     title: '問題2',
-    subtitle: 'オンラインストアの商品管理',
+    subtitle: 'ECサイトのIDOR / Broken Access Control',
     challenges: [
       {
-        id: '01', title: 'ストアの非公開設定を探す', goal: '`robots.txt` を手掛かりに、バックアップされたストア設定を見つけてください。',
-        commands: ["curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/robots.txt", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/backup/store-config.json"],
-        hint: 'バックアップファイルも公開ディレクトリに置けば、URLを知る人から取得できます。',
-        result: '`productApi`、`campaignApi`、`adminKey` が確認できれば成功です。',
+        id: '01', title: 'ブラウザUIからログインする',
+        goal: '左下のTarget 2ブラウザ画面を開き、研修用アカウントで通常ログインしてください。username: `student` / password: `market123`',
+        commands: [],
+        hint: 'Target 2は秘密情報の公開漏えいではありません。最初のログインは左下ブラウザ画面のフォームから行います。',
+        result: 'ログイン後に自分の商品・注文・プロフィールへ進めるダッシュボードが表示されれば成功です。',
       },
       {
-        id: '02', title: '商品情報を書き換える', goal: '漏えいした管理キーを使い、おすすめ商品の名称・価格・在庫数を変更してください。',
-        commands: ["curl -X POST http://target2:3000/api/admin/product -H 'Content-Type: application/json' -H 'X-Admin-Key: store-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"product\":\"特別セール商品\",\"price\":100,\"stock\":999}'"],
-        hint: '価格や在庫の更新APIが適切に保護されていないと、販売情報を任意に変更されます。',
-        result: '左下の商品名が「特別セール商品」、価格が100円、在庫が999になれば成功です。',
+        id: '02', title: '自分のリソースIDを確認する',
+        goal: 'ログイン後の画面やAPIレスポンスから、自分の商品IDや注文IDがURLで使われていることを確認してください。',
+        commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/api/status", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/api/store/products/2001"],
+        hint: '通常の認証は動作していますが、サーバーが対象リソースの所有者まで確認しているかが観察ポイントです。',
+        result: '自分の商品ID `2001` の詳細を確認できれば次へ進めます。',
       },
       {
-        id: '03', title: '偽のキャンペーンを掲載する', goal: '管理APIから、利用者を急がせる偽のキャンペーン告知を掲載してください。',
-        commands: ["curl -X POST http://target2:3000/api/admin/campaign -H 'Content-Type: application/json' -H 'X-Admin-Key: store-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"notice\":\"本日限定・全商品90%OFF\"}'"],
-        hint: '表示内容の改ざんは、詐欺的な誘導やブランド毀損につながります。',
-        result: 'ストア上部に赤いキャンペーン告知が表示されれば成功です。',
+        id: '03', title: '別店舗の商品を読み取る',
+        goal: 'IDを変更し、本来は権限のない別店舗の商品リソースを読み取れることを確認してください。',
+        commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/api/store/products/2002"],
+        hint: 'ブラウザでも `/store/products/2002` へ移動できます。認証済みであっても、そのIDを操作する権限があるとは限りません。',
+        result: '別店舗の商品 `2002` が拒否されず表示されれば、IDORの読み取り不備を確認できています。',
       },
       {
-        id: '04', title: 'ストアの改ざん状態を確認する', goal: '状態APIを取得し、変更後の商品情報をJSONでも確認してください。',
-        commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/api/status"], hint: 'レスポンスの `site` に画面と同じ値があるか比較します。',
-        result: '`service` が `terminalbox-target-2`、`modified` が `true` なら成功です。',
+        id: '04', title: '別店舗の商品を変更する',
+        goal: '別店舗の商品IDに対して更新操作を行い、サーバー側の認可チェック不足を体験してください。',
+        commands: ["curl -X POST http://target2:3000/api/store/products/2002 -H 'Content-Type: application/json' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"price\":1,\"stock\":999,\"name\":\"Broken Access Control Demo\"}'"],
+        hint: '本来は「ログイン済みか」だけでなく「この商品を編集できるユーザーか」をサーバー側で確認する必要があります。',
+        result: '別店舗の商品が更新されれば、Flag取得条件を満たしています。',
+      },
+      {
+        id: '05', title: 'Flagを取得して回答する', answerId: 'target2',
+        goal: 'IDORの変更操作を成功させた後、Target 2からセッション専用Flagを取得し、下の回答欄へ入力してください。',
+        commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/api/flag"],
+        hint: 'FlagはTarget 2側でセッションごとに生成されます。フロントエンドのソースには固定Flagを置いていません。',
+        result: 'Target 2が返した `TBX{target2_...}` を回答欄へ入力し、正解時だけCLEARになります。',
       },
     ],
   },
@@ -283,7 +297,8 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const challenge = group.challenges.find((item) => item.id === selectedId) ?? group.challenges[0];
   const completionId = `${group.id}:${challenge.id}`;
   const completed = completedSet.has(completionId);
-  const groupCompleted = group.challenges.filter((item) => completedSet.has(`${group.id}:${item.id}`)).length;
+  const scoredChallenges = scope === 'targets' ? group.challenges.filter((item) => item.answerId) : group.challenges;
+  const groupCompleted = scoredChallenges.filter((item) => completedSet.has(`${group.id}:${item.id}`)).length;
 
   const loadProgress = useCallback(async () => {
     const response = await fetch('/api/challenges/progress', { credentials: 'include', cache: 'no-store' });
@@ -356,7 +371,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
     <section className="panel tutorial-panel challenge-panel" id="challenge-panel" role="tabpanel" aria-labelledby={scope === 'tools' ? 'tools-tab' : scope === 'web-attacks' ? 'web-attacks-tab' : 'targets-tab'}>
       <div className="panel-heading">
         <h2>{group.subtitle}</h2>
-        <span className="ai-badge">{groupCompleted}/{group.challenges.length} CLEAR</span>
+        <span className="ai-badge">{groupCompleted}/{scoredChallenges.length || group.challenges.length} CLEAR</span>
       </div>
       {scope === 'targets' && <div className="challenge-target-tabs" role="tablist" aria-label="ターゲット問題を選択">
         {availableGroups.map((item) => (
@@ -392,10 +407,14 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
               {feedback && <p className={completed ? 'correct' : 'incorrect'} role="status">{feedback}</p>}
             </div>
           ) : (
-            <div className="lesson-actions">
-              <button type="button" disabled={completed} onClick={() => void setCompletion(completionId, true)}>クリアにする</button>
-              <button type="button" className="secondary" disabled={!completed} onClick={clearChallenge}>クリア解除</button>
-            </div>
+            scope === 'targets' ? (
+              <div className="lesson-card lesson-check"><span>FLAG CLEAR</span><p>この手順は確認用です。Target問題はFlagを取得して回答したときだけCLEARになります。</p></div>
+            ) : (
+              <div className="lesson-actions">
+                <button type="button" disabled={completed} onClick={() => void setCompletion(completionId, true)}>クリアにする</button>
+                <button type="button" className="secondary" disabled={!completed} onClick={clearChallenge}>クリア解除</button>
+              </div>
+            )
           )}
           <div className="command-stack" aria-label="問題で使うコマンド">
             {challenge.commands.map((command) => (

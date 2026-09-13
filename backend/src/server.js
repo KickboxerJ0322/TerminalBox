@@ -115,6 +115,31 @@ function getAgentOptions(requestBody) {
   return { provider, ...getGeminiOptions(requestBody) };
 }
 
+async function requestTargetFlagCheck(targetIndex, answer, sessionId) {
+  const target = config.targetUrls[targetIndex];
+  if (!target) {
+    return { status: 404, body: { error: 'Target route not found' } };
+  }
+  const response = await fetch(`${target}/api/flag/check`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-terminalbox-session': sessionId },
+    body: JSON.stringify({ answer }),
+    signal: AbortSignal.timeout(5_000),
+  });
+  const body = await response.json().catch(() => ({}));
+  return { status: response.status, body };
+}
+
+async function checkDynamicChallengeAnswer(id, answer, session) {
+  const targetIndex = id === 'target1' ? 0 : id === 'target2' ? 1 : -1;
+  if (targetIndex < 0) return null;
+  if (isWebService) {
+    const body = await labProxy.requestJson('/internal/challenges/check-target-flag', { id, answer }, session.sessionId);
+    return { status: 200, body };
+  }
+  return requestTargetFlagCheck(targetIndex, answer, session.sessionId);
+}
+
 startSessionCleanup(sessionManager, {
   onExpire: async (session) => {
     approvalStore.clearSession?.(session.sessionId);
@@ -435,10 +460,29 @@ app.post('/api/challenges/progress', async (request, response) => {
   }
 });
 
+app.post('/internal/challenges/check-target-flag', async (request, response) => {
+  if (isWebService) {
+    response.status(404).json({ error: 'Not found' });
+    return;
+  }
+  try {
+    const session = await terminalBoxSession(request, response, { allowHeader: isLabService });
+    const dynamicResult = await checkDynamicChallengeAnswer(request.body?.id, request.body?.answer, session);
+    if (!dynamicResult) {
+      response.status(404).json({ error: 'Unknown challenge' });
+      return;
+    }
+    response.status(dynamicResult.status).json(dynamicResult.body);
+  } catch (error) {
+    response.status(error.status ?? 500).json({ error: error.message });
+  }
+});
+
 app.post('/api/challenges/check', async (request, response) => {
   try {
     const session = await terminalBoxSession(request, response);
-    const result = checkChallengeAnswer(request.body?.id, request.body?.answer);
+    const result = await checkDynamicChallengeAnswer(request.body?.id, request.body?.answer, session)
+      ?? checkChallengeAnswer(request.body?.id, request.body?.answer);
     if (result.body.correct && isChallengeCompletionId(request.body?.completionId)) {
       setChallengeCompletion(session, request.body.completionId, true);
       result.body.completedIds = [...session.completedChallengeIds];

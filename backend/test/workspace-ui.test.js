@@ -33,8 +33,8 @@ test('Kali noVNC can connect and render inside the workspace frame', async () =>
 test('online AI and security tool wording are the defaults', async () => {
   const source = await readWebSource('App.tsx');
 
-  assert.match(source, /useState<AssistantTab>\('online'\)/);
-  assert.match(source, /setAssistantTab\('online'\)/);
+  assert.match(source, /provider="gemini"/);
+  assert.doesNotMatch(source, /assistant-local/);
   assert.match(source, />\s*セキュリティツール\s*</);
 });
 
@@ -50,20 +50,18 @@ test('learning tabs put targets before security tools', async () => {
   assert.match(styles, /\.learning-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(4,/);
 });
 
-test('AI Agent tabs are online and local with online selected by default', async () => {
+test('AI Agent is online-only without local tabs', async () => {
   const [app, agent, styles] = await Promise.all([
     readWebSource('App.tsx'),
     readWebSource('AgentPanel.tsx'),
     readWebSource('styles.css'),
   ]);
-  assert.ok(app.indexOf('id="assistant-online-tab"') < app.indexOf('id="assistant-local-tab"'));
-  assert.doesNotMatch(app, /id="assistant-agent-tab"/);
-  assert.match(app, /useState<AssistantTab>\('online'\)/);
-  assert.match(app, />\s*オンライン\s*</);
-  assert.match(app, />\s*ローカル\s*</);
+  assert.doesNotMatch(app, /id="assistant-local-tab"/);
+  assert.doesNotMatch(app, /useState<AssistantTab>/);
+  assert.doesNotMatch(app, />\s*ローカル\s*</);
   assert.match(agent, /fetch\(allow \? '\/api\/agent\/approve' : '\/api\/agent\/cancel'/);
   assert.match(agent, /provider: 'gemini' \| 'local'/);
-  assert.match(styles, /\.assistant-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(2,/);
+  assert.doesNotMatch(styles, /\.assistant-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(2,/);
 });
 
 test('Live Training Target has iframe back navigation', async () => {
@@ -180,18 +178,27 @@ test('target mutation commands carry the active session header', async () => {
 test('desktop workspace uses a compact four-pane viewport grid', async () => {
   const styles = await readWebSource('styles.css');
   assert.match(styles, /html, body, #root \{[^}]*overflow: hidden/);
-  assert.match(styles, /\.workspace-main \{[^}]*height: calc\(100vh - 54px\)/);
+  assert.match(styles, /\.workspace-main \{[^}]*height: calc\(100vh - 40px\)/);
   assert.match(styles, /\.workspace-grid \{[^}]*height: 100%/);
-  assert.match(styles, /\.workspace-column \{[^}]*grid-template-rows: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
+  assert.match(styles, /\.workspace-column \{[^}]*grid-template-rows: minmax\(130px, var\(--workspace-top-fr/);
+  assert.match(styles, /\.pane-resizer/);
   assert.match(styles, /@media \(max-width: 1100px\) \{[\s\S]*html, body, #root \{ height: auto; overflow: auto; \}/);
 });
 
-test('target 2 and 3 keep the original four-step challenges', async () => {
+test('target 1 and 2 use dynamic flag answer challenges', async () => {
   const source = await readWebSource('ChallengePanel.tsx');
+  const target1Group = source.slice(source.indexOf('id: 1,'), source.indexOf('id: 2,'));
   const target2Group = source.slice(source.indexOf('id: 2,'), source.indexOf('id: 3,'));
   const target3Group = source.slice(source.indexOf('id: 3,'), source.indexOf('id: 4,'));
-  assert.equal((target2Group.match(/id: '0/g) ?? []).length, 4);
+  assert.equal((target1Group.match(/id: '0/g) ?? []).length, 5);
+  assert.equal((target2Group.match(/id: '0/g) ?? []).length, 5);
   assert.equal((target3Group.match(/id: '0/g) ?? []).length, 4);
+  assert.match(target1Group, /answerId: 'target1'/);
+  assert.match(target2Group, /answerId: 'target2'/);
+  assert.match(target2Group, /ブラウザUIからログインする/);
+  assert.match(target2Group, /IDOR \/ Broken Access Control/);
+  assert.doesNotMatch(target2Group, /store-admin-2026/);
+  assert.doesNotMatch(target2Group, /store-config\.json/);
   assert.doesNotMatch(source, /title: 'HTTP Request Basics'/);
   assert.doesNotMatch(source, /title: 'Multi-step Challenge'/);
 });

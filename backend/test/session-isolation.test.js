@@ -71,6 +71,11 @@ test('Session A target changes are not visible to Session B and reset A leaves B
     assert.equal(statusA.site.headline, 'A only');
     assert.equal(statusB.site.headline, 'TerminalBox 演習サイト');
 
+    const flagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
+    const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
+    assert.match(flagA.flag, /^TBX\{target1_[0-9a-f]{12}\}$/);
+    assert.equal(lockedFlagB.status, 403);
+
     const updateB = await fetch(`${baseUrl}/api/admin/notice`, {
       method: 'POST',
       headers: {
@@ -87,8 +92,71 @@ test('Session A target changes are not visible to Session B and reset A leaves B
 
     const afterResetA = await fetch(`${baseUrl}/api/status`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
     const afterResetB = await fetch(`${baseUrl}/api/status`, { headers: { 'x-terminalbox-session': SESSION_B } }).then((response) => response.json());
+    const afterResetFlagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } });
     assert.equal(afterResetA.modified, false);
+    assert.equal(afterResetFlagA.status, 403);
     assert.equal(afterResetB.site.notice, 'B notice');
+  } finally {
+    await stopProcess(child);
+  }
+});
+
+test('Target 2 IDOR flag is session-scoped and locked until cross-store update', async () => {
+  const port = await freePort();
+  const child = spawn(process.execPath, ['target/src/server.js'], {
+    cwd: new URL('../..', import.meta.url),
+    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), TARGET_PROFILE: '2' },
+    stdio: 'ignore',
+  });
+  try {
+    const baseUrl = `http://127.0.0.1:${port}`;
+    await waitForStatus(`${baseUrl}/api/status`, child);
+
+    const lockedFlag = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } });
+    const unauthenticatedProduct = await fetch(`${baseUrl}/api/store/products/2001`, { headers: { 'x-terminalbox-session': SESSION_A } });
+    assert.equal(lockedFlag.status, 403);
+    assert.equal(unauthenticatedProduct.status, 401);
+
+    const login = await fetch(`${baseUrl}/login`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/json', 'x-terminalbox-session': SESSION_A },
+      body: JSON.stringify({ username: 'student', password: 'market123' }),
+    });
+    assert.equal(login.status, 303);
+
+    const ownProduct = await fetch(`${baseUrl}/api/store/products/2001`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
+    const partnerProduct = await fetch(`${baseUrl}/api/store/products/2002`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
+    assert.equal(ownProduct.product.owner, 'student-store');
+    assert.equal(partnerProduct.product.owner, 'partner-store');
+
+    const updatePartnerProduct = await fetch(`${baseUrl}/api/store/products/2002`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-terminalbox-session': SESSION_A },
+      body: JSON.stringify({ name: 'Broken Access Control Demo', price: 1, stock: 999 }),
+    }).then((response) => response.json());
+    assert.equal(updatePartnerProduct.brokenAccessControl, true);
+    assert.equal(updatePartnerProduct.solved, true);
+
+    const flagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
+    assert.match(flagA.flag, /^TBX\{target2_[0-9a-f]{12}\}$/);
+
+    const flagCheck = await fetch(`${baseUrl}/api/flag/check`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-terminalbox-session': SESSION_A },
+      body: JSON.stringify({ answer: flagA.flag }),
+    }).then((response) => response.json());
+    assert.equal(flagCheck.correct, true);
+
+    const statusB = await fetch(`${baseUrl}/api/status`, { headers: { 'x-terminalbox-session': SESSION_B } }).then((response) => response.json());
+    const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
+    assert.equal(statusB.modified, false);
+    assert.equal(lockedFlagB.status, 403);
+
+    const resetA = await fetch(`${baseUrl}/api/lab/reset`, { method: 'POST', headers: { 'x-terminalbox-session': SESSION_A } });
+    assert.equal(resetA.status, 200);
+    const afterResetFlagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } });
+    assert.equal(afterResetFlagA.status, 403);
   } finally {
     await stopProcess(child);
   }
