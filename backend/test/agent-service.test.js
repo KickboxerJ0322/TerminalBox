@@ -60,11 +60,16 @@ test('denied command has no approval and is never executed', async () => {
   assert.equal('approvalId' in result, false);
 });
 
-test('agent JSON parser tolerates code fences but rejects malformed output', () => {
+test('agent JSON parser tolerates code fences and plain text answers', () => {
   assert.deepEqual(parseAgentAction('```json\n{"action":"final_answer","message":"完了"}\n```'), {
     action: 'final_answer', message: '完了',
   });
-  assert.throws(() => parseAgentAction('not json'), /invalid JSON/);
+  assert.deepEqual(parseAgentAction('結果は /home/student です。'), {
+    action: 'final_answer', message: '結果は /home/student です。',
+  });
+  assert.deepEqual(parseAgentAction('確認しました。\n{"action":"final_answer","message":"完了"}'), {
+    action: 'final_answer', message: '完了',
+  });
   assert.throws(() => parseAgentAction('{}'), /unsupported action/);
 });
 

@@ -73,7 +73,7 @@ main { width: min(1480px, calc(100% - clamp(30px, 7vw, 104px))); margin: 0 auto;
 .side-workspace { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .workspace-tabs { min-height: 42px; padding: 5px; border: 1px solid var(--border); background: #090d0b; border-radius: 5px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
 .assistant-workspace > .workspace-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.learning-workspace > .workspace-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.learning-workspace > .workspace-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .kali-workspace-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .workspace-tabs button { border: 1px solid transparent; border-radius: 3px; color: var(--muted); background: transparent; font-size: 10px; cursor: pointer; }
 .kali-workspace-tabs button { display: flex; align-items: center; justify-content: center; gap: 6px; }

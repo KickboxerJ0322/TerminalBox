@@ -39,6 +39,7 @@ function executeLocal(plan, command, timeoutMs, session) {
       gid: 1000,
       env: {
         HOME: homeDirectory, XDG_CONFIG_HOME: `${homeDirectory}/.config`, XDG_DATA_HOME: `${homeDirectory}/.local/share`,
+        TERMINALBOX_SESSION_ID: session?.sessionId ?? '',
         USER: 'student', LOGNAME: 'student', LANG: 'ja_JP.UTF-8', PAGER: 'cat',
         GIT_PAGER: 'cat', SYSTEMD_PAGER: 'cat', GIT_CONFIG_NOSYSTEM: '1',
         GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0',
@@ -101,6 +102,7 @@ async function executeDocker(plan, command, config, timeoutMs, session) {
     Tty: true,
     Env: [
       `HOME=${homeDirectory}`, `XDG_CONFIG_HOME=${homeDirectory}/.config`, `XDG_DATA_HOME=${homeDirectory}/.local/share`,
+      `TERMINALBOX_SESSION_ID=${session?.sessionId ?? ''}`,
       'USER=student', 'LOGNAME=student', 'LANG=ja_JP.UTF-8', 'PAGER=cat', 'GIT_PAGER=cat',
       'SYSTEMD_PAGER=cat', 'GIT_CONFIG_NOSYSTEM=1', 'GIT_CONFIG_GLOBAL=/dev/null',
       'GIT_OPTIONAL_LOCKS=0', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',

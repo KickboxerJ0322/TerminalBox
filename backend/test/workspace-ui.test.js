@@ -39,11 +39,15 @@ test('online AI and security tool wording are the defaults', async () => {
 });
 
 test('learning tabs put targets before security tools', async () => {
-  const source = await readWebSource('App.tsx');
-  assert.ok(source.indexOf('id="operations-tab"') < source.indexOf('id="tutorial-tab"'));
+  const [source, styles] = await Promise.all([
+    readWebSource('App.tsx'),
+    readWebSource('styles.css'),
+  ]);
   assert.ok(source.indexOf('id="tutorial-tab"') < source.indexOf('id="targets-tab"'));
   assert.ok(source.indexOf('id="targets-tab"') < source.indexOf('id="tools-tab"'));
   assert.ok(source.indexOf('id="tools-tab"') < source.indexOf('id="web-attacks-tab"'));
+  assert.doesNotMatch(source, /id="operations-tab"/);
+  assert.match(styles, /\.learning-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(4,/);
 });
 
 test('AI Agent tabs are online and local with online selected by default', async () => {
@@ -147,6 +151,28 @@ test('tutorial includes a bounded ping reply exercise', async () => {
   assert.match(source, /ping -c 4 target/);
 });
 
+test('tutorial includes the former basic operations between lessons 06 and 17', async () => {
+  const source = await readWebSource('TutorialPanel.tsx');
+  assert.ok(source.indexOf("id: '06'") < source.indexOf("id: '07'"));
+  assert.ok(source.indexOf("id: '07'") < source.indexOf("title: 'ファイルを新規作成する'"));
+  assert.ok(source.indexOf("title: '練習ファイルを片付ける'") < source.indexOf("id: '17'"));
+  assert.ok(source.indexOf("id: '17'") < source.indexOf("title: 'ネットワークを確認する'"));
+  assert.match(source, /id: '21'/);
+});
+
+test('target mutation commands carry the active session header', async () => {
+  const [challenge, tutorial, terminal, executor] = await Promise.all([
+    readWebSource('ChallengePanel.tsx'),
+    readWebSource('TutorialPanel.tsx'),
+    readFile(new URL('../src/terminal.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/agent/command-executor.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(challenge, /X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID/);
+  assert.match(tutorial, /X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID/);
+  assert.match(terminal, /TERMINALBOX_SESSION_ID: session\.sessionId/);
+  assert.match(executor, /TERMINALBOX_SESSION_ID: session\?\.sessionId/);
+});
+
 test('target 2 and 3 keep the original four-step challenges', async () => {
   const source = await readWebSource('ChallengePanel.tsx');
   const target2Group = source.slice(source.indexOf('id: 2,'), source.indexOf('id: 3,'));
@@ -158,7 +184,6 @@ test('target 2 and 3 keep the original four-step challenges', async () => {
 });
 test('every learning category starts with its hint collapsed', async () => {
   const sources = await Promise.all([
-    readWebSource('BasicOperationsPanel.tsx'),
     readWebSource('TutorialPanel.tsx'),
     readWebSource('ChallengePanel.tsx'),
   ]);

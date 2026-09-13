@@ -164,11 +164,11 @@ code{{padding:3px 7px;border:1px solid rgba(155,124,255,.3);border-radius:4px;co
 
 MARKET_PREFIX = "/tool-target/web-attacks"
 MARKET_PUBLIC_FILES = {
-    "manual.txt": "TBX Market 縺泌茜逕ｨ繧ｬ繧､繝噂n蝠・刀雉ｼ蜈･縺ｨ繝励Ο繝輔ぅ繝ｼ繝ｫ邂｡逅・・謇矩・〒縺吶・n",
-    "shipping.txt": "騾壼ｸｸ驟埼√・3蝟ｶ讌ｭ譌･莉･蜀・〒縺吶・n",
+    "manual.txt": "TBX Market 利用ガイド\n商品購入とプロフィール管理の手順です。\n",
+    "shipping.txt": "通常配送は3営業日以内です。\n",
 }
 MARKET_PRIVATE_FILES = {
-    "private/training-note.txt": f"遉ｾ蜀・比ｿｮ繝｡繝｢\n{FLAGS['web_traversal']}\n",
+    "private/training-note.txt": f"社内研修メモ\n{FLAGS['web_traversal']}\n",
 }
 
 
@@ -194,7 +194,7 @@ main{{width:min(980px,calc(100% - 28px));margin:32px auto 70px}}h1{{margin:0 0 8
 form{{display:grid;gap:13px;max-width:620px}}label{{display:grid;gap:6px;color:var(--muted);font-size:12px}}input,textarea,button{{width:100%;padding:11px 12px;border:1px solid #c9d1d6;border-radius:5px;background:#fff;font:inherit}}textarea{{min-height:100px;resize:vertical}}button{{border-color:var(--brand);color:#fff;background:var(--brand);font-weight:700;cursor:pointer}}button:hover{{background:var(--brand2)}}
 code,pre{{font-family:Consolas,monospace}}code{{padding:2px 5px;color:#70451a;background:#fff4df;border-radius:3px}}pre{{overflow:auto;padding:14px;color:#eafff9;background:#142822;border-radius:5px}}.notice{{padding:13px;border-left:4px solid var(--brand);background:var(--soft)}}.danger{{border-left-color:var(--warn);background:#fff0ef;color:#75231f}}.comment{{padding:13px 0;border-top:1px solid var(--line)}}.meta{{color:var(--muted);font-size:12px}}table{{width:100%;border-collapse:collapse;background:#fff}}th,td{{padding:11px;border:1px solid var(--line);text-align:left}}
 @media(max-width:620px){{.top{{align-items:flex-start;flex-direction:column}}nav a{{padding:10px 9px;font-size:10px}}main{{margin-top:22px}}}}
-</style></head><body><header><div class="top"><div class="brand">TBX MARKET</div><div class="tag">遉ｾ蜀・比ｿｮ逕ｨ繧ｷ繝ｧ繝・ヴ繝ｳ繧ｰ繝昴・繧ｿ繝ｫ</div></div><nav><div class="links">{nav}</div></nav></header>
+</style></head><body><header><div class="top"><div class="brand">TBX MARKET</div><div class="tag">社内研修用ショッピングポータル</div></div><nav><div class="links">{nav}</div></nav></header>
 <main><h1>{html.escape(title)}</h1>{body}</main></body></html>"""
 
 
@@ -219,7 +219,7 @@ def render_market_comment(value):
     for tag in ("b", "strong", "em", "i", "code"):
         safe = safe.replace(f"&lt;{tag}&gt;", f"<{tag}>").replace(f"&lt;/{tag}&gt;", f"</{tag}>")
     training_xss = bool(re.search(r"<script[^>]*>\s*training\(\)\s*</script>|onerror\s*=\s*['\"]?training\(\)", value, re.I))
-    flag = f'<div class="notice danger">螳牙・縺ｪ讓｡謫ｬXSS繧呈､懃衍縺励∪縺励◆: <code>{FLAGS["web_xss"]}</code></div>' if training_xss else ""
+    flag = f'<div class="notice danger">安全な模擬XSSを検出しました: <code>{FLAGS["web_xss"]}</code></div>' if training_xss else ""
     return safe + flag
 
 
@@ -293,7 +293,7 @@ class ChallengeHandler(BaseHTTPRequestHandler):
         if path == "/api/status":
             self.send_json(200, {"status": "ok", "service": "terminalbox-challenge-target"})
         elif path == "/":
-            self.send_bytes(200, page("TerminalBox Security Tool Lab", "<div class=\"card\"><p>髫秘屬縺輔ｌ縺滓ｼ皮ｿ堤畑繧ｿ繝ｼ繧ｲ繝・ヨ縺ｧ縺吶・/p><p>險ｱ蜿ｯ縺輔ｌ縺鬱erminalBox蜀・°繧峨・縺ｿ菴ｿ逕ｨ縺励※縺上□縺輔＞縲・/p></div>"))
+            self.send_bytes(200, page("TerminalBox Security Tool Lab", "<div class=\"card\"><p>隔離された演習用ターゲットです。</p><p>許可された TerminalBox 内からのみ使用してください。</p></div>"))
         elif path == "/robots.txt":
             self.send_bytes(200, "User-agent: *\nDisallow: /internal-backup/\nDisallow: /server-status\n", "text/plain; charset=utf-8")
         elif path == "/internal-backup/flag.txt":
@@ -303,13 +303,13 @@ class ChallengeHandler(BaseHTTPRequestHandler):
         elif path == "/server-status":
             self.send_bytes(200, f"Training server status: enabled\nFlag: {FLAGS['nikto']}\n", "text/plain; charset=utf-8")
         elif path == "/burp/":
-            body = """<div class=\"card\"><p>遉ｾ蜀・比ｿｮ縺ｮ蜑ｲ蠑慕筏隲九〒縺吶る∽ｿ｡繝ｪ繧ｯ繧ｨ繧ｹ繝医ｒBurp Proxy縺ｧ謐墓拷縺励・code>discount</code>繧定ｪｿ譟ｻ縺励※縺上□縺輔＞縲・/p>
-<form method=\"post\" action=\"/tool-target/burp/apply\"><label>遉ｾ蜩｡逡ｪ蜿ｷ<input name=\"employee\" value=\"student\"></label>
-<input type=\"hidden\" name=\"discount\" value=\"10\"><button type=\"submit\">10%蜑ｲ蠑輔ｒ逕ｳ隲・/button></form></div>"""
+            body = """<div class=\"card\"><p>社内研修の割引申請です。送信リクエストを Burp Proxy で捕捉し、<code>discount</code> を調査してください。</p>
+<form method=\"post\" action=\"/tool-target/burp/apply\"><label>社員番号<input name=\"employee\" value=\"student\"></label>
+<input type=\"hidden\" name=\"discount\" value=\"10\"><button type=\"submit\">10%割引を申請</button></form></div>"""
             self.send_bytes(200, page("Burp Suite training", body))
         elif path == "/sql/":
-            body = """<div class=\"card\"><form method=\"get\" action=\"/tool-target/sql/search\"><label>蝠・刀讀懃ｴ｢<input name=\"q\" value=\"apple\"></label><button>讀懃ｴ｢</button></form></div>"""
-            self.send_bytes(200, page("蝠・刀讀懃ｴ｢API", body))
+            body = """<div class=\"card\"><form method=\"get\" action=\"/tool-target/sql/search\"><label>商品検索<input name=\"q\" value=\"apple\"></label><button>検索</button></form></div>"""
+            self.send_bytes(200, page("商品検索API", body))
         elif path == "/sql/search":
             query = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
             sql = f"SELECT id, name, description FROM products WHERE name LIKE '%{query}%'"
@@ -330,11 +330,11 @@ class ChallengeHandler(BaseHTTPRequestHandler):
             else:
                 self.send_json(403, {"error": "scanner header required"})
         elif path in ("/web-attacks", "/web-attacks/"):
-            body = """<p class="lead">1縺､縺ｮ繧ｵ繧､繝医↓蜷ｫ縺ｾ繧後ｋ隍・焚縺ｮWeb讖溯・繧定ｪｿ縺ｹ縲？TTP繝ｪ繧ｯ繧ｨ繧ｹ繝医→繧｢繧ｯ繧ｻ繧ｹ蛻ｶ蠕｡縺ｮ蝓ｺ譛ｬ繧貞ｭｦ縺ｳ縺ｾ縺吶・/p>
-<div class="card"><div class="grid"><div><h2>縺翫☆縺吶ａ蝠・刀</h2><p>蝠・刀雉ｼ蜈･譎ゅ・繝ｪ繧ｯ繧ｨ繧ｹ繝医ｒ遒ｺ隱阪＠縺ｾ縺吶・/p><a href="/tool-target/web-attacks/products">蝠・刀繧定ｦ九ｋ</a></div>
-<div><h2>繝槭う繝励Ο繝輔ぅ繝ｼ繝ｫ</h2><p>繝ｦ繝ｼ繧ｶ繝ｼ逡ｪ蜿ｷ縺ｨ陦ｨ遉ｺ蜀・ｮｹ繧堤｢ｺ隱阪＠縺ｾ縺吶・/p><a href="/tool-target/web-attacks/profile?id=1001">繝励Ο繝輔ぅ繝ｼ繝ｫ繧定ｦ九ｋ</a></div>
-<div><h2>縺雁ｮ｢讒倥・螢ｰ</h2><p>菫晏ｭ倥＆繧後◆蜈･蜉帙′縺ｩ縺ｮ繧医≧縺ｫ陦ｨ遉ｺ縺輔ｌ繧九°遒ｺ隱阪＠縺ｾ縺吶・/p><a href="/tool-target/web-attacks/comments">繧ｳ繝｡繝ｳ繝医ｒ隕九ｋ</a></div></div></div>"""
-            self.send_bytes(200, market_page("繝帙・繝", body))
+            body = """<p class="lead">1つのサイトに含まれる複数のWeb機能を調べ、HTTPリクエストとアクセス制御の基本を学びます。</p>
+<div class="card"><div class="grid"><div><h2>おすすめ商品</h2><p>商品購入時のリクエストを確認します。</p><a href="/tool-target/web-attacks/products">商品を見る</a></div>
+<div><h2>マイプロフィール</h2><p>ユーザー番号と表示内容を確認します。</p><a href="/tool-target/web-attacks/profile?id=1001">プロフィールを見る</a></div>
+<div><h2>お客様の声</h2><p>保存された入力がどのように表示されるか確認します。</p><a href="/tool-target/web-attacks/comments">コメントを見る</a></div></div></div>"""
+            self.send_bytes(200, market_page("ホーム", body))
         elif path == "/web-attacks/products":
             with db_lock:
                 rows = database.execute("SELECT id, name, description, price FROM market_products ORDER BY id").fetchall()
@@ -342,9 +342,9 @@ class ChallengeHandler(BaseHTTPRequestHandler):
                 f'<div class="card product"><strong>{html.escape(name)}</strong><p>{html.escape(description)}</p><div class="price">ﾂ･{price:,}</div></div>'
                 for _id, name, description, price in rows
             )
-            buy_form = f"""<div class="card"><h2>遐比ｿｮ蝠・刀繧定ｳｼ蜈･</h2><p>騾壼ｸｸ逕ｻ髱｢縺ｯ10%蜑ｲ蠑輔□縺代ｒ騾∽ｿ｡縺励∪縺吶る∽ｿ｡縺輔ｌ繧稀TTP繝代Λ繝｡繝ｼ繧ｿ繧定ｦｳ蟇溘＠縺ｦ縺上□縺輔＞縲・/p>
-<form method="post" action="{MARKET_PREFIX}/buy"><input type="hidden" name="product" value="1"><input type="hidden" name="discount" value="10"><button>10%蜑ｲ蠑輔〒雉ｼ蜈･</button></form></div>"""
-            self.send_bytes(200, market_page("蝠・刀荳隕ｧ", f'<div class="grid">{cards}</div>{buy_form}'))
+            buy_form = f"""<div class="card"><h2>研修商品を購入</h2><p>通常画面は10%割引だけを送信します。送信されるHTTPパラメーターを観察してください。</p>
+<form method="post" action="{MARKET_PREFIX}/buy"><input type="hidden" name="product" value="1"><input type="hidden" name="discount" value="10"><button>10%割引で購入</button></form></div>"""
+            self.send_bytes(200, market_page("商品一覧", f'<div class="grid">{cards}</div>{buy_form}'))
         elif path == "/web-attacks/profile":
             user_id = urllib.parse.parse_qs(parsed.query).get("id", ["1001"])[0]
             profiles = {
@@ -354,12 +354,12 @@ class ChallengeHandler(BaseHTTPRequestHandler):
             }
             profile = profiles.get(user_id)
             if not profile:
-                self.send_bytes(404, market_page("繝励Ο繝輔ぅ繝ｼ繝ｫ", '<div class="card danger">繝ｦ繝ｼ繧ｶ繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縲・/div>'))
+                self.send_bytes(404, market_page("プロフィール", '<div class="card danger">ユーザーが見つかりません。</div>'))
             else:
                 name, email, role, flag = profile
-                flag_html = f'<p>遐比ｿｮ繝｡繝｢: <code>{flag}</code></p>' if flag else ""
-                body = f'<p class="lead">陦ｨ遉ｺ荳ｭ縺ｮ繝ｦ繝ｼ繧ｶ繝ｼID: <code>{html.escape(user_id)}</code></p><div class="card"><h2>{html.escape(name)}</h2><p>{html.escape(email)}</p><p>讓ｩ髯・ {html.escape(role)}</p>{flag_html}</div>'
-                self.send_bytes(200, market_page("繝励Ο繝輔ぅ繝ｼ繝ｫ", body))
+                flag_html = f'<p>研修メモ: <code>{flag}</code></p>' if flag else ""
+                body = f'<p class="lead">表示中のユーザーID: <code>{html.escape(user_id)}</code></p><div class="card"><h2>{html.escape(name)}</h2><p>{html.escape(email)}</p><p>権限: {html.escape(role)}</p>{flag_html}</div>'
+                self.send_bytes(200, market_page("プロフィール", body))
         elif path == "/web-attacks/search":
             query = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
             sql = f"SELECT id, name, description FROM market_products WHERE name LIKE '%{query}%'"
@@ -371,15 +371,15 @@ class ChallengeHandler(BaseHTTPRequestHandler):
                 if "application/json" in self.headers.get("Accept", "") or self.headers.get("User-Agent", "").startswith("curl/"):
                     self.send_json(200, {"query": query, "results": rows})
                 else:
-                    result_html = "".join(f'<div class="card"><pre>{html.escape(json.dumps(row, ensure_ascii=False))}</pre></div>' for row in rows) or '<div class="card">隧ｲ蠖灘膚蜩√・縺ゅｊ縺ｾ縺帙ｓ縲・/div>'
-                    self.send_bytes(200, market_page("蝠・刀讀懃ｴ｢", f'<form method="get" action="{MARKET_PREFIX}/search"><label>繧ｭ繝ｼ繝ｯ繝ｼ繝・input name="q" value="{html.escape(query)}"></label><button>讀懃ｴ｢</button></form>{result_html}'))
+                    result_html = "".join(f'<div class="card"><pre>{html.escape(json.dumps(row, ensure_ascii=False))}</pre></div>' for row in rows) or '<div class="card">該当商品はありません。</div>'
+                    self.send_bytes(200, market_page("商品検索", f'<form method="get" action="{MARKET_PREFIX}/search"><label>キーワード<input name="q" value="{html.escape(query)}"></label><button>検索</button></form>{result_html}'))
             except sqlite3.Error as error:
                 self.send_json(500, {"error": f"SQLite error: {error}"})
         elif path == "/web-attacks/comments":
             with db_lock:
                 rows = database.execute("SELECT author, body FROM market_comments WHERE session_id = ? ORDER BY id", (session_id,)).fetchall()
             comments = "".join(f'<div class="comment"><div class="meta">{html.escape(author)}</div><p>{render_market_comment(comment)}</p></div>' for author, comment in rows)
-            form = f"""<div class="card"><h2>繧ｳ繝｡繝ｳ繝域兜遞ｿ</h2><form method="post" action="{MARKET_PREFIX}/comments"><label>縺雁錐蜑・input name="author" value="student"></label><label>繧ｳ繝｡繝ｳ繝・textarea name="comment"></textarea></label><button>謚慕ｨｿ縺吶ｋ</button></form></div>"""
+            form = f"""<div class="card"><h2>コメント投稿</h2><form method="post" action="{MARKET_PREFIX}/comments"><label>お名前<input name="author" value="student"></label><label>コメント<textarea name="comment"></textarea></label><button>投稿する</button></form></div>"""
             self.send_bytes(200, market_page("COMMENTS", f'<div class="card">{comments}</div>{form}'))
         elif path == "/web-attacks/files":
             name = urllib.parse.parse_qs(parsed.query).get("name", ["manual.txt"])[0]
@@ -393,13 +393,13 @@ class ChallengeHandler(BaseHTTPRequestHandler):
         elif path == "/web-attacks/upload":
             with db_lock:
                 uploads = database.execute("SELECT filename, content_type, size FROM market_uploads WHERE session_id = ? ORDER BY id DESC", (session_id,)).fetchall()
-            listing = "".join(f'<li>{html.escape(name)} ({html.escape(kind)}, {size} bytes)</li>' for name, kind, size in uploads) or "<li>縺ｾ縺繧｢繝・・繝ｭ繝ｼ繝峨・縺ゅｊ縺ｾ縺帙ｓ縲・/li>"
-            body = f"""<p class="lead">繝励Ο繝輔ぅ繝ｼ繝ｫ逕ｻ蜒上ｒ逋ｻ骭ｲ縺励∪縺吶ゅヵ繧｡繧､繝ｫ縺ｯ繝｡繝｢繝ｪ蜀・・貍皮ｿ奪B縺ｫ繝｡繧ｿ繝・・繧ｿ縺縺台ｿ晏ｭ倥＆繧後∝ｮ溯｡後＆繧後∪縺帙ｓ縲・/p><div class="card"><form method="post" action="{MARKET_PREFIX}/upload" enctype="multipart/form-data"><label>逕ｻ蜒上ヵ繧｡繧､繝ｫ<input type="file" name="file"></label><button>繧｢繝・・繝ｭ繝ｼ繝・/button></form></div><div class="card"><h2>繧｢繝・・繝ｭ繝ｼ繝牙ｱ･豁ｴ</h2><ul>{listing}</ul></div>"""
+            listing = "".join(f'<li>{html.escape(name)} ({html.escape(kind)}, {size} bytes)</li>' for name, kind, size in uploads) or "<li>まだアップロードはありません。</li>"
+            body = f"""<p class="lead">プロフィール画像を登録します。ファイルはメモリ内の演習DBにメタデータだけ保存され、実行されません。</p><div class="card"><form method="post" action="{MARKET_PREFIX}/upload" enctype="multipart/form-data"><label>画像ファイル<input type="file" name="file"></label><button>アップロード</button></form></div><div class="card"><h2>アップロード履歴</h2><ul>{listing}</ul></div>"""
             self.send_bytes(200, market_page("UPLOAD", body))
         elif path == "/web-attacks/preview":
             url = urllib.parse.parse_qs(parsed.query).get("url", [""])[0]
             if not url:
-                body = f'<p class="lead">蜈･蜉帙＠縺欟RL繧偵し繝ｼ繝舌・蛛ｴ縺ｧ蜿門ｾ励☆繧九・繝ｬ繝薙Η繝ｼ讖溯・縺ｧ縺吶ゅ％縺ｮ貍皮ｿ偵〒縺ｯ莠句燕螳夂ｾｩ縺励◆逍台ｼｼURL縺縺代ｒ謇ｱ縺・∪縺吶・/p><div class="card"><form method="get" action="{MARKET_PREFIX}/preview"><label>URL<input name="url" placeholder="https://market.tbx/products"></label><button>繝励Ξ繝薙Η繝ｼ</button></form></div>'
+                body = f'<p class="lead">入力されたURLをサーバー側で取得するプレビュー機能です。この演習では事前定義した疑似URLだけを扱います。</p><div class="card"><form method="get" action="{MARKET_PREFIX}/preview"><label>URL<input name="url" placeholder="https://market.tbx/products"></label><button>プレビュー</button></form></div>'
                 self.send_bytes(200, market_page("URL PREVIEW", body))
             elif url == "http://internal.tbx/admin":
                 self.send_json(200, {"url": url, "source": "simulated_internal_route", "service": "TBX Market Admin", "flag": FLAGS["web_ssrf"]})
@@ -408,7 +408,7 @@ class ChallengeHandler(BaseHTTPRequestHandler):
             else:
                 self.send_json(400, {"error": "external_url_blocked", "detail": "Only predefined training URLs are available."})
         elif path == "/web-attacks/login":
-            body = f'<p class="lead">遐比ｿｮ逕ｨ繧｢繧ｫ繧ｦ繝ｳ繝医〒繝ｭ繧ｰ繧､繝ｳ縺励∫匱陦後＆繧後ｋ繝医・繧ｯ繝ｳ縺ｮ蜀・ｮｹ繧堤｢ｺ隱阪＠縺ｾ縺吶・/p><div class="card"><form method="post" action="{MARKET_PREFIX}/login"><label>繝ｦ繝ｼ繧ｶ繝ｼ蜷・input name="username" value="student"></label><label>繝代せ繝ｯ繝ｼ繝・input type="password" name="password" value="market123"></label><button>繝ｭ繧ｰ繧､繝ｳ</button></form></div>'
+            body = f'<p class="lead">研修用アカウントでログインし、発行されるトークンの内容を確認します。</p><div class="card"><form method="post" action="{MARKET_PREFIX}/login"><label>ユーザー名<input name="username" value="student"></label><label>パスワード<input type="password" name="password" value="market123"></label><button>ログイン</button></form></div>'
             self.send_bytes(200, market_page("LOGIN", body))
         elif path == "/web-attacks/admin":
             token = self.market_token(parsed)
@@ -431,10 +431,10 @@ class ChallengeHandler(BaseHTTPRequestHandler):
             product = values.get("product", [""])[0]
             discount = values.get("discount", [""])[0]
             if product == "1" and discount == "90":
-                body = f'<div class="card"><h2>遐比ｿｮ蜑ｲ蠑輔ｒ驕ｩ逕ｨ縺励∪縺励◆</h2><p>繝ｪ繧ｯ繧ｨ繧ｹ繝亥・縺ｮ蜑ｲ蠑慕紫縺悟､画峩縺輔ｌ縺ｦ縺・∪縺吶・/p><code>{FLAGS["web_parameter"]}</code></div>'
+                body = f'<div class="card"><h2>研修割引を適用しました</h2><p>リクエスト内の割引値が変更されています。</p><code>{FLAGS["web_parameter"]}</code></div>'
             else:
-                body = '<div class="card"><h2>雉ｼ蜈･繧貞女縺台ｻ倥￠縺ｾ縺励◆</h2><p>騾壼ｸｸ縺ｮ10%蜑ｲ蠑輔′驕ｩ逕ｨ縺輔ｌ縺ｾ縺励◆縲ゅヶ繝ｩ繧ｦ繧ｶ繝ｼ縺ｾ縺溘・Burp縺ｧ騾∽ｿ｡繝代Λ繝｡繝ｼ繧ｿ繝ｼ繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・/p></div>'
-            self.send_bytes(200, market_page("雉ｼ蜈･邨先棡", body))
+                body = '<div class="card"><h2>購入を受け付けました</h2><p>通常の10%割引が適用されました。ブラウザーまたは Burp で送信パラメーターを確認してください。</p></div>'
+            self.send_bytes(200, market_page("購入結果", body))
         elif path == "/web-attacks/comments":
             values = self.form()
             author = values.get("author", ["student"])[0][:80]
@@ -445,7 +445,7 @@ class ChallengeHandler(BaseHTTPRequestHandler):
                 with db_lock:
                     database.execute("INSERT INTO market_comments(session_id, author, body) VALUES (?, ?, ?)", (session_id, author, comment))
                     database.commit()
-                self.send_bytes(200, market_page("繧ｳ繝｡繝ｳ繝医ｒ菫晏ｭ倥＠縺ｾ縺励◆", f'<div class="card"><p>繧ｳ繝｡繝ｳ繝医・菫晏ｭ倥＆繧後∪縺励◆縲・OMMENTS逕ｻ髱｢縺ｧ陦ｨ遉ｺ邨先棡繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・/p><p>{render_market_comment(comment)}</p><a href="{MARKET_PREFIX}/comments">COMMENTS縺ｸ謌ｻ繧・/a></div>'))
+                self.send_bytes(200, market_page("コメントを保存しました", f'<div class="card"><p>コメントが保存されました。COMMENTS 画面で表示結果を確認してください。</p><p>{render_market_comment(comment)}</p><a href="{MARKET_PREFIX}/comments">COMMENTSへ戻る</a></div>'))
         elif path == "/web-attacks/upload":
             payload = self.request_body(131072)
             if payload is None:

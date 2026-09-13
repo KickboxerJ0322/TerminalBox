@@ -7,6 +7,30 @@ function extractGeminiText(body) {
     .trim() ?? '';
 }
 
+function findFirstJsonObject(value) {
+  const start = value.indexOf('{');
+  if (start < 0) return '';
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < value.length; index += 1) {
+    const char = value[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === '{') depth += 1;
+    else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return value.slice(start, index + 1);
+    }
+  }
+  return '';
+}
+
 export function parseAgentAction(value) {
   if (typeof value !== 'string' || !value.trim()) throw new Error('AI Agent returned an empty response');
   const cleaned = value.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -14,7 +38,17 @@ export function parseAgentAction(value) {
   try {
     action = JSON.parse(cleaned);
   } catch {
-    throw new Error('AI Agent returned invalid JSON');
+    const embeddedJson = findFirstJsonObject(cleaned);
+    if (embeddedJson) {
+      try {
+        action = JSON.parse(embeddedJson);
+      } catch {
+        action = null;
+      }
+    }
+    if (!action) {
+      return { action: 'final_answer', message: cleaned.slice(0, 4000) };
+    }
   }
   if (action?.action === 'execute_command') {
     if (typeof action.command !== 'string' || !action.command.trim() || action.command.length > 2000) {

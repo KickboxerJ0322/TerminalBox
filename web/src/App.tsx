@@ -1,6 +1,5 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { AgentPanel } from './AgentPanel';
-import { BasicOperationsPanel } from './BasicOperationsPanel';
 import { ChallengePanel } from './ChallengePanel';
 import { CommandGuide } from './CommandGuide';
 import { KaliWorkspacePanel } from './KaliWorkspacePanel';
@@ -23,11 +22,10 @@ interface PasteRequest {
   text: string;
 }
 
-type LearningTab = 'operations' | 'tutorial' | 'targets' | 'tools' | 'web-attacks';
+type LearningTab = 'tutorial' | 'targets' | 'tools' | 'web-attacks';
 type AssistantTab = 'online' | 'local';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
-const OPERATIONS_STORAGE_KEY = 'terminalbox:operations-completed';
 const CHALLENGE_STORAGE_KEY = 'terminalbox:challenge-completed';
 const GEMINI_API_KEY_STORAGE_KEY = 'terminalbox:gemini-api-key';
 const GEMINI_MODEL_STORAGE_KEY = 'terminalbox:gemini-model';
@@ -113,7 +111,7 @@ export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionError, setSessionError] = useState('');
-  const [learningTab, setLearningTab] = useState<LearningTab>('operations');
+  const [learningTab, setLearningTab] = useState<LearningTab>('tutorial');
   const [assistantTab, setAssistantTab] = useState<AssistantTab>('online');
   const [infoOpen, setInfoOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -220,14 +218,13 @@ export default function App() {
 
   const applyClientReset = useCallback(() => {
     window.localStorage.removeItem(TUTORIAL_STORAGE_KEY);
-    window.localStorage.removeItem(OPERATIONS_STORAGE_KEY);
     window.localStorage.removeItem(CHALLENGE_STORAGE_KEY);
     window.localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
     window.localStorage.removeItem(GEMINI_MODEL_STORAGE_KEY);
     setHistory('');
     setFullTerminalHistory('');
     setPasteRequest(null);
-    setLearningTab('operations');
+    setLearningTab('tutorial');
     setAssistantTab('online');
     setChallengeTargetId(1);
     targetEventCountRef.current = 0;
@@ -315,17 +312,6 @@ export default function App() {
             <aside className="side-workspace learning-workspace" aria-label="学習パネル">
             <div className="workspace-tabs" role="tablist" aria-label="学習パネル">
               <button
-                id="operations-tab"
-                type="button"
-                role="tab"
-                aria-selected={learningTab === 'operations'}
-                aria-controls="operations-panel"
-                className={learningTab === 'operations' ? 'active' : ''}
-                onClick={() => setLearningTab('operations')}
-              >
-                基本操作
-              </button>
-              <button
                 id="tutorial-tab"
                 type="button"
                 role="tab"
@@ -370,9 +356,6 @@ export default function App() {
                 Web Attacks
               </button>
             </div>
-            {learningTab === 'operations' && (
-              <BasicOperationsPanel onInsertCommand={queueTerminalPaste} resetSignal={resetSignal} />
-            )}
             {learningTab === 'tutorial' && (
               <TutorialPanel onInsertCommand={queueTerminalPaste} resetSignal={resetSignal} />
             )}
