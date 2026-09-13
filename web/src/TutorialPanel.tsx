@@ -202,7 +202,7 @@ const lessons: Lesson[] = [
     level: 'ネットワーク入門',
     goal: '名前解決、ポート、HTTP 応答を確認できるようになる。',
     scenario: 'サービスが見えているか、通信できるかを確かめる練習です。',
-    commands: ['ip a', 'getent hosts target', 'ss -tuln', "curl -i -H 'X-TerminalBox-Session: $TERMINALBOX_SESSION_ID' http://target:3000/api/status"],
+    commands: ['ip a', 'getent hosts target', 'ss -tuln', "curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/status"],
     mission: '`target` の名前解決を確認し、HTTP のステータスも確認してください。',
     hint: '`getent hosts` は名前解決、`ss -tuln` は待ち受けポート、`curl` は HTTP 確認です。',
     check: '`curl` で HTTP レスポンスと JSON が見えればクリアです。',
@@ -246,7 +246,7 @@ const lessons: Lesson[] = [
     level: '実践',
     goal: 'コマンド結果をファイルへ保存できるようになる。',
     scenario: '調査結果を見返せる形で残す練習です。',
-    commands: ['mkdir -p ~/terminalbox-notes', 'date > ~/terminalbox-notes/report.txt', "curl -s -H 'X-TerminalBox-Session: $TERMINALBOX_SESSION_ID' http://target:3000/api/status >> ~/terminalbox-notes/report.txt", 'cat ~/terminalbox-notes/report.txt'],
+    commands: ['mkdir -p ~/terminalbox-notes', 'date > ~/terminalbox-notes/report.txt', "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/status >> ~/terminalbox-notes/report.txt", 'cat ~/terminalbox-notes/report.txt'],
     mission: '日時と Target の状態を `~/terminalbox-notes/report.txt` に保存してください。',
     hint: '`>` は上書き、`>>` は追記です。',
     check: '`cat` で保存した内容を確認できればクリアです。',
@@ -309,8 +309,8 @@ export function TutorialPanel({ onInsertCommand, resetSignal }: Props) {
         </div>
         <span className="ai-badge">{completedIds.length}/{lessons.length} CLEAR</span>
       </div>
-      <button type="button" className="learning-quick-start" onClick={() => queueCommand("curl -H 'X-TerminalBox-Session: $TERMINALBOX_SESSION_ID' http://target:3000/api/status")}>
-        <span>QUICK START</span><strong>Targetの状態を確認</strong><code>curl -H 'X-TerminalBox-Session: $TERMINALBOX_SESSION_ID' http://target:3000/api/status</code>
+      <button type="button" className="learning-quick-start" onClick={() => queueCommand("curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/status")}>
+        <span>QUICK START</span><strong>Targetの状態を確認</strong><code>curl -H "X-TerminalBox-Session: $TERMINALBOX_SESSION_ID" http://target:3000/api/status</code>
       </button>
 
       <div className="tutorial-body">

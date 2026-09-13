@@ -169,8 +169,21 @@ test('target mutation commands carry the active session header', async () => {
   ]);
   assert.match(challenge, /X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID/);
   assert.match(tutorial, /X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID/);
+  assert.match(challenge, /-H \\"X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID\\"/);
+  assert.match(tutorial, /-H \\"X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID\\"/);
+  assert.doesNotMatch(challenge, /-H 'X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID'/);
+  assert.doesNotMatch(tutorial, /-H 'X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID'/);
   assert.match(terminal, /TERMINALBOX_SESSION_ID: session\.sessionId/);
   assert.match(executor, /TERMINALBOX_SESSION_ID: session\?\.sessionId/);
+});
+
+test('desktop workspace uses a compact four-pane viewport grid', async () => {
+  const styles = await readWebSource('styles.css');
+  assert.match(styles, /html, body, #root \{[^}]*overflow: hidden/);
+  assert.match(styles, /\.workspace-main \{[^}]*height: calc\(100vh - 54px\)/);
+  assert.match(styles, /\.workspace-grid \{[^}]*height: 100%/);
+  assert.match(styles, /\.workspace-column \{[^}]*grid-template-rows: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
+  assert.match(styles, /@media \(max-width: 1100px\) \{[\s\S]*html, body, #root \{ height: auto; overflow: auto; \}/);
 });
 
 test('target 2 and 3 keep the original four-step challenges', async () => {
