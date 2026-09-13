@@ -21,9 +21,13 @@ test('only terminal and noVNC WebSockets are proxied', () => {
   assert.equal(isLabWebSocketPath('/ws/admin'), false);
 });
 
-test('Kali Desktop HTTP and WebSocket proxy preserve the browser session', async () => {
+test('Lab proxy and terminal preserve the browser session', async () => {
   const serverSource = await readFile(new URL('../src/server.js', import.meta.url), 'utf8');
+  const terminalSource = await readFile(new URL('../src/terminal.js', import.meta.url), 'utf8');
   assert.match(serverSource, /labProxy\.proxyHttp\(request, response, session\.sessionId\)/);
   assert.match(serverSource, /labProxy\.proxyWebSocket\(request, socket, head, session\.sessionId\)/);
   assert.match(serverSource, /terminalBoxSession\(request, response, \{ allowHeader: isLabService \}\)/);
+  assert.match(terminalSource, /config\.serviceRole === 'lab'/);
+  assert.match(terminalSource, /isValidSessionId\(proxiedSessionId\)/);
+  assert.match(terminalSource, /sessionManager\.getOrCreate\(requestSessionId\(request, config\)\)/);
 });

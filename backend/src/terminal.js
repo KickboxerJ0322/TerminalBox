@@ -1,7 +1,7 @@
 import Docker from 'dockerode';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import { readSessionCookie } from './session/session-cookie.js';
+import { isValidSessionId, readSessionCookie } from './session/session-cookie.js';
 import { sessionManager } from './session/session-manager.js';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
@@ -79,6 +79,14 @@ function attachLocalTerminal(socket, session) {
   });
 }
 
+function requestSessionId(request, config) {
+  const proxiedSessionId = request.headers['x-terminalbox-session'];
+  if (config.serviceRole === 'lab' && isValidSessionId(proxiedSessionId)) {
+    return proxiedSessionId;
+  }
+  return readSessionCookie(request);
+}
+
 async function ensureDockerSessionDirectories(container, session) {
   const execution = await container.exec({
     Cmd: ['/bin/sh', '-lc', [
@@ -101,7 +109,7 @@ export function attachTerminalSocket(socket, request, config) {
   }
 
   const startWithSession = async () => {
-    const session = await sessionManager.getOrCreate(readSessionCookie(request));
+    const session = await sessionManager.getOrCreate(requestSessionId(request, config));
     if (config.kaliExecMode === 'local') {
       attachLocalTerminal(socket, session);
       return;
