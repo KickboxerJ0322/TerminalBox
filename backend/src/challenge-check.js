@@ -17,14 +17,37 @@ const answers = new Map([
   ['web-upload', 'TBX{web_file_upload}'],
   ['web-ssrf', 'TBX{web_ssrf_internal}'],
   ['web-jwt', 'TBX{web_jwt_admin}'],
+  ['target1-understand', 'A'],
+  ['target1-defend', 'A,B,C'],
+  ['target2-understand', 'A'],
+  ['target2-defend', 'A,B,C'],
+  ['target3-understand', 'A'],
+  ['target3-defend', 'A,B,C'],
+  ['target4-understand', 'A'],
+  ['target4-defend', 'A,B,C,D'],
+  ['target5-understand', 'A'],
+  ['target5-defend', 'A,B,C,D'],
 ]);
+
+function normalizeAnswer(id, answer) {
+  const trimmed = answer.trim();
+  if (id.endsWith('-defend')) {
+    return trimmed
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .sort()
+      .join(',');
+  }
+  return trimmed;
+}
 
 export function checkChallengeAnswer(id, answer) {
   if (typeof id !== 'string' || !answers.has(id)) return { status: 404, body: { error: 'Unknown challenge' } };
   if (typeof answer !== 'string' || answer.trim().length < 1 || answer.length > 200) {
     return { status: 400, body: { error: '回答を入力してください。' } };
   }
-  const correct = answer.trim() === answers.get(id);
+  const correct = normalizeAnswer(id, answer) === answers.get(id);
   return {
     status: 200,
     body: {

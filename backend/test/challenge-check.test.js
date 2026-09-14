@@ -37,3 +37,10 @@ test('accepts every Web Attacks flag without exposing it on failure', () => {
     assert.equal(JSON.stringify(rejected).includes(flag), false, id);
   }
 });
+
+test('accepts target understand and defend choices without flag literals', () => {
+  assert.equal(checkChallengeAnswer('target3-understand', 'A').body.correct, true);
+  assert.equal(checkChallengeAnswer('target3-defend', 'C,A,B').body.correct, true);
+  assert.equal(checkChallengeAnswer('target4-defend', 'A,B,C,D').body.correct, true);
+  assert.equal(checkChallengeAnswer('target5-defend', 'A,B,C,D,E').body.correct, false);
+});

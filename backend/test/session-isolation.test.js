@@ -7,6 +7,11 @@ import test from 'node:test';
 const SESSION_A = '11111111-1111-4111-8111-111111111111';
 const SESSION_B = '22222222-2222-4222-8222-222222222222';
 
+function mutateWeakToken(token, changes) {
+  const payload = JSON.parse(Buffer.from(token, 'base64url').toString('utf8'));
+  return Buffer.from(JSON.stringify({ ...payload, ...changes })).toString('base64url');
+}
+
 async function freePort() {
   const server = net.createServer();
   server.listen(0, '127.0.0.1');
@@ -157,6 +162,119 @@ test('Target 2 IDOR flag is session-scoped and locked until cross-store update',
     assert.equal(resetA.status, 200);
     const afterResetFlagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } });
     assert.equal(afterResetFlagA.status, 403);
+  } finally {
+    await stopProcess(child);
+  }
+});
+
+test('Target 3 SQL injection flag is session-scoped', async () => {
+  const port = await freePort();
+  const child = spawn(process.execPath, ['target/src/server.js'], {
+    cwd: new URL('../..', import.meta.url),
+    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), TARGET_PROFILE: '3' },
+    stdio: 'ignore',
+  });
+  try {
+    const baseUrl = `http://127.0.0.1:${port}`;
+    await waitForStatus(`${baseUrl}/api/status`, child);
+
+    const lockedFlag = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } });
+    assert.equal(lockedFlag.status, 403);
+
+    const injected = await fetch(`${baseUrl}/api/search?q=${encodeURIComponent("' UNION SELECT id,label,value FROM training_secrets--")}`, {
+      headers: { 'x-terminalbox-session': SESSION_A },
+    }).then((response) => response.json());
+    assert.equal(injected.rows.some((row) => row.label === 'training_flag'), true);
+    assert.match(injected.rows.find((row) => row.label === 'training_flag').value, /^TBX\{target3_[0-9a-f]{12}\}$/);
+
+    const flagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
+    const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
+    assert.match(flagA.flag, /^TBX\{target3_[0-9a-f]{12}\}$/);
+    assert.equal(lockedFlagB.status, 403);
+  } finally {
+    await stopProcess(child);
+  }
+});
+
+test('Target 4 unsigned token challenge is session-scoped', async () => {
+  const port = await freePort();
+  const child = spawn(process.execPath, ['target/src/server.js'], {
+    cwd: new URL('../..', import.meta.url),
+    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), TARGET_PROFILE: '4' },
+    stdio: 'ignore',
+  });
+  try {
+    const baseUrl = `http://127.0.0.1:${port}`;
+    await waitForStatus(`${baseUrl}/api/status`, child);
+
+    const login = await fetch(`${baseUrl}/api/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-terminalbox-session': SESSION_A },
+      body: JSON.stringify({ username: 'student', password: 'portal123' }),
+    }).then((response) => response.json());
+    const userTokenDenied = await fetch(`${baseUrl}/api/admin`, {
+      headers: { authorization: `Bearer ${login.token}`, 'x-terminalbox-session': SESSION_A },
+    });
+    assert.equal(userTokenDenied.status, 403);
+
+    const adminToken = mutateWeakToken(login.token, { role: 'admin' });
+    const admin = await fetch(`${baseUrl}/api/admin`, {
+      headers: { authorization: `Bearer ${adminToken}`, 'x-terminalbox-session': SESSION_A },
+    }).then((response) => response.json());
+    assert.match(admin.flag, /^TBX\{target4_[0-9a-f]{12}\}$/);
+
+    const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
+    assert.equal(lockedFlagB.status, 403);
+  } finally {
+    await stopProcess(child);
+  }
+});
+
+test('Target 5 returns verification flag only after blocked attack checks', async () => {
+  const port = await freePort();
+  const child = spawn(process.execPath, ['target/src/server.js'], {
+    cwd: new URL('../..', import.meta.url),
+    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), TARGET_PROFILE: '5' },
+    stdio: 'ignore',
+  });
+  try {
+    const baseUrl = `http://127.0.0.1:${port}`;
+    await waitForStatus(`${baseUrl}/api/status`, child);
+
+    const lockedFlag = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } });
+    assert.equal(lockedFlag.status, 403);
+
+    const secret = await fetch(`${baseUrl}/backup/config.json`, { headers: { 'x-terminalbox-session': SESSION_A } });
+    assert.equal(secret.status, 404);
+
+    await fetch(`${baseUrl}/api/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-terminalbox-session': SESSION_A },
+      body: JSON.stringify({ username: 'student', password: 'secure123' }),
+    });
+
+    const forbiddenProduct = await fetch(`${baseUrl}/api/products/5002`, { headers: { 'x-terminalbox-session': SESSION_A } });
+    assert.equal(forbiddenProduct.status, 403);
+
+    const injection = await fetch(`${baseUrl}/api/search?q=${encodeURIComponent("' UNION SELECT id,label,value FROM training_secrets--")}`, {
+      headers: { 'x-terminalbox-session': SESSION_A },
+    }).then((response) => response.json());
+    assert.equal(injection.parameterized, true);
+    assert.equal(injection.rows.length, 0);
+
+    const badToken = await fetch(`${baseUrl}/api/admin`, {
+      headers: { authorization: 'Bearer tampered.token.value', 'x-terminalbox-session': SESSION_A },
+    });
+    assert.equal(badToken.status, 401);
+
+    const verification = await fetch(`${baseUrl}/api/defense/status`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
+    assert.deepEqual(verification.checks, { secrets: true, authorization: true, input: true, session: true });
+    assert.equal(verification.verified, true);
+
+    const flagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
+    const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
+    assert.match(flagA.flag, /^TBX\{secure_target_verified_[0-9a-f]{12}\}$/);
+    assert.equal(lockedFlagB.status, 403);
   } finally {
     await stopProcess(child);
   }

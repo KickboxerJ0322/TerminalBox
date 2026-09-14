@@ -9,9 +9,9 @@ interface Props {
 const targetDefinitions = {
   1: { address: 'http://target:3000/', proxyPath: '/target-site/', label: '問題1 研修サイト', addressLabel: 'Kali内部アドレス' },
   2: { address: 'http://target2:3000/', proxyPath: '/target-site-2/', label: '問題2 オンラインストア', addressLabel: 'Kali内部アドレス' },
-  3: { address: 'http://target3:3000/', proxyPath: '/target-site-3/', label: '問題3 図書館サイト', addressLabel: 'Kali内部アドレス' },
-  4: { address: 'http://labtarget:3100/', proxyPath: '/tool-target/', label: '問題4 セキュリティツール演習', addressLabel: 'Kali内部アドレス' },
-  5: { address: 'http://labtarget:3100/web-attacks/', proxyPath: '/tool-target/web-attacks/', label: '問題5 Web Attacks', addressLabel: 'Kali内部アドレス' },
+  3: { address: 'http://target3:3000/', proxyPath: '/target-site-3/', label: '問題3 入力値処理', addressLabel: 'Kali内部アドレス' },
+  4: { address: 'http://target4:3000/', proxyPath: '/target-site-4/', label: '問題4 セッション / 認証', addressLabel: 'Kali内部アドレス' },
+  5: { address: 'http://target5:3000/', proxyPath: '/target-site-5/', label: '問題5 Defense in Depth', addressLabel: 'Kali内部アドレス' },
 } as const;
 
 export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) {

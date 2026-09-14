@@ -283,7 +283,7 @@ docker compose down -v
 | `GEMINI_API_KEY` | 空 | Gemini をローカルで使う場合の API キー |
 | `GEMINI_MODEL` | `gemini-3.7-flash` | Gemini モデル |
 | `TARGET_URL` | `http://target:3000` | 代表 Target URL |
-| `TARGET_URLS` | `http://target:3000,http://target2:3000,http://target3:3000,http://labtarget:3100` | リセット対象の Target 一覧 |
+| `TARGET_URLS` | `http://target:3000,http://target2:3000,http://target3:3000,http://target4:3000,http://target5:3000,http://labtarget:3100` | リセット対象の Target 一覧 |
 | `KALI_GUI_URL` | `http://kali:6080` | Backend から見た Kali noVNC |
 | `TERMINAL_HISTORY_LIMIT` | `2000` | AI に渡すターミナル履歴の最大文字数 |
 | `MAX_AGENT_STEPS` | `5` | AI Agentが1回の依頼で実行できる最大ステップ数 |

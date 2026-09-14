@@ -4,7 +4,9 @@ const TARGET_ROUTES = [
   { prefix: '/target-site', index: 0 },
   { prefix: '/target-site-2', index: 1 },
   { prefix: '/target-site-3', index: 2 },
-  { prefix: '/tool-target', index: 3 },
+  { prefix: '/target-site-4', index: 3 },
+  { prefix: '/target-site-5', index: 4 },
+  { prefix: '/tool-target', index: 5 },
 ];
 
 function routeForPath(pathname) {

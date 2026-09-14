@@ -13,6 +13,10 @@ services:
         condition: service_healthy
       target3:
         condition: service_healthy
+      target4:
+        condition: service_healthy
+      target5:
+        condition: service_healthy
       challenge-target:
         condition: service_healthy
     networks:
@@ -39,7 +43,7 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
       GEMINI_URL: ${GEMINI_URL:-https://generativelanguage.googleapis.com}
       TARGET_URL: ${TARGET_URL:-http://target:3000}
-      TARGET_URLS: ${TARGET_URLS:-http://target:3000,http://target2:3000,http://target3:3000,http://labtarget:3100}
+      TARGET_URLS: ${TARGET_URLS:-http://target:3000,http://target2:3000,http://target3:3000,http://target4:3000,http://target5:3000,http://labtarget:3100}
       KALI_GUI_URL: ${KALI_GUI_URL:-http://kali:6080}
       TERMINAL_HISTORY_LIMIT: ${TERMINAL_HISTORY_LIMIT:-6000}
       MAX_AGENT_STEPS: ${MAX_AGENT_STEPS:-5}
@@ -55,6 +59,14 @@ services:
       kali:
         condition: service_healthy
       target:
+        condition: service_healthy
+      target2:
+        condition: service_healthy
+      target3:
+        condition: service_healthy
+      target4:
+        condition: service_healthy
+      target5:
         condition: service_healthy
       challenge-target:
         condition: service_healthy
@@ -172,6 +184,58 @@ services:
     init: true
     environment:
       TARGET_PROFILE: "3"
+    networks:
+      - lab
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.25
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:http').get('http://localhost:3000/api/status',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  target4:
+    build: ./target
+    container_name: terminalbox-target-4
+    hostname: target4
+    init: true
+    environment:
+      TARGET_PROFILE: "4"
+    networks:
+      - lab
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.25
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:http').get('http://localhost:3000/api/status',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  target5:
+    build: ./target
+    container_name: terminalbox-target-5
+    hostname: target5
+    init: true
+    environment:
+      TARGET_PROFILE: "5"
     networks:
       - lab
     restart: unless-stopped

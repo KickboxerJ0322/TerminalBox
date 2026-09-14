@@ -207,6 +207,9 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 .challenge-answer input { min-width: 0; min-height: 36px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 3px; color: var(--text); background: #080d0b; font-family: 'JetBrains Mono', 'Consolas', monospace; }
 .challenge-answer button { min-height: 36px; padding: 0 14px; border: 1px solid var(--accent-dim); border-radius: 3px; color: #07100b; background: var(--accent); font-size: 10px; font-weight: 700; cursor: pointer; }
 .challenge-answer input:disabled, .challenge-answer button:disabled { opacity: .55; cursor: not-allowed; }
+.choice-list { grid-column: 1 / -1; display: grid; gap: 6px; }
+.choice-option { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 8px; padding: 8px 9px; border: 1px solid var(--border); border-radius: 4px; background: #080d0b; color: var(--text); font-size: 11px; line-height: 1.55; }
+.choice-option input { min-width: 14px; width: 14px; min-height: 14px; margin: 2px 0 0; padding: 0; accent-color: var(--accent); }
 .challenge-answer p { grid-column: 1 / -1; margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; }
 .challenge-answer p.correct { color: var(--accent); border-color: var(--accent-dim); background: rgba(91, 255, 145, .06); }
 .challenge-answer p.incorrect { color: #ffb9c0; border-color: #74323b; background: #261014; }

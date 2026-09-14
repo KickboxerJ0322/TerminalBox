@@ -131,7 +131,7 @@ async function requestTargetFlagCheck(targetIndex, answer, sessionId) {
 }
 
 async function checkDynamicChallengeAnswer(id, answer, session) {
-  const targetIndex = id === 'target1' ? 0 : id === 'target2' ? 1 : -1;
+  const targetIndex = ['target1', 'target2', 'target3', 'target4', 'target5'].indexOf(id);
   if (targetIndex < 0) return null;
   if (isWebService) {
     const body = await labProxy.requestJson('/internal/challenges/check-target-flag', { id, answer }, session.sessionId);
@@ -220,7 +220,7 @@ function getRequestProvider(requestBody) {
   return resolveAiProvider(config);
 }
 
-const CHALLENGE_COMPLETION_PATTERN = /^[1-5]:[0-9]{2}$/;
+const CHALLENGE_COMPLETION_PATTERN = /^(?:[1-5]|tools|web):[0-9]{2}$/;
 
 function isChallengeCompletionId(value) {
   return typeof value === 'string' && CHALLENGE_COMPLETION_PATTERN.test(value);

@@ -71,7 +71,7 @@ test('Live Training Target has iframe back navigation', async () => {
   assert.match(source, /sandbox="allow-forms allow-same-origin"/);
 });
 
-test('Web Attacks synchronizes problem 5, history detection, and eight answer challenges', async () => {
+test('Web Attacks keeps its own group while target panel uses target 5', async () => {
   const [app, panel, target, styles] = await Promise.all([
     readWebSource('App.tsx'),
     readWebSource('ChallengePanel.tsx'),
@@ -80,12 +80,12 @@ test('Web Attacks synchronizes problem 5, history detection, and eight answer ch
   ]);
 
   assert.match(app, /scope="web-attacks"/);
-  assert.match(app, /targetId === 5 \? 'web-attacks'/);
-  assert.ok(app.indexOf("const webAttacksUrl = 'http://labtarget:3100/web-attacks'") < app.indexOf("historyWithoutWebAttacksUrl.lastIndexOf('labtarget')"));
-  assert.match(app, /replaceAll\(webAttacksUrl, ' '\.repeat\(webAttacksUrl\.length\)\)/);
-  assert.match(target, /http:\/\/labtarget:3100\/web-attacks\//);
+  assert.match(app, /setLearningTab\('web-attacks'\)/);
+  assert.doesNotMatch(app, /historyWithoutWebAttacksUrl/);
+  assert.match(target, /http:\/\/target5:3000\//);
   assert.match(target, /addressLabel: 'Kali内部アドレス'/);
-  assert.match(target, /proxyPath: '\/tool-target\/web-attacks\/'/);
+  assert.match(target, /proxyPath: '\/target-site-5\/'/);
+  assert.match(panel, /id: 'web'/);
   assert.match(target, /\(\[1, 2, 3, 4, 5\] as const\)/);
   assert.match(panel, /\/api\/challenges\/progress/);
   assert.match(panel, /completionId/);
@@ -96,7 +96,7 @@ test('Web Attacks synchronizes problem 5, history detection, and eight answer ch
   }
   assert.match(panel, /subtitle: 'Web Attacks/);
 
-  const webGroup = panel.slice(panel.indexOf("id: 5,"), panel.indexOf('\n];', panel.indexOf("id: 5,")));
+  const webGroup = panel.slice(panel.indexOf("id: 'web'"), panel.indexOf('\n];', panel.indexOf("id: 'web'")));
   assert.equal((webGroup.match(/hint: '/g) ?? []).length, 8);
   for (const flag of [
     'TBX{web_parameter_tampering}', 'TBX{web_idor_profile}', 'TBX{web_sqli_basic}', 'TBX{web_stored_xss}',
@@ -185,18 +185,33 @@ test('desktop workspace uses a compact four-pane viewport grid', async () => {
   assert.match(styles, /@media \(max-width: 1100px\) \{[\s\S]*html, body, #root \{ height: auto; overflow: auto; \}/);
 });
 
-test('target 1 and 2 use dynamic flag answer challenges', async () => {
+test('target 1 through 5 use attack, understand, and defend challenges', async () => {
   const source = await readWebSource('ChallengePanel.tsx');
   const target1Group = source.slice(source.indexOf('id: 1,'), source.indexOf('id: 2,'));
   const target2Group = source.slice(source.indexOf('id: 2,'), source.indexOf('id: 3,'));
   const target3Group = source.slice(source.indexOf('id: 3,'), source.indexOf('id: 4,'));
-  assert.equal((target1Group.match(/id: '0/g) ?? []).length, 5);
-  assert.equal((target2Group.match(/id: '0/g) ?? []).length, 5);
+  const target4Group = source.slice(source.indexOf('id: 4,'), source.indexOf('id: 5,'));
+  const target5Group = source.slice(source.indexOf('id: 5,'), source.indexOf("id: 'tools'"));
+  assert.equal((target1Group.match(/id: '0/g) ?? []).length, 8);
+  assert.equal((target2Group.match(/id: '0/g) ?? []).length, 8);
   assert.equal((target3Group.match(/id: '0/g) ?? []).length, 4);
+  assert.equal((target4Group.match(/id: '0/g) ?? []).length, 4);
+  assert.equal((target5Group.match(/id: '0/g) ?? []).length, 4);
   assert.match(target1Group, /answerId: 'target1'/);
   assert.match(target2Group, /answerId: 'target2'/);
+  assert.match(target3Group, /answerId: 'target3'/);
+  assert.match(target4Group, /answerId: 'target4'/);
+  assert.match(target5Group, /answerId: 'target5'/);
   assert.match(target2Group, /ブラウザUIからログインする/);
   assert.match(target2Group, /IDOR \/ Broken Access Control/);
+  assert.match(target3Group, /入力値処理/);
+  assert.match(target4Group, /セッション \/ 認証/);
+  assert.match(target5Group, /Defense in Depth/);
+  for (const group of [target1Group, target2Group, target3Group, target4Group, target5Group]) {
+    assert.match(group, /UNDERSTAND/);
+    assert.match(group, /DEFEND/);
+    assert.match(group, /MISSION COMPLETE/);
+  }
   assert.doesNotMatch(target2Group, /store-admin-2026/);
   assert.doesNotMatch(target2Group, /store-config\.json/);
   assert.doesNotMatch(source, /title: 'HTTP Request Basics'/);

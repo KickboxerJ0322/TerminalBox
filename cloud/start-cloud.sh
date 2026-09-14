@@ -7,7 +7,7 @@ htpasswd -bc /tmp/terminalbox.htpasswd terminalbox "$TERMINALBOX_PASSWORD" >/dev
 chmod 0644 /tmp/terminalbox.htpasswd
 
 # Preserve the Docker Compose target hostnames inside Cloud Run's shared network namespace.
-printf '\n127.0.0.2 target\n127.0.0.3 target2\n127.0.0.4 target3\n127.0.0.5 labtarget\n' >> /etc/hosts
+printf '\n127.0.0.2 target\n127.0.0.3 target2\n127.0.0.4 target3\n127.0.0.5 target4\n127.0.0.6 target5\n127.0.0.7 labtarget\n' >> /etc/hosts
 
 pids=""
 start_process() {
@@ -24,13 +24,15 @@ trap cleanup INT TERM EXIT
 start_process env HOST=127.0.0.2 PORT=3000 TARGET_PROFILE=1 node /opt/terminalbox/target/src/server.js
 start_process env HOST=127.0.0.3 PORT=3000 TARGET_PROFILE=2 node /opt/terminalbox/target/src/server.js
 start_process env HOST=127.0.0.4 PORT=3000 TARGET_PROFILE=3 node /opt/terminalbox/target/src/server.js
-start_process su -s /bin/sh student -c 'CHALLENGE_HTTP_HOST=127.0.0.5 CHALLENGE_TCP_HOST=127.0.0.5 python3 /opt/terminalbox/challenge-target/server.py'
+start_process env HOST=127.0.0.5 PORT=3000 TARGET_PROFILE=4 node /opt/terminalbox/target/src/server.js
+start_process env HOST=127.0.0.6 PORT=3000 TARGET_PROFILE=5 node /opt/terminalbox/target/src/server.js
+start_process su -s /bin/sh student -c 'CHALLENGE_HTTP_HOST=127.0.0.7 CHALLENGE_TCP_HOST=127.0.0.7 python3 /opt/terminalbox/challenge-target/server.py'
 start_process env \
   PORT=3001 \
   AI_PROVIDER=gemini \
   KALI_EXEC_MODE=local \
   TARGET_URL=http://target:3000 \
-  TARGET_URLS=http://target:3000,http://target2:3000,http://target3:3000,http://labtarget:3100 \
+  TARGET_URLS=http://target:3000,http://target2:3000,http://target3:3000,http://target4:3000,http://target5:3000,http://labtarget:3100 \
   KALI_GUI_URL=http://127.0.0.1:6080 \
   AI_SYSTEM_PROMPT_FILE=/opt/terminalbox/config/ai-system-prompt.txt \
   AGENT_SYSTEM_PROMPT_FILE=/opt/terminalbox/config/agent-system-prompt.txt \

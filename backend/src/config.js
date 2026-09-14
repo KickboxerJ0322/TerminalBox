@@ -24,7 +24,7 @@ export const config = {
   geminiModel: process.env.GEMINI_MODEL ?? 'gemini-3.7-flash',
   geminiUrl: (process.env.GEMINI_URL ?? 'https://generativelanguage.googleapis.com').replace(/\/$/, ''),
   targetUrl: process.env.TARGET_URL ?? 'http://target:3000',
-  targetUrls: (process.env.TARGET_URLS ?? 'http://target:3000,http://target2:3000,http://target3:3000')
+  targetUrls: (process.env.TARGET_URLS ?? 'http://target:3000,http://target2:3000,http://target3:3000,http://target4:3000,http://target5:3000')
     .split(',')
     .map((url) => url.trim().replace(/\/$/, ''))
     .filter(Boolean),

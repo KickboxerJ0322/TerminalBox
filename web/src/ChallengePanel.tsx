@@ -8,10 +8,13 @@ interface Challenge {
   hint: string;
   result: string;
   answerId?: string;
+  stage?: 'attack' | 'understand' | 'defend' | 'summary';
+  choices?: { id: string; label: string }[];
+  multiple?: boolean;
 }
 
 interface ChallengeGroup {
-  id: 1 | 2 | 3 | 4 | 5;
+  id: 1 | 2 | 3 | 4 | 5 | 'tools' | 'web';
   title: string;
   subtitle: string;
   challenges: Challenge[];
@@ -57,11 +60,43 @@ const challengeGroups: ChallengeGroup[] = [
         result: '`modified` が `true` で、更新した `site` 情報が返ればFlag取得条件を満たしています。',
       },
       {
-        id: '05', title: 'Flagを取得して回答する', answerId: 'target1',
+        id: '05', title: 'ATTACK: Flagを取得して回答する', answerId: 'target1', stage: 'attack',
         goal: '改ざん条件を満たした後、Target 1からセッション専用Flagを取得し、下の回答欄へ入力してください。',
         commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/flag"],
         hint: 'RESETすると攻略状態とFlagは初期化されます。他セッションのFlagはこの回答では使えません。',
         result: 'Target 1が返した `TBX{target1_...}` を回答欄へ入力し、正解時だけCLEARになります。',
+      },
+      {
+        id: '06', title: 'UNDERSTAND: なぜ成功したか', answerId: 'target1-understand', stage: 'understand',
+        goal: 'この攻撃が成功した主な原因を選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: '秘密情報をWeb公開領域へ置いていたため。' },
+          { id: 'B', label: 'SQL文へユーザー入力を直接連結していたため。' },
+          { id: 'C', label: 'ログイン後にセッションIDを再生成しなかったため。' },
+        ],
+        hint: '`robots.txt` は隠し場所のヒントにはなっても、アクセス制御にはなりません。',
+        result: '「隠す」のではなく、秘密情報を公開領域へ置かないことが重要です。',
+      },
+      {
+        id: '07', title: 'DEFEND: どう防ぐか', answerId: 'target1-defend', stage: 'defend', multiple: true,
+        goal: '秘密情報管理として適切な対策をすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: '設定ファイルやSecretをWeb公開領域へ置かない。' },
+          { id: 'B', label: 'Secret Managerや環境変数など、公開されない保管場所を使う。' },
+          { id: 'C', label: '管理APIはSecretだけでなく認証・認可・監査で守る。' },
+          { id: 'D', label: 'robots.txtに書いて検索エンジンから隠す。' },
+        ],
+        hint: '秘密情報は「見つかりにくいURL」では守れません。',
+        result: 'A/B/Cが正解です。robots.txtは公開ファイルなので防御にはなりません。',
+      },
+      {
+        id: '08', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'テーマ: 秘密情報管理。学ぶこと: 「隠す」のではなく、秘密情報を公開領域へ置かない。',
+        commands: [],
+        hint: 'Target 1では、公開されたバックアップ設定が管理APIの侵入口になりました。',
+        result: 'ATTACK / UNDERSTAND / DEFEND を完了したら、このテーマは終了です。',
       },
     ],
   },
@@ -99,46 +134,188 @@ const challengeGroups: ChallengeGroup[] = [
         result: '別店舗の商品が更新されれば、Flag取得条件を満たしています。',
       },
       {
-        id: '05', title: 'Flagを取得して回答する', answerId: 'target2',
+        id: '05', title: 'ATTACK: Flagを取得して回答する', answerId: 'target2', stage: 'attack',
         goal: 'IDORの変更操作を成功させた後、Target 2からセッション専用Flagを取得し、下の回答欄へ入力してください。',
         commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/api/flag"],
         hint: 'FlagはTarget 2側でセッションごとに生成されます。フロントエンドのソースには固定Flagを置いていません。',
         result: 'Target 2が返した `TBX{target2_...}` を回答欄へ入力し、正解時だけCLEARになります。',
+      },
+      {
+        id: '06', title: 'UNDERSTAND: なぜ成功したか', answerId: 'target2-understand', stage: 'understand',
+        goal: 'このIDORが成立した理由を選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'ログイン済みかだけを見て、対象商品の所有者を確認していなかったため。' },
+          { id: 'B', label: 'パスワードが短すぎたため。' },
+          { id: 'C', label: 'robots.txtに商品IDが載っていたため。' },
+        ],
+        hint: '認証済みであることと、そのデータを操作できることは別です。',
+        result: '認可はリソースごとにサーバー側で確認する必要があります。',
+      },
+      {
+        id: '07', title: 'DEFEND: どう防ぐか', answerId: 'target2-defend', stage: 'defend', multiple: true,
+        goal: '認可の対策として適切なものをすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: '更新対象リソースのownerとログインユーザーをサーバー側で照合する。' },
+          { id: 'B', label: 'URLやIDを書き換えられても権限確認を必ず実行する。' },
+          { id: 'C', label: '許可されないアクセスは403で拒否し、監査ログへ残す。' },
+          { id: 'D', label: '画面上のリンクを非表示にするだけで十分。' },
+        ],
+        hint: 'クライアント側の非表示は補助であり、防御の中心ではありません。',
+        result: 'A/B/Cが正解です。認可はサーバー側で強制します。',
+      },
+      {
+        id: '08', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'テーマ: 認可。学ぶこと: 認証済みでも、そのデータを操作する権限があるとは限らない。',
+        commands: [],
+        hint: 'Target 2では、他店舗の商品IDを指定できることが問題でした。',
+        result: 'ATTACK / UNDERSTAND / DEFEND を完了したら、このテーマは終了です。',
       },
     ],
   },
   {
     id: 3,
     title: '問題3',
-    subtitle: '図書館サイトのデバッグ設定',
+    subtitle: '入力値処理: SQL Injection',
     challenges: [
       {
-        id: '01', title: 'デバッグ設定の漏えいを調べる', goal: '`robots.txt` から、公開されたデバッグ設定と管理キーを発見してください。',
-        commands: ["curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/robots.txt", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/debug/app-config.json"],
-        hint: 'デバッグ用ファイルには、本番で不要な接続先や秘密情報を残さないことが重要です。',
-        result: '`heroApi`、`alertApi`、`adminKey` が表示されれば成功です。',
+        id: '01', title: 'ATTACK: 検索入力を改変する', answerId: 'target3', stage: 'attack',
+        goal: '通常の商品検索を確認した後、SQL Injection相当の入力で研修用データからFlagを取得してください。',
+        commands: ["curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/api/search --data-urlencode 'q=apple'", "curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/api/search --data-urlencode \"q=' UNION SELECT id,label,value FROM training_secrets--\"", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/api/flag"],
+        hint: 'まず通常検索のJSONと、レスポンスに含まれる研修用SQL文字列を観察します。2本目では `training_secrets` が結果へ混入します。',
+        result: '検索結果またはFlag APIから `TBX{target3_...}` を取得し、回答欄へ入力します。',
       },
       {
-        id: '02', title: '図書館の見出しを改ざんする', goal: '漏えいしたキーを使い、公式サイトの見出しとテーマを変更してください。',
-        commands: ["curl -X POST http://target3:3000/api/admin/hero -H 'Content-Type: application/json' -H 'X-Admin-Key: library-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"headline\":\"図書館サイトは改ざんされました\",\"theme\":\"compromised\"}'"],
-        hint: '公式情報を表示するAPIほど、認証情報の管理と操作記録が重要になります。',
-        result: '左下の図書館サイトが赤い警告テーマへ変われば成功です。',
+        id: '02', title: 'UNDERSTAND: なぜ成功したか', answerId: 'target3-understand', stage: 'understand',
+        goal: 'SQL Injectionが成功した主な原因を選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'ユーザー入力をSQL文字列へ直接連結していたため。' },
+          { id: 'B', label: 'Secretを公開ディレクトリへ置いていたため。' },
+          { id: 'C', label: 'ログアウト後もセッションが残っていたため。' },
+        ],
+        hint: '検索語はデータであるべきですが、SQL構文として解釈されていました。',
+        result: '外部入力は信用せず、SQL構文とは分離して扱います。',
       },
       {
-        id: '03', title: '偽の休館案内を掲示する', goal: 'お知らせAPIを悪用し、偽の臨時休館メッセージを表示してください。',
-        commands: ["curl -X POST http://target3:3000/api/admin/alert -H 'Content-Type: application/json' -H 'X-Admin-Key: library-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"notice\":\"本日は臨時休館です\"}'"],
-        hint: '公共情報の改ざんは、利用者の行動へ直接影響します。',
-        result: '図書館サイトに「本日は臨時休館です」と表示されれば成功です。',
+        id: '03', title: 'DEFEND: どう防ぐか', answerId: 'target3-defend', stage: 'defend', multiple: true,
+        goal: '入力値処理の対策として適切なものをすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'Parameterized Queryを使用する。' },
+          { id: 'B', label: '入力値の型・形式・長さを検証する。' },
+          { id: 'C', label: 'DB権限を最小化する。' },
+          { id: 'D', label: 'SQLエラーをそのまま利用者へ表示する。' },
+        ],
+        hint: 'SQLエラーの詳細表示は攻撃者にヒントを与えます。',
+        result: 'A/B/Cが正解です。入力はデータとして扱い、DB側権限も絞ります。',
       },
       {
-        id: '04', title: '図書館サイトの状態を確認する', goal: 'APIレスポンスから、表示中の改ざん内容を確認してください。',
-        commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/api/status"], hint: '`profile` と `site` の内容から対象と変更内容を確認します。',
-        result: '`service` が `terminalbox-target-3`、`modified` が `true` なら成功です。',
+        id: '04', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'テーマ: 入力値処理。学ぶこと: ユーザー入力は信用せず、安全な方法で処理する。',
+        commands: [],
+        hint: 'Target 3では、検索語がSQLとして混ざることでFlagが露出しました。',
+        result: 'ATTACK / UNDERSTAND / DEFEND を完了したら、このテーマは終了です。',
       },
     ],
   },
   {
     id: 4,
+    title: '問題4',
+    subtitle: 'セッション / 認証: JWT検証不足',
+    challenges: [
+      {
+        id: '01', title: 'ATTACK: トークンを改変する', answerId: 'target4', stage: 'attack',
+        goal: '通常ログインで研修トークンを取得し、Base64URLのJSON内の `role` を `admin` に変えて管理者APIからFlagを取得してください。',
+        commands: ["curl -s -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Content-Type: application/json' -d '{\"username\":\"student\",\"password\":\"portal123\"}' http://target4:3000/api/login", "python3 -c \"import base64,json; t=input('token: ').strip(); p=json.loads(base64.urlsafe_b64decode(t+'='*(-len(t)%4))); p['role']='admin'; print(base64.urlsafe_b64encode(json.dumps(p,separators=(',',':')).encode()).decode().rstrip('='))\"", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Authorization: Bearer 変更後のトークン' http://target4:3000/api/admin"],
+        hint: 'Target 4のトークンは署名付きJWTではなく、Base64URL化されたJSONだけです。nonceはセッションごとに変わるため、必ず自分のログインで取得したトークンを使います。',
+        result: '管理者APIのレスポンスに出た `TBX{target4_...}` を回答欄へ入力します。',
+      },
+      {
+        id: '02', title: 'UNDERSTAND: なぜ突破できたか', answerId: 'target4-understand', stage: 'understand',
+        goal: '認証突破が成立した主な理由を選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'JWT相当のトークンに署名がなく、サーバーが改変を検証していなかったため。' },
+          { id: 'B', label: '商品IDの所有者を確認していなかったため。' },
+          { id: 'C', label: 'robots.txtに管理キーが書かれていたため。' },
+        ],
+        hint: 'Base64は暗号化ではありません。利用者が中身を読んで作り替えられます。',
+        result: '認証トークンは署名・有効期限・失効管理で改変を検出します。',
+      },
+      {
+        id: '03', title: 'DEFEND: どう防ぐか', answerId: 'target4-defend', stage: 'defend', multiple: true,
+        goal: 'セッション / 認証の対策として適切なものをすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'JWT署名を必ず検証する。' },
+          { id: 'B', label: 'ログイン成功時にセッションIDやnonceを再生成する。' },
+          { id: 'C', label: '有効期限とログアウト時の失効を実装する。' },
+          { id: 'D', label: '認証試行にRate Limitを設ける。' },
+          { id: 'E', label: 'Base64化すれば改変できないので十分。' },
+        ],
+        hint: 'Base64は見た目を変えるだけで、完全性は守りません。',
+        result: 'A/B/C/Dが正解です。署名検証とライフサイクル管理が認証の土台です。',
+      },
+      {
+        id: '04', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'テーマ: セッション / 認証。学ぶこと: ログインできることだけでなく、その後のセッション管理も重要。',
+        commands: [],
+        hint: 'Target 4では、roleを改変したトークンをサーバーが信じたことが問題でした。',
+        result: 'ATTACK / UNDERSTAND / DEFEND を完了したら、このテーマは終了です。',
+      },
+    ],
+  },
+  {
+    id: 5,
+    title: '問題5',
+    subtitle: 'Defense in Depth: すべて対策済み',
+    challenges: [
+      {
+        id: '01', title: 'ATTACK TEST: 防御を確認する', answerId: 'target5', stage: 'attack',
+        goal: 'Target 1〜4で使った代表的な攻撃を試し、すべて防御されることを確認してから防御確認Flagを取得してください。',
+        commands: ["curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/backup/config.json", "curl -s -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Content-Type: application/json' -d '{\"username\":\"student\",\"password\":\"secure123\"}' http://target5:3000/api/login", "curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/api/products/5002", "curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/api/search --data-urlencode \"q=' UNION SELECT id,label,value FROM training_secrets--\"", "curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Authorization: Bearer 改変したトークン' http://target5:3000/api/admin", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/api/defense/status", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/api/flag"],
+        hint: '商品IDの確認はログイン後に行います。トークン改変テストは、取得したJWTのpayloadを変えたり、任意の不正文字列を送れば防御チェックになります。',
+        result: '4つの防御チェックがtrueになった後、`TBX{secure_target_verified_...}` を回答欄へ入力します。',
+      },
+      {
+        id: '02', title: 'UNDERSTAND: 何を確認したか', answerId: 'target5-understand', stage: 'understand',
+        goal: 'Target 5の目的として最も正しい説明を選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: '攻撃成功ではなく、秘密情報・認可・入力・認証の防御が機能することを確認する。' },
+          { id: 'B', label: '管理キーを探してサイトを改ざんする。' },
+          { id: 'C', label: '外部サイトへSSRFを行って内部情報を探す。' },
+        ],
+        hint: 'Target 5は攻撃成功ではなく防御確認型です。',
+        result: '同じ操作が失敗することも、重要なセキュリティ検証です。',
+      },
+      {
+        id: '03', title: 'DEFEND: Defense in Depth', answerId: 'target5-defend', stage: 'defend', multiple: true,
+        goal: 'Defense in DepthとしてTarget 5で確認した対策をすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'SecretをWeb公開領域へ置かない。' },
+          { id: 'B', label: 'リソースごとにサーバー側で権限確認する。' },
+          { id: 'C', label: 'Parameterized Queryと入力値検証でSQL Injectionを防ぐ。' },
+          { id: 'D', label: '署名付きトークン、有効期限、ログイン時の再生成でセッションを守る。' },
+          { id: 'E', label: '1つの対策だけ入れておけば他は不要。' },
+        ],
+        hint: '複数の層があると、1つのミスが即重大事故になりにくくなります。',
+        result: 'A/B/C/Dが正解です。1つの対策だけではなく、複数の防御を組み合わせます。',
+      },
+      {
+        id: '04', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'テーマ: Defense in Depth。学ぶこと: 1つの対策だけではなく、複数の防御を組み合わせる。',
+        commands: [],
+        hint: 'Target 5では、攻撃を試して失敗を確認することがゴールでした。',
+        result: 'ATTACK TEST / UNDERSTAND / DEFEND を完了したら、Target学習は終了です。',
+      },
+    ],
+  },
+  {
+    id: 'tools',
     title: '問題4',
     subtitle: 'セキュリティツール実践ラボ',
     challenges: [
@@ -215,7 +392,7 @@ const challengeGroups: ChallengeGroup[] = [
     ],
   },
   {
-    id: 5,
+    id: 'web',
     title: '問題5',
     subtitle: 'Web Attacks 初級',
     challenges: [
@@ -281,15 +458,16 @@ const challengeGroups: ChallengeGroup[] = [
 
 export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTargetChange, scope }: Props) {
   const availableGroups = scope === 'tools'
-    ? challengeGroups.filter((item) => item.id === 4)
+    ? challengeGroups.filter((item) => item.id === 'tools')
     : scope === 'web-attacks'
-      ? challengeGroups.filter((item) => item.id === 5)
-      : challengeGroups.filter((item) => item.id <= 3);
-  const group = availableGroups.find((item) => item.id === targetId) ?? availableGroups[0];
+      ? challengeGroups.filter((item) => item.id === 'web')
+      : challengeGroups.filter((item) => typeof item.id === 'number');
+  const group = (scope === 'targets' ? availableGroups.find((item) => item.id === targetId) : null) ?? availableGroups[0];
   const [selectedId, setSelectedId] = useState(group.challenges[0].id);
   const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [answer, setAnswer] = useState('');
+  const [choiceAnswer, setChoiceAnswer] = useState<string[]>([]);
   const [checking, setChecking] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [hintVisible, setHintVisible] = useState(false);
@@ -324,8 +502,8 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   }, [loadProgress]);
 
   useEffect(() => { void loadProgress(); }, [loadProgress, resetSignal]);
-  useEffect(() => { setSelectedId(group.challenges[0].id); setQueuedCommand(null); setAnswer(''); setFeedback(''); }, [group]);
-  useEffect(() => { setSelectedId(group.challenges[0].id); setAnswer(''); setFeedback(''); }, [group, resetSignal]);
+  useEffect(() => { setSelectedId(group.challenges[0].id); setQueuedCommand(null); setAnswer(''); setChoiceAnswer([]); setFeedback(''); }, [group]);
+  useEffect(() => { setSelectedId(group.challenges[0].id); setAnswer(''); setChoiceAnswer([]); setFeedback(''); }, [group, resetSignal]);
   useEffect(() => setHintVisible(false), [selectedId, resetSignal]);
 
   const queueCommand = (command: string) => {
@@ -335,14 +513,15 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   };
 
   const checkAnswer = async () => {
-    if (!challenge.answerId || !answer.trim()) return;
+    const answerPayload = challenge.choices ? choiceAnswer.join(',') : answer;
+    if (!challenge.answerId || !answerPayload.trim()) return;
     setChecking(true);
     setFeedback('');
     try {
       const response = await fetch('/api/challenges/check', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id: challenge.answerId, answer, completionId }),
+        body: JSON.stringify({ id: challenge.answerId, answer: answerPayload, completionId }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
@@ -364,7 +543,15 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const clearChallenge = () => {
     void setCompletion(completionId, false);
     setAnswer('');
+    setChoiceAnswer([]);
     setFeedback('');
+  };
+
+  const toggleChoice = (choiceId: string) => {
+    setChoiceAnswer((current) => {
+      if (!challenge.multiple) return [choiceId];
+      return current.includes(choiceId) ? current.filter((item) => item !== choiceId) : [...current, choiceId].sort();
+    });
   };
 
   return (
@@ -374,18 +561,22 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
         <span className="ai-badge">{groupCompleted}/{scoredChallenges.length || group.challenges.length} CLEAR</span>
       </div>
       {scope === 'targets' && <div className="challenge-target-tabs" role="tablist" aria-label="ターゲット問題を選択">
-        {availableGroups.map((item) => (
-          <button key={item.id} type="button" role="tab" aria-selected={item.id === targetId} className={item.id === targetId ? 'active' : ''} onClick={() => onTargetChange(item.id)}>
-            {item.title}
-          </button>
-        ))}
+        {availableGroups.map((item) => {
+          if (typeof item.id !== 'number') return null;
+          const itemId = item.id;
+          return (
+            <button key={itemId} type="button" role="tab" aria-selected={itemId === targetId} className={itemId === targetId ? 'active' : ''} onClick={() => onTargetChange(itemId)}>
+              {item.title}
+            </button>
+          );
+        })}
       </div>}
       <div className="tutorial-body">
         <nav className="lesson-list" aria-label={`${group.title}の一覧`}>
           {group.challenges.map((item) => {
             const itemCompletionId = `${group.id}:${item.id}`;
             return (
-              <button key={item.id} type="button" className={`${item.id === selectedId ? 'active' : ''} ${completedSet.has(itemCompletionId) ? 'completed' : ''}`} onClick={() => { setSelectedId(item.id); setAnswer(''); setFeedback(''); }}>
+              <button key={item.id} type="button" className={`${item.id === selectedId ? 'active' : ''} ${completedSet.has(itemCompletionId) ? 'completed' : ''}`} onClick={() => { setSelectedId(item.id); setAnswer(''); setChoiceAnswer([]); setFeedback(''); }}>
                 <span>{completedSet.has(itemCompletionId) ? '✓' : item.id}</span>{item.title}
               </button>
             );
@@ -402,8 +593,25 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
           <p>{challenge.goal}</p>
           {challenge.answerId ? (
             <div className="challenge-answer">
-              <input aria-label="問題の回答" value={answer} disabled={completed || checking} placeholder="Flagまたは復元したパスワード" onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void checkAnswer(); }} />
-              <button type="button" disabled={completed || checking || !answer.trim()} onClick={() => void checkAnswer()}>{checking ? '確認中...' : completed ? '正解' : '回答する'}</button>
+              {challenge.choices ? (
+                <div className="choice-list" role={challenge.multiple ? 'group' : 'radiogroup'} aria-label="選択肢">
+                  {challenge.choices.map((choice) => (
+                    <label key={choice.id} className="choice-option">
+                      <input
+                        type={challenge.multiple ? 'checkbox' : 'radio'}
+                        name={`${completionId}-choice`}
+                        checked={choiceAnswer.includes(choice.id)}
+                        disabled={completed || checking}
+                        onChange={() => toggleChoice(choice.id)}
+                      />
+                      <span>{choice.id}. {choice.label}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <input aria-label="問題の回答" value={answer} disabled={completed || checking} placeholder="Flagまたは復元したパスワード" onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void checkAnswer(); }} />
+              )}
+              <button type="button" disabled={completed || checking || !(challenge.choices ? choiceAnswer.length : answer.trim())} onClick={() => void checkAnswer()}>{checking ? '確認中...' : completed ? '正解' : '回答する'}</button>
               {feedback && <p className={completed ? 'correct' : 'incorrect'} role="status">{feedback}</p>}
             </div>
           ) : (
@@ -421,7 +629,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
               <button key={command} type="button" onClick={() => queueCommand(command)}><code>{command}</code><span>{queuedCommand === command ? 'PASTED' : 'PASTE'}</span></button>
             ))}
           </div>
-          <button type="button" className="hint-toggle" aria-expanded={hintVisible} onClick={() => setHintVisible((current) => !current)}>
+          <button type="button" className={`hint-toggle ${challenge.stage ? `stage-${challenge.stage}` : ''}`} aria-expanded={hintVisible} onClick={() => setHintVisible((current) => !current)}>
             <span>HINT</span><strong>{hintVisible ? 'ヒントを隠す' : 'ヒントを表示'}</strong>
           </button>
           {hintVisible && <div className="lesson-card lesson-hint"><p>{challenge.hint}</p></div>}

@@ -68,7 +68,7 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
           </p>
           <div className="info-grid">
             <article><span>01</span><h3>Kaliワークスペース</h3><p>TerminalとKali Desktopを同じセッションの作業領域で利用できます。</p></article>
-            <article><span>02</span><h3>ターゲット演習</h3><p>問題1から3の研修サイトを調査し、Web APIの安全性を学びます。</p></article>
+            <article><span>02</span><h3>ターゲット演習</h3><p>問題1から5の研修サイトを調査し、攻撃の体験から原因と防御まで学びます。</p></article>
             <article><span>03</span><h3>Web Attacks</h3><p>TBX Marketの演習で基本的なWeb脆弱性を確認します。</p></article>
             <article><span>04</span><h3>AI Agent</h3><p>オンラインAgentが承認ポリシーに沿ってTerminal操作を支援します。</p></article>
           </div>
@@ -202,14 +202,12 @@ export default function App() {
 
   useEffect(() => {
     const recentHistory = history.slice(-4000);
-    const webAttacksUrl = 'http://labtarget:3100/web-attacks';
-    const historyWithoutWebAttacksUrl = recentHistory.replaceAll(webAttacksUrl, ' '.repeat(webAttacksUrl.length));
     const targetMatches = [
-      { id: 5 as const, index: recentHistory.lastIndexOf(webAttacksUrl) },
       { id: 1 as const, index: recentHistory.lastIndexOf('http://target:3000') },
       { id: 2 as const, index: recentHistory.lastIndexOf('http://target2:3000') },
       { id: 3 as const, index: recentHistory.lastIndexOf('http://target3:3000') },
-      { id: 4 as const, index: historyWithoutWebAttacksUrl.lastIndexOf('labtarget') },
+      { id: 4 as const, index: recentHistory.lastIndexOf('http://target4:3000') },
+      { id: 5 as const, index: recentHistory.lastIndexOf('http://target5:3000') },
     ];
     const latestTarget = targetMatches.reduce((latest, candidate) => (
       candidate.index > latest.index ? candidate : latest
@@ -230,7 +228,7 @@ export default function App() {
 
   const selectChallengeTarget = useCallback((targetId: 1 | 2 | 3 | 4 | 5) => {
     setChallengeTargetId(targetId);
-    setLearningTab(targetId === 5 ? 'web-attacks' : targetId === 4 ? 'tools' : 'targets');
+    setLearningTab('targets');
   }, []);
 
   const applyClientReset = useCallback(() => {
@@ -428,7 +426,7 @@ export default function App() {
                 aria-selected={learningTab === 'targets'}
                 aria-controls="challenge-panel"
                 className={learningTab === 'targets' ? 'active' : ''}
-                onClick={() => { setLearningTab('targets'); if (challengeTargetId === 4 || challengeTargetId === 5) setChallengeTargetId(1); }}
+                onClick={() => setLearningTab('targets')}
               >
                 ターゲット
               </button>
@@ -439,7 +437,7 @@ export default function App() {
                 aria-selected={learningTab === 'tools'}
                 aria-controls="challenge-panel"
                 className={learningTab === 'tools' ? 'active' : ''}
-                onClick={() => { setLearningTab('tools'); setChallengeTargetId(4); }}
+                onClick={() => setLearningTab('tools')}
               >
                 セキュリティツール
               </button>
@@ -450,7 +448,7 @@ export default function App() {
                 aria-selected={learningTab === 'web-attacks'}
                 aria-controls="challenge-panel"
                 className={learningTab === 'web-attacks' ? 'active' : ''}
-                onClick={() => { setLearningTab('web-attacks'); setChallengeTargetId(5); }}
+                onClick={() => setLearningTab('web-attacks')}
               >
                 Web Attacks
               </button>

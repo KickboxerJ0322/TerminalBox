@@ -1,9 +1,12 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import http from 'node:http';
 
-const PROFILE_ID = ['1', '2', '3'].includes(process.env.TARGET_PROFILE) ? process.env.TARGET_PROFILE : '1';
+const PROFILE_ID = ['1', '2', '3', '4', '5'].includes(process.env.TARGET_PROFILE) ? process.env.TARGET_PROFILE : '1';
 const PORT = Number.parseInt(process.env.PORT ?? '3000', 10) || 3000;
 const HOST = process.env.HOST ?? '0.0.0.0';
+const SESSION_HEADER = 'x-terminalbox-session';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const siteStates = new Map();
 
 const profiles = {
   '1': {
@@ -22,11 +25,21 @@ const profiles = {
   },
   '3': {
     service: 'terminalbox-target-3',
-    brand: 'みなと市立図書館 // 公式サイト',
-    adminKey: 'library-admin-2026',
-    secretPath: '/debug/app-config.json',
-    robots: 'User-agent: *\nDisallow: /debug/\n',
-    defaultState: { headline: 'みなと市立図書館', theme: 'default', notice: '', event: '夏の読書週間を開催中です' },
+    brand: 'TBX Books // 商品検索',
+    robots: 'User-agent: *\nDisallow: /internal/\n',
+    defaultState: { solved: false, lastQuery: '', lastFinding: '' },
+  },
+  '4': {
+    service: 'terminalbox-target-4',
+    brand: 'TBX Portal // 認証ラボ',
+    robots: 'User-agent: *\nDisallow: /internal/\n',
+    defaultState: { authenticated: false, solved: false, lastAction: '' },
+  },
+  '5': {
+    service: 'terminalbox-target-5',
+    brand: 'TBX Secure Site // Defense in Depth',
+    robots: 'User-agent: *\nDisallow:\n',
+    defaultState: { authenticated: false, verified: false, checks: { secrets: false, authorization: false, input: false, session: false } },
   },
 };
 
@@ -40,10 +53,18 @@ const target2Orders = Object.freeze([
   { id: 7002, owner: 'partner-store', total: 5400, item: 'Partner Premium Set x1' },
 ]);
 
+const target3Products = Object.freeze([
+  { id: 301, label: 'apple', value: 'Apple Keyboard' },
+  { id: 302, label: 'book', value: 'Secure Coding Textbook' },
+  { id: 303, label: 'mouse', value: 'Wireless Mouse' },
+]);
+
+const secureProducts = Object.freeze({
+  5001: Object.freeze({ id: 5001, owner: 'student', name: 'Student Secure Notebook', price: 2400 }),
+  5002: Object.freeze({ id: 5002, owner: 'partner', name: 'Partner Private Contract', price: 12000 }),
+});
+
 const profile = profiles[PROFILE_ID];
-const SESSION_HEADER = 'x-terminalbox-session';
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const siteStates = new Map();
 
 const getSessionId = (request) => {
   const value = request.headers[SESSION_HEADER];
@@ -60,13 +81,29 @@ const makeTarget2Products = () => Object.fromEntries(
   Object.entries(target2InitialProducts).map(([id, product]) => [id, { ...product }]),
 );
 
+const makeSecureProducts = () => Object.fromEntries(
+  Object.entries(secureProducts).map(([id, product]) => [id, { ...product }]),
+);
+
 const makeInitialState = (sessionId) => {
   const state = { ...profile.defaultState };
+  if (state.checks) state.checks = { ...state.checks };
   if (PROFILE_ID === '1') state.flag = flagForSession('target1', sessionId);
   if (PROFILE_ID === '2') {
     state.flag = flagForSession('target2', sessionId);
     state.products = makeTarget2Products();
     state.lastAction = '';
+  }
+  if (PROFILE_ID === '3') state.flag = flagForSession('target3', sessionId);
+  if (PROFILE_ID === '4') {
+    state.flag = flagForSession('target4', sessionId);
+    state.nonce = randomBytes(10).toString('hex');
+  }
+  if (PROFILE_ID === '5') {
+    state.flag = flagForSession('secure_target_verified', sessionId);
+    state.products = makeSecureProducts();
+    state.authSecret = randomBytes(24).toString('hex');
+    state.loginNonce = randomBytes(10).toString('hex');
   }
   return state;
 };
@@ -105,41 +142,84 @@ const readJson = async (request) => {
 };
 
 const readForm = async (request) => Object.fromEntries(new URLSearchParams(await readBody(request)));
+const readInput = async (request) => request.headers['content-type']?.includes('application/json') ? readJson(request) : readForm(request);
+
+const base64UrlEncode = (value) => Buffer.from(value).toString('base64url');
+const base64UrlJson = (value) => base64UrlEncode(JSON.stringify(value));
+const decodeBase64UrlJson = (value) => JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+
+const issueWeakToken = (siteState) => base64UrlJson({
+  sub: 'student',
+  role: 'user',
+  nonce: siteState.nonce,
+  issuedAt: Date.now(),
+});
+
+const issueSecureToken = (siteState, role = 'user') => {
+  const header = base64UrlJson({ alg: 'HS256', typ: 'JWT' });
+  const payload = base64UrlJson({
+    sub: 'student',
+    role,
+    nonce: siteState.loginNonce,
+    exp: Math.floor(Date.now() / 1000) + 600,
+  });
+  const signature = createHmac('sha256', siteState.authSecret).update(`${header}.${payload}`).digest('base64url');
+  return `${header}.${payload}.${signature}`;
+};
+
+const verifySecureToken = (siteState, token) => {
+  const [header, payload, signature] = String(token ?? '').split('.');
+  if (!header || !payload || !signature) return null;
+  const expected = createHmac('sha256', siteState.authSecret).update(`${header}.${payload}`).digest('base64url');
+  if (signature !== expected) return null;
+  try {
+    const body = decodeBase64UrlJson(payload);
+    if (body.nonce !== siteState.loginNonce || body.exp < Math.floor(Date.now() / 1000)) return null;
+    return body;
+  } catch {
+    return null;
+  }
+};
 
 const publicSiteState = (siteState) => {
-  const { flag, ...rest } = siteState;
-  if (rest.products) {
-    const visibleProducts = rest.authenticated
-      ? Object.fromEntries(Object.entries(rest.products).filter(([, product]) => product.owner === 'student-store').map(([id, product]) => [id, { ...product }]))
-      : {};
+  const { flag, nonce, authSecret, loginNonce, ...rest } = siteState;
+  if (rest.products && PROFILE_ID === '2') {
     return {
       ...rest,
-      products: visibleProducts,
+      products: rest.authenticated
+        ? Object.fromEntries(Object.entries(rest.products).filter(([, product]) => product.owner === 'student-store').map(([id, product]) => [id, { ...product }]))
+        : {},
     };
+  }
+  if (rest.products && PROFILE_ID === '5') {
+    return { ...rest, products: rest.authenticated ? { 5001: rest.products[5001] } : {} };
   }
   return rest;
 };
 
 const isModified = (siteState) => {
-  if (PROFILE_ID === '1' || PROFILE_ID === '3') {
+  if (PROFILE_ID === '1') {
     const { flag, ...stateWithoutFlag } = siteState;
     return JSON.stringify(stateWithoutFlag) !== JSON.stringify(profile.defaultState);
   }
-  return siteState.solved === true;
+  if (PROFILE_ID === '2') return siteState.solved === true;
+  if (PROFILE_ID === '3') return siteState.solved === true;
+  if (PROFILE_ID === '4') return siteState.solved === true;
+  if (PROFILE_ID === '5') return siteState.verified === true;
+  return false;
 };
 
-const target1Solved = (siteState) => PROFILE_ID === '1' && isModified(siteState);
-const target2Solved = (siteState) => PROFILE_ID === '2' && siteState.solved === true;
-const canRevealFlag = (siteState) => target1Solved(siteState) || target2Solved(siteState);
+const canRevealFlag = (siteState) => isModified(siteState);
 
 const themeColors = (siteState) => {
   const compromised = siteState.theme === 'compromised';
   const maintenance = siteState.theme === 'maintenance';
   return {
-    compromised, maintenance,
+    compromised,
+    maintenance,
     page: compromised ? '#1d0508' : maintenance ? '#fff8df' : '#f3f7f5',
     color: compromised ? '#fff1f1' : maintenance ? '#302600' : '#16231c',
-    header: compromised ? '#8c1020' : maintenance ? '#9a6b00' : PROFILE_ID === '2' ? '#175b45' : PROFILE_ID === '3' ? '#234f78' : '#123c2b',
+    header: compromised ? '#8c1020' : maintenance ? '#9a6b00' : PROFILE_ID === '3' ? '#1f5f70' : PROFILE_ID === '4' ? '#4d416d' : PROFILE_ID === '5' ? '#17415f' : PROFILE_ID === '2' ? '#175b45' : '#123c2b',
     card: compromised ? '#3b0a10' : maintenance ? '#fff4c2' : '#ffffff',
     border: compromised ? '#e34b5d' : maintenance ? '#c99a21' : '#cbd9d1',
   };
@@ -149,28 +229,33 @@ const sharedStyles = (colors) => `
 *{box-sizing:border-box}body{margin:0;background:${colors.page};color:${colors.color};font-family:system-ui,"Yu Gothic",sans-serif}
 header{padding:14px 22px;background:${colors.header};color:white;font-size:13px;letter-spacing:.08em}
 main{min-height:330px;padding:36px 28px;text-align:center}h1{margin:0 0 16px;font-size:clamp(28px,5vw,46px)}
-.lead{max-width:720px;margin:0 auto 22px;line-height:1.8;color:${colors.compromised ? '#ffd2d7' : '#52645b'}}
-.card{max-width:760px;margin:18px auto;padding:20px;border:1px solid ${colors.border};border-radius:8px;background:${colors.card};text-align:left}
-.card.center{text-align:center}.notice{max-width:760px;margin:0 auto 18px;padding:12px 18px;background:#b9102a;color:white;font-weight:800;text-align:center}
+.lead{max-width:760px;margin:0 auto 22px;line-height:1.8;color:${colors.compromised ? '#ffd2d7' : '#52645b'}}
+.card{max-width:780px;margin:18px auto;padding:20px;border:1px solid ${colors.border};border-radius:8px;background:${colors.card};text-align:left}
+.card.center{text-align:center}.notice{max-width:780px;margin:0 auto 18px;padding:12px 18px;background:#b9102a;color:white;font-weight:800;text-align:center}
+.ok{max-width:780px;margin:0 auto 18px;padding:12px 18px;background:#0f7a4e;color:white;font-weight:800;text-align:center}
 .meta{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-top:16px}.meta strong{display:block;font-size:24px}.meta span{font-size:12px;color:#64766d}
 nav a,.link{margin:0 8px;color:${colors.compromised ? '#ff9dab' : '#147348'}}.alert{font-weight:700;color:#ffb1bb}
 label{display:grid;gap:6px;margin:10px 0;color:#52645b;font-size:13px}input{width:100%;padding:10px;border:1px solid ${colors.border};border-radius:5px}
-button{padding:10px 14px;border:0;border-radius:5px;background:#175b45;color:white;font-weight:700;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+button{padding:10px 14px;border:0;border-radius:5px;background:${colors.header};color:white;font-weight:700;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
 code{padding:2px 5px;border-radius:4px;background:#eef6f1;color:#184832}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid ${colors.border};text-align:left}
+pre{white-space:pre-wrap;overflow:auto;padding:12px;background:#0d1713;color:#e9fff3;border-radius:6px}.checks li{margin:8px 0}
 `;
 
-const renderTraining = (siteState) => {
+const renderPage = (siteState, title, body) => {
   const colors = themeColors(siteState);
-  const description = colors.compromised
-    ? '<span class="alert">セキュリティ警告: 公開された管理APIを通じてサイトが改ざんされました。</span>'
-    : colors.maintenance ? '現在、システムメンテナンスを実施しています。' : 'このサイトはTerminalBoxの隔離されたセキュリティ演習用ターゲットです。';
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(siteState.headline)}</title><style>${sharedStyles(colors)}</style></head>
-<body><header>${profile.brand}</header><main><h1>${escapeHtml(siteState.headline)}</h1><p class="lead">${description}</p>
-${siteState.notice ? `<div class="notice">${escapeHtml(siteState.notice)}</div>` : ''}
-<div class="card center"><strong>研修サイトへようこそ</strong><p>安全なサービス運用には、日々のセキュリティ対策が欠かせません。</p><nav><a href="about">サイト概要</a><a href="login">従業員ログイン</a><a href="api/status">API状態</a></nav></div></main></body></html>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${sharedStyles(colors)}</style></head><body><header>${profile.brand}</header>${body}</body></html>`;
 };
 
-const productRow = (product) => `<tr><th>ID</th><td><code>${product.id}</code></td></tr><tr><th>店舗</th><td>${escapeHtml(product.ownerName)}</td></tr><tr><th>商品</th><td>${escapeHtml(product.name)}</td></tr><tr><th>価格</th><td>¥${Number(product.price).toLocaleString('ja-JP')}</td></tr><tr><th>在庫</th><td>${escapeHtml(product.stock)}</td></tr>`;
+const renderTraining = (siteState) => {
+  const description = siteState.theme === 'compromised'
+    ? '<span class="alert">セキュリティ警告: 公開された管理APIを通じてサイトが改ざんされました。</span>'
+    : siteState.theme === 'maintenance' ? '現在、システムメンテナンスを実施しています。' : 'このサイトはTerminalBoxの隔離されたセキュリティ演習用ターゲットです。';
+  return renderPage(siteState, siteState.headline, `<main><h1>${escapeHtml(siteState.headline)}</h1><p class="lead">${description}</p>
+${siteState.notice ? `<div class="notice">${escapeHtml(siteState.notice)}</div>` : ''}
+<div class="card center"><strong>研修サイトへようこそ</strong><p>安全なサービス運用には、日々のセキュリティ対策が欠かせません。</p><nav><a href="about">サイト概要</a><a href="login">従業員ログイン</a><a href="api/status">API状態</a></nav></div></main>`);
+};
+
+const productRow = (product) => `<tr><th>ID</th><td><code>${product.id}</code></td></tr><tr><th>店舗</th><td>${escapeHtml(product.ownerName ?? product.owner)}</td></tr><tr><th>商品</th><td>${escapeHtml(product.name)}</td></tr><tr><th>価格</th><td>¥${Number(product.price).toLocaleString('ja-JP')}</td></tr>${'stock' in product ? `<tr><th>在庫</th><td>${escapeHtml(product.stock)}</td></tr>` : ''}`;
 
 const requireStoreLogin = (siteState, response) => {
   if (siteState.authenticated) return true;
@@ -178,41 +263,33 @@ const requireStoreLogin = (siteState, response) => {
   return false;
 };
 
-const renderStoreLogin = (siteState, message = '') => {
-  const colors = themeColors(siteState);
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>青葉マルシェ ログイン</title><style>${sharedStyles(colors)}</style></head>
-<body><header>${profile.brand}</header><main><h1>青葉マルシェ</h1><p class="lead">秘密情報は公開領域へ置いていない、認証付きの研修用ECサイトです。</p>
+const renderStoreLogin = (siteState, message = '') => renderPage(siteState, '青葉マルシェ ログイン', `<main><h1>青葉マルシェ</h1><p class="lead">秘密情報は公開領域へ置いていない、認証付きの研修用ECサイトです。</p>
 <div class="card"><h2>ログイン</h2>${message ? `<p class="notice">${escapeHtml(message)}</p>` : ''}<form method="post" action="login">
 <label>username<input name="username" autocomplete="username" value="student"></label>
 <label>password<input name="password" type="password" autocomplete="current-password" value="market123"></label>
-<button type="submit">ログイン</button></form><p>研修用: <code>student</code> / <code>market123</code></p></div></main></body></html>`;
-};
+<button type="submit">ログイン</button></form><p>研修用: <code>student</code> / <code>market123</code></p></div></main>`);
 
 const renderStoreDashboard = (siteState) => {
-  const colors = themeColors(siteState);
   const product = siteState.products[2001];
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>青葉マルシェ Dashboard</title><style>${sharedStyles(colors)}</style></head>
-<body><header>${profile.brand}</header><main><h1>Student Store Dashboard</h1><p class="lead">ログイン認証は成功しています。次は、サーバーが対象リソースの所有権を確認しているかを調べます。</p>
+  return renderPage(siteState, '青葉マルシェ Dashboard', `<main><h1>Student Store Dashboard</h1><p class="lead">ログイン認証は成功しています。次は、サーバーが対象リソースの所有権を確認しているかを調べます。</p>
 ${siteState.lastAction ? `<div class="notice">${escapeHtml(siteState.lastAction)}</div>` : ''}
 <div class="grid"><div class="card"><h2>自分の商品</h2><table>${productRow(product)}</table><p><a class="link" href="store/products/2001">商品 2001 を開く</a></p></div>
 <div class="card"><h2>注文</h2><p>注文ID <code>7001</code> はStudent Storeの注文です。</p><p><a class="link" href="api/store/orders/7001">注文APIを見る</a></p></div>
 <div class="card"><h2>プロフィール</h2><p>username: <code>student</code></p><p>store: <code>student-store</code></p></div></div>
 ${siteState.solved ? '<div class="card center"><strong>攻略条件達成</strong><p><a class="link" href="api/flag">Flagを取得する</a></p></div>' : ''}
-</main></body></html>`;
+</main>`);
 };
 
 const renderStoreProduct = (siteState, productId) => {
   const product = siteState.products[productId];
   if (!product) return null;
-  const colors = themeColors(siteState);
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>商品 ${product.id}</title><style>${sharedStyles(colors)}</style></head>
-<body><header>${profile.brand}</header><main><h1>商品 ${product.id}</h1><p class="lead">URLのIDを変更すると、別店舗の商品にもアクセスできるか確認できます。</p>
+  return renderPage(siteState, `商品 ${product.id}`, `<main><h1>商品 ${product.id}</h1><p class="lead">URLのIDを変更すると、別店舗の商品にもアクセスできるか確認できます。</p>
 ${product.owner !== 'student-store' ? '<div class="notice">この商品は本来Student Storeの所有物ではありません。</div>' : ''}
 <div class="card"><table>${productRow(product)}</table><form method="post" action="${product.id}/update">
 <label>name<input name="name" value="${escapeHtml(product.name)}"></label>
 <label>price<input name="price" type="number" value="${escapeHtml(product.price)}"></label>
 <label>stock<input name="stock" type="number" value="${escapeHtml(product.stock)}"></label>
-<button type="submit">商品を更新</button></form></div><p><a class="link" href="../../">Dashboardへ戻る</a></p></main></body></html>`;
+<button type="submit">商品を更新</button></form></div><p><a class="link" href="../../">Dashboardへ戻る</a></p></main>`);
 };
 
 const renderStore = (siteState, path = '/') => {
@@ -222,15 +299,36 @@ const renderStore = (siteState, path = '/') => {
   return renderStoreDashboard(siteState);
 };
 
-const renderLibrary = (siteState) => {
-  const colors = themeColors(siteState);
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(siteState.headline)}</title><style>${sharedStyles(colors)}.event{font-size:19px;font-weight:700;color:#235f8c}</style></head>
-<body><header>${profile.brand}</header><main><h1>${escapeHtml(siteState.headline)}</h1><p class="lead">本と人が出会い、地域の学びが広がる場所です。</p>
-${siteState.notice ? `<div class="notice">${escapeHtml(siteState.notice)}</div>` : ''}
-<div class="card center"><small>図書館からのお知らせ</small><p class="event">${escapeHtml(siteState.event)}</p><nav><a href="guide">利用案内</a><a href="calendar">開館カレンダー</a><a href="api/status">システム状態</a></nav></div></main></body></html>`;
+const renderInputLab = (siteState) => renderPage(siteState, 'TBX Books Search', `<main><h1>TBX Books Search</h1><p class="lead">外部入力を信用せず、安全な方法で処理することを学ぶ検索サービスです。</p>
+${siteState.lastFinding ? `<div class="notice">${escapeHtml(siteState.lastFinding)}</div>` : ''}
+<div class="card"><form method="get" action="search"><label>商品検索<input name="q" value="${escapeHtml(siteState.lastQuery || 'apple')}"></label><button>検索</button></form><p>通常検索例: <code>apple</code> / <code>book</code></p></div>
+<div class="card"><h2>API</h2><p><a class="link" href="api/search?q=apple">/api/search?q=apple</a></p>${siteState.solved ? '<p><a class="link" href="api/flag">Flagを取得する</a></p>' : ''}</div></main>`);
+
+const renderAuthLab = (siteState) => renderPage(siteState, 'TBX Portal Login', `<main><h1>TBX Portal</h1><p class="lead">ログインできることだけでなく、その後のトークン検証が重要であることを学ぶ認証ラボです。</p>
+${siteState.lastAction ? `<div class="notice">${escapeHtml(siteState.lastAction)}</div>` : ''}
+<div class="card"><h2>ログイン</h2><form method="post" action="login"><label>username<input name="username" value="student"></label><label>password<input name="password" type="password" value="portal123"></label><button>ログイン</button></form><p>研修用: <code>student</code> / <code>portal123</code></p></div>
+<div class="card"><h2>API</h2><p><code>POST /api/login</code> で研修用トークンを取得し、Base64URLのJSON内の <code>role</code> を観察します。</p>${siteState.solved ? '<p><a class="link" href="api/flag">Flagを取得する</a></p>' : ''}</div></main>`);
+
+const renderSecureSite = (siteState) => {
+  const checks = siteState.checks;
+  return renderPage(siteState, 'TBX Secure Site', `<main><h1>TBX Secure Site</h1><p class="lead">Target 1〜4で試した代表的な攻撃が防御されることを確認する最終演習です。</p>
+${siteState.verified ? '<div class="ok">DEFENSE VERIFIED</div>' : ''}
+<div class="card"><h2>防御チェック</h2><ul class="checks">
+<li>${checks.secrets ? '✓' : '□'} 秘密情報は公開領域から取得できない</li>
+<li>${checks.authorization ? '✓' : '□'} 他ユーザーIDへ変更しても403になる</li>
+<li>${checks.input ? '✓' : '□'} SQL Injection相当の入力は通常文字列として処理される</li>
+<li>${checks.session ? '✓' : '□'} トークン改変は認証エラーになる</li>
+</ul>${siteState.verified ? '<p><a class="link" href="api/flag">防御確認Flagを取得する</a></p>' : ''}</div>
+<div class="card"><h2>通常ログイン</h2><form method="post" action="login"><label>username<input name="username" value="student"></label><label>password<input name="password" type="password" value="secure123"></label><button>ログイン</button></form><p>研修用: <code>student</code> / <code>secure123</code></p></div></main>`);
 };
 
-const renderHome = (siteState, path) => PROFILE_ID === '2' ? renderStore(siteState, path) : PROFILE_ID === '3' ? renderLibrary(siteState) : renderTraining(siteState);
+const renderHome = (siteState, path) => {
+  if (PROFILE_ID === '2') return renderStore(siteState, path);
+  if (PROFILE_ID === '3') return renderInputLab(siteState);
+  if (PROFILE_ID === '4') return renderAuthLab(siteState);
+  if (PROFILE_ID === '5') return renderSecureSite(siteState);
+  return renderTraining(siteState);
+};
 
 const requireAdmin = (request, response) => {
   if (request.headers['x-admin-key'] === profile.adminKey) return true;
@@ -239,21 +337,15 @@ const requireAdmin = (request, response) => {
 };
 
 const handleAdminRequest = async (request, response, path, siteState) => {
-  if (PROFILE_ID === '2') return false;
+  if (PROFILE_ID !== '1') return false;
   if (!requireAdmin(request, response)) return true;
   try {
     const body = await readJson(request);
-    if (PROFILE_ID === '1' && path === '/api/admin/banner') {
+    if (path === '/api/admin/banner') {
       if (typeof body.headline !== 'string' || body.headline.length < 1 || body.headline.length > 60 || !['default', 'compromised', 'maintenance'].includes(body.theme)) throw new Error('invalid_site_state');
       Object.assign(siteState, { headline: body.headline, theme: body.theme });
-    } else if (PROFILE_ID === '1' && path === '/api/admin/notice') {
+    } else if (path === '/api/admin/notice') {
       if (typeof body.notice !== 'string' || body.notice.length < 1 || body.notice.length > 100) throw new Error('invalid_notice');
-      Object.assign(siteState, { notice: body.notice });
-    } else if (PROFILE_ID === '3' && path === '/api/admin/hero') {
-      if (typeof body.headline !== 'string' || body.headline.length < 1 || body.headline.length > 60 || !['default', 'compromised', 'maintenance'].includes(body.theme)) throw new Error('invalid_site_state');
-      Object.assign(siteState, { headline: body.headline, theme: body.theme });
-    } else if (PROFILE_ID === '3' && path === '/api/admin/alert') {
-      if (typeof body.notice !== 'string' || body.notice.length < 1 || body.notice.length > 100) throw new Error('invalid_alert');
       Object.assign(siteState, { notice: body.notice });
     } else { return false; }
     sendJson(response, 200, { status: 'updated', site: publicSiteState(siteState) });
@@ -263,14 +355,10 @@ const handleAdminRequest = async (request, response, path, siteState) => {
   return true;
 };
 
-const secretPayload = () => {
-  if (PROFILE_ID === '1') return { environment: 'production', adminApi: '/api/admin/banner', noticeApi: '/api/admin/notice', adminKey: profile.adminKey, warning: 'TRAINING ONLY' };
-  if (PROFILE_ID === '3') return { environment: 'production', heroApi: '/api/admin/hero', alertApi: '/api/admin/alert', adminKey: profile.adminKey, warning: 'TRAINING ONLY' };
-  return null;
-};
+const secretPayload = () => ({ environment: 'production', adminApi: '/api/admin/banner', noticeApi: '/api/admin/notice', adminKey: profile.adminKey, warning: 'TRAINING ONLY' });
 
 const loginTarget2 = async (request, response, siteState) => {
-  const body = request.headers['content-type']?.includes('application/json') ? await readJson(request) : await readForm(request);
+  const body = await readInput(request);
   if (body.username === 'student' && body.password === 'market123') {
     siteState.authenticated = true;
     siteState.lastAction = '';
@@ -338,10 +426,166 @@ const handleTarget2Api = async (request, response, path, siteState) => {
   return false;
 };
 
+const vulnerableSearch = (query, siteState) => {
+  siteState.lastQuery = query;
+  const sql = `SELECT id,label,value FROM products WHERE label LIKE '%${query}%'`;
+  const rows = target3Products.filter((product) => product.label.includes(query.toLowerCase()) || product.value.toLowerCase().includes(query.toLowerCase()));
+  if (/union\s+select/i.test(query) && /training_secrets/i.test(query)) {
+    siteState.solved = true;
+    siteState.lastFinding = '研修用のtraining_secretsテーブルが検索結果へ混入しました。';
+    rows.push({ id: 399, label: 'training_flag', value: siteState.flag.value });
+  }
+  return { query, sql, rows, warning: siteState.solved ? 'SQL文字列への直接連結により、想定外のSELECTが混入しました。' : undefined };
+};
+
+const handleTarget3Api = async (request, response, path, siteState) => {
+  if (request.method === 'GET' && (path === '/api/search' || path === '/search')) {
+    const url = new URL(request.url ?? '/', 'http://target');
+    const result = vulnerableSearch(url.searchParams.get('q') ?? '', siteState);
+    if (path === '/api/search') {
+      sendJson(response, 200, result);
+      return true;
+    }
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    response.end(renderPage(siteState, 'Search Result', `<main><h1>検索結果</h1><p class="lead">実行された研修用SQL:</p><pre>${escapeHtml(result.sql)}</pre><div class="card"><table>${result.rows.map((row) => `<tr><td>${escapeHtml(row.id)}</td><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.value)}</td></tr>`).join('')}</table></div><p><a class="link" href="/">戻る</a></p></main>`));
+    return true;
+  }
+  return false;
+};
+
+const handleTarget4Api = async (request, response, path, siteState) => {
+  if (request.method === 'POST' && (path === '/login' || path === '/api/login')) {
+    const body = await readInput(request);
+    if (body.username !== 'student' || body.password !== 'portal123') {
+      sendJson(response, 401, { error: 'invalid_credentials' });
+      return true;
+    }
+    siteState.authenticated = true;
+    const token = issueWeakToken(siteState);
+    if (path === '/login') {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      response.end(renderPage(siteState, 'Login Success', `<main><h1>ログイン成功</h1><p class="lead">この研修トークンは署名がなく、Base64URLのJSONだけで構成されています。</p><div class="card"><pre>${escapeHtml(token)}</pre></div><p><a class="link" href="/">戻る</a></p></main>`));
+      return true;
+    }
+    sendJson(response, 200, { token, note: 'training token: unsigned base64url JSON' });
+    return true;
+  }
+  if (request.method === 'GET' && path === '/api/me') {
+    sendJson(response, siteState.authenticated ? 200 : 401, siteState.authenticated ? { user: 'student', role: 'user' } : { error: 'login_required' });
+    return true;
+  }
+  if (request.method === 'GET' && path === '/api/admin') {
+    try {
+      const token = String(request.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
+      const payload = decodeBase64UrlJson(token);
+      if (payload.nonce !== siteState.nonce) {
+        sendJson(response, 401, { error: 'invalid_token' });
+        return true;
+      }
+      if (payload.role === 'admin') {
+        siteState.solved = true;
+        siteState.lastAction = '署名検証のないトークン改変が管理者APIで受理されました。';
+        sendJson(response, 200, { status: 'admin', flag: siteState.flag.value });
+        return true;
+      }
+      sendJson(response, 403, { error: 'admin_role_required' });
+    } catch {
+      sendJson(response, 401, { error: 'invalid_token' });
+    }
+    return true;
+  }
+  return false;
+};
+
+const updateSecureVerification = (siteState) => {
+  siteState.verified = Object.values(siteState.checks).every(Boolean);
+};
+
+const markSecureCheck = (siteState, key) => {
+  siteState.checks[key] = true;
+  updateSecureVerification(siteState);
+};
+
+const handleTarget5Api = async (request, response, path, siteState) => {
+  if (request.method === 'GET' && ['/backup/config.json', '/debug/app-config.json', '/internal/config.json'].includes(path)) {
+    markSecureCheck(siteState, 'secrets');
+    sendJson(response, 404, { error: 'not_found', defense: 'secret_not_in_web_root' });
+    return true;
+  }
+  if (request.method === 'POST' && (path === '/login' || path === '/api/login')) {
+    const body = await readInput(request);
+    if (body.username !== 'student' || body.password !== 'secure123') {
+      sendJson(response, 401, { error: 'invalid_credentials' });
+      return true;
+    }
+    siteState.authenticated = true;
+    siteState.loginNonce = randomBytes(10).toString('hex');
+    const token = issueSecureToken(siteState);
+    if (path === '/login') {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      response.end(renderPage(siteState, 'Secure Login', `<main><h1>ログイン成功</h1><div class="card"><pre>${escapeHtml(token)}</pre></div><p><a class="link" href="/">戻る</a></p></main>`));
+      return true;
+    }
+    sendJson(response, 200, { token, expiresIn: 600 });
+    return true;
+  }
+  const productMatch = path.match(/^\/api\/products\/(\d+)$/);
+  if (request.method === 'GET' && productMatch) {
+    const product = siteState.products[Number(productMatch[1])];
+    if (!siteState.authenticated) {
+      sendJson(response, 401, { error: 'login_required' });
+      return true;
+    }
+    if (!product) {
+      sendJson(response, 404, { error: 'not_found' });
+      return true;
+    }
+    if (product.owner !== 'student') {
+      markSecureCheck(siteState, 'authorization');
+      sendJson(response, 403, { error: 'forbidden', defense: 'resource_owner_checked' });
+      return true;
+    }
+    sendJson(response, 200, { product });
+    return true;
+  }
+  if (request.method === 'GET' && path === '/api/search') {
+    const url = new URL(request.url ?? '/', 'http://target');
+    const query = url.searchParams.get('q') ?? '';
+    const normalized = query.toLowerCase();
+    const rows = /^[\p{L}\p{N}\s_-]{0,40}$/u.test(query)
+      ? Object.values(siteState.products).filter((product) => product.name.toLowerCase().includes(normalized))
+      : [];
+    if (/('|--|union|select|training_secrets)/i.test(query)) markSecureCheck(siteState, 'input');
+    sendJson(response, 200, { query, rows, parameterized: true, escaped: true });
+    return true;
+  }
+  if (request.method === 'GET' && path === '/api/admin') {
+    const token = String(request.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
+    const payload = verifySecureToken(siteState, token);
+    if (!payload) {
+      markSecureCheck(siteState, 'session');
+      sendJson(response, 401, { error: 'invalid_token', defense: 'signature_or_expiry_failed' });
+      return true;
+    }
+    if (payload.role !== 'admin') {
+      sendJson(response, 403, { error: 'admin_role_required' });
+      return true;
+    }
+    sendJson(response, 200, { status: 'admin' });
+    return true;
+  }
+  if (request.method === 'GET' && path === '/api/defense/status') {
+    updateSecureVerification(siteState);
+    sendJson(response, 200, { checks: siteState.checks, verified: siteState.verified });
+    return true;
+  }
+  return false;
+};
+
 const handleFlagRequest = async (request, response, siteState) => {
   if (request.method === 'GET') {
     if (!canRevealFlag(siteState)) {
-      sendJson(response, 403, { error: 'flag_locked', detail: '攻略条件を満たすとFlagを取得できます。' });
+      sendJson(response, 403, { error: 'flag_locked', detail: PROFILE_ID === '5' ? 'すべての防御確認を完了するとFlagを取得できます。' : '攻略条件を満たすとFlagを取得できます。' });
       return true;
     }
     sendJson(response, 200, { flag: siteState.flag.value });
@@ -368,57 +612,64 @@ const server = http.createServer(async (request, response) => {
   const sessionId = getSessionId(request);
   const siteState = getSiteState(sessionId);
 
-  if (request.method === 'GET' && path === '/api/status') {
-    sendJson(response, 200, { status: 'ok', service: profile.service, profile: PROFILE_ID, modified: isModified(siteState), site: publicSiteState(siteState), time: new Date().toISOString() });
-    return;
-  }
-  if (request.method === 'GET' && path === '/robots.txt') {
-    response.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
-    response.end(profile.robots);
-    return;
-  }
-  if (profile.secretPath && request.method === 'GET' && path === profile.secretPath) {
-    sendJson(response, 200, secretPayload());
-    return;
-  }
-  if ((path === '/api/flag' || path === '/api/flag/check') && await handleFlagRequest(request, response, siteState)) return;
-  if (request.method === 'POST' && path === '/api/lab/reset') {
-    siteStates.set(sessionId, makeInitialState(sessionId));
-    sendJson(response, 200, { status: 'reset', site: publicSiteState(siteStates.get(sessionId)) });
-    return;
-  }
-  if (PROFILE_ID === '2' && await handleTarget2Api(request, response, path, siteState)) return;
-  if (request.method === 'POST' && path.startsWith('/api/admin/')) {
-    if (await handleAdminRequest(request, response, path, siteState)) return;
-  }
-  const storeProductUpdateMatch = PROFILE_ID === '2' ? path.match(/^\/store\/products\/(\d+)\/update$/) : null;
-  if (PROFILE_ID === '2' && request.method === 'POST' && storeProductUpdateMatch) {
-    if (!siteState.authenticated) {
-      response.writeHead(303, { location: '/', 'cache-control': 'no-store' });
+  try {
+    if (request.method === 'GET' && path === '/api/status') {
+      sendJson(response, 200, { status: 'ok', service: profile.service, profile: PROFILE_ID, modified: isModified(siteState), site: publicSiteState(siteState), time: new Date().toISOString() });
+      return;
+    }
+    if (request.method === 'GET' && path === '/robots.txt') {
+      response.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+      response.end(profile.robots);
+      return;
+    }
+    if (PROFILE_ID === '1' && request.method === 'GET' && path === profile.secretPath) {
+      sendJson(response, 200, secretPayload());
+      return;
+    }
+    if ((path === '/api/flag' || path === '/api/flag/check') && await handleFlagRequest(request, response, siteState)) return;
+    if (request.method === 'POST' && path === '/api/lab/reset') {
+      siteStates.set(sessionId, makeInitialState(sessionId));
+      sendJson(response, 200, { status: 'reset', site: publicSiteState(siteStates.get(sessionId)) });
+      return;
+    }
+    if (PROFILE_ID === '2' && await handleTarget2Api(request, response, path, siteState)) return;
+    if (PROFILE_ID === '3' && await handleTarget3Api(request, response, path, siteState)) return;
+    if (PROFILE_ID === '4' && await handleTarget4Api(request, response, path, siteState)) return;
+    if (PROFILE_ID === '5' && await handleTarget5Api(request, response, path, siteState)) return;
+    if (request.method === 'POST' && path.startsWith('/api/admin/')) {
+      if (await handleAdminRequest(request, response, path, siteState)) return;
+    }
+    const storeProductUpdateMatch = PROFILE_ID === '2' ? path.match(/^\/store\/products\/(\d+)\/update$/) : null;
+    if (PROFILE_ID === '2' && request.method === 'POST' && storeProductUpdateMatch) {
+      if (!siteState.authenticated) {
+        response.writeHead(303, { location: '/', 'cache-control': 'no-store' });
+        response.end();
+        return;
+      }
+      const product = updateTarget2Product(siteState, Number(storeProductUpdateMatch[1]), await readForm(request));
+      response.writeHead(303, { location: product ? `/store/products/${product.id}` : '/', 'cache-control': 'no-store' });
       response.end();
       return;
     }
-    const product = updateTarget2Product(siteState, Number(storeProductUpdateMatch[1]), await readForm(request));
-    response.writeHead(303, { location: product ? `/store/products/${product.id}` : '/', 'cache-control': 'no-store' });
-    response.end();
-    return;
-  }
-  if (request.method === 'GET' && (path === '/' || (PROFILE_ID === '2' && path.startsWith('/store/products/')))) {
-    const html = renderHome(siteState, path);
-    if (!html) {
-      sendJson(response, 404, { error: 'not_found', path });
+    if (request.method === 'GET' && (path === '/' || (PROFILE_ID === '2' && path.startsWith('/store/products/')))) {
+      const html = renderHome(siteState, path);
+      if (!html) {
+        sendJson(response, 404, { error: 'not_found', path });
+        return;
+      }
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-terminalbox-target': 'training-only' });
+      response.end(html);
       return;
     }
-    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-terminalbox-target': 'training-only' });
-    response.end(html);
-    return;
+    if (request.method === 'GET' && ['/about', '/login', '/guide', '/calendar'].includes(path)) {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      response.end('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ご案内</title></head><body><h1>ご案内</h1><p>このページはTerminalBoxの演習用コンテンツです。</p><a href="./">トップへ戻る</a></body></html>');
+      return;
+    }
+    sendJson(response, 404, { error: 'not_found', path });
+  } catch (error) {
+    sendJson(response, error.message === 'payload_too_large' ? 413 : 500, { error: error.message });
   }
-  if (request.method === 'GET' && ['/about', '/login', '/guide', '/calendar'].includes(path)) {
-    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-    response.end('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ご案内</title></head><body><h1>ご案内</h1><p>このページはTerminalBoxの演習用コンテンツです。</p><a href="./">トップへ戻る</a></body></html>');
-    return;
-  }
-  sendJson(response, 404, { error: 'not_found', path });
 });
 
 server.listen(PORT, HOST, () => console.log(`${profile.service} listening on ${HOST}:${PORT}`));
