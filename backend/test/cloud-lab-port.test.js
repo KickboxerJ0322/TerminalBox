@@ -17,6 +17,7 @@ test('Cloud Lab keeps port 8080 available for the Burp proxy', async () => {
   assert.match(labDockerfile, /EXPOSE 8081/);
   assert.match(labDockerfile, /terminalbox-agent-executor/);
   assert.match(nginxConfig, /location = \/internal\/agent\/execute/);
+  assert.match(nginxConfig, /location = \/internal\/challenges\/check-target-flag/);
   assert.match(cloudBuild, /- \$\{_LAB_SERVICE\}[\s\S]*?- --port=8081/);
   assert.match(challengePanel, /HTTP Proxyを127\.0\.0\.1、Portを8080/);
 });
