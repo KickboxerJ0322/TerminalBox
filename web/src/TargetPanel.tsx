@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
   refreshSignal: number;
-  targetId: 1 | 2 | 3 | 4 | 5;
+  targetId: 1 | 2 | 3 | 4 | 5 | 'tools' | 'web-attacks';
   onTargetChange: (targetId: 1 | 2 | 3 | 4 | 5) => void;
 }
 
@@ -12,6 +12,8 @@ const targetDefinitions = {
   3: { address: 'http://target3:3000/', proxyPath: '/target-site-3/', label: '問題3 入力値処理', addressLabel: 'Kali内部アドレス' },
   4: { address: 'http://target4:3000/', proxyPath: '/target-site-4/', label: '問題4 セッション / 認証', addressLabel: 'Kali内部アドレス' },
   5: { address: 'http://target5:3000/', proxyPath: '/target-site-5/', label: '問題5 Defense in Depth', addressLabel: 'Kali内部アドレス' },
+  tools: { address: 'http://labtarget:3100/', proxyPath: '/tool-target/', label: 'セキュリティツール ターゲット', addressLabel: 'Kali内部アドレス' },
+  'web-attacks': { address: 'http://labtarget:3100/web-attacks/', proxyPath: '/tool-target/web-attacks/', label: 'Web Attacks ターゲット', addressLabel: 'Kali内部アドレス', resetPath: '/tool-target/web-attacks/api/lab/reset' },
 } as const;
 
 export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) {
@@ -29,7 +31,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) 
   const resetTarget = async () => {
     setResetting(true);
     try {
-      await fetch(`${target.proxyPath}api/lab/reset`, { method: 'POST' });
+      await fetch('resetPath' in target ? target.resetPath : `${target.proxyPath}api/lab/reset`, { method: 'POST' });
       refresh();
     } finally {
       setResetting(false);

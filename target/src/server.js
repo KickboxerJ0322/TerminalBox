@@ -5,6 +5,7 @@ const PROFILE_ID = ['1', '2', '3', '4', '5'].includes(process.env.TARGET_PROFILE
 const PORT = Number.parseInt(process.env.PORT ?? '3000', 10) || 3000;
 const HOST = process.env.HOST ?? '0.0.0.0';
 const SESSION_HEADER = 'x-terminalbox-session';
+const PATH_PREFIX_HEADER = 'x-terminalbox-path-prefix';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const siteStates = new Map();
 
@@ -120,6 +121,14 @@ const escapeHtml = (value) => String(value)
 const sendJson = (response, status, payload) => {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   response.end(JSON.stringify(payload));
+};
+
+const redirectPath = (request, path = '/') => {
+  const prefix = request.headers[PATH_PREFIX_HEADER];
+  if (typeof prefix !== 'string' || !prefix.startsWith('/')) return path;
+  const cleanPrefix = prefix.replace(/\/$/, '');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return cleanPath === '/' ? `${cleanPrefix}/` : `${cleanPrefix}${cleanPath}`;
 };
 
 const readBody = async (request, limit = 8192) => {
@@ -362,7 +371,7 @@ const loginTarget2 = async (request, response, siteState) => {
   if (body.username === 'student' && body.password === 'market123') {
     siteState.authenticated = true;
     siteState.lastAction = '';
-    response.writeHead(303, { location: '/', 'cache-control': 'no-store' });
+    response.writeHead(303, { location: redirectPath(request, '/'), 'cache-control': 'no-store' });
     response.end();
     return;
   }
@@ -642,12 +651,12 @@ const server = http.createServer(async (request, response) => {
     const storeProductUpdateMatch = PROFILE_ID === '2' ? path.match(/^\/store\/products\/(\d+)\/update$/) : null;
     if (PROFILE_ID === '2' && request.method === 'POST' && storeProductUpdateMatch) {
       if (!siteState.authenticated) {
-        response.writeHead(303, { location: '/', 'cache-control': 'no-store' });
+        response.writeHead(303, { location: redirectPath(request, '/'), 'cache-control': 'no-store' });
         response.end();
         return;
       }
       const product = updateTarget2Product(siteState, Number(storeProductUpdateMatch[1]), await readForm(request));
-      response.writeHead(303, { location: product ? `/store/products/${product.id}` : '/', 'cache-control': 'no-store' });
+      response.writeHead(303, { location: redirectPath(request, product ? `/store/products/${product.id}` : '/'), 'cache-control': 'no-store' });
       response.end();
       return;
     }

@@ -88,6 +88,9 @@ test('Agent Gemini request uses the online endpoint and never Ollama', async () 
   });
   assert.match(requestedUrl, /^https:\/\/gemini\.invalid/);
   assert.doesNotMatch(requestedUrl, /ollama/i);
+  assert.match(requestBody.contents[0].parts[0].text, /JSONオブジェクト1つだけ/);
+  assert.match(requestBody.contents[0].parts[0].text, /\{"action":"execute_command","command":"\.\.\.","reason":"\.\.\."\}/);
+  assert.match(requestBody.contents[0].parts[0].text, /現在のディレクトリ、ユーザー、ファイル一覧、直近のコマンド確認/);
   assert.deepEqual(requestBody.contents[0].parts[1], { inlineData: { mimeType: 'image/jpeg', data: 'YWJj' } });
   assert.equal(action.action, 'final_answer');
 });

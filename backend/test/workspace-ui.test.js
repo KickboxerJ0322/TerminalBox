@@ -71,7 +71,7 @@ test('Live Training Target has iframe back navigation', async () => {
   assert.match(source, /sandbox="allow-forms allow-same-origin"/);
 });
 
-test('Web Attacks keeps its own group while target panel uses target 5', async () => {
+test('tool tabs open their matching lab target in the target panel', async () => {
   const [app, panel, target, styles] = await Promise.all([
     readWebSource('App.tsx'),
     readWebSource('ChallengePanel.tsx'),
@@ -80,11 +80,14 @@ test('Web Attacks keeps its own group while target panel uses target 5', async (
   ]);
 
   assert.match(app, /scope="web-attacks"/);
-  assert.match(app, /setLearningTab\('web-attacks'\)/);
+  assert.match(app, /setTargetPanelId\('tools'\)/);
+  assert.match(app, /setTargetPanelId\('web-attacks'\)/);
   assert.doesNotMatch(app, /historyWithoutWebAttacksUrl/);
-  assert.match(target, /http:\/\/target5:3000\//);
+  assert.match(target, /http:\/\/labtarget:3100\//);
+  assert.match(target, /http:\/\/labtarget:3100\/web-attacks\//);
   assert.match(target, /addressLabel: 'Kali内部アドレス'/);
-  assert.match(target, /proxyPath: '\/target-site-5\/'/);
+  assert.match(target, /proxyPath: '\/tool-target\/'/);
+  assert.match(target, /proxyPath: '\/tool-target\/web-attacks\/'/);
   assert.match(panel, /id: 'web'/);
   assert.match(target, /\(\[1, 2, 3, 4, 5\] as const\)/);
   assert.match(panel, /\/api\/challenges\/progress/);
@@ -149,6 +152,27 @@ test('tutorial includes a bounded ping reply exercise', async () => {
   assert.match(source, /ping -c 4 target/);
 });
 
+test('target non-answer questions auto-complete after scored answers', async () => {
+  const source = await readWebSource('ChallengePanel.tsx');
+  assert.match(source, /const scoredChallenges = group\.challenges/);
+  assert.match(source, /const answerCompletionIds = useMemo/);
+  assert.match(source, /const nonAnswerCompletionIds = useMemo/);
+  assert.match(source, /scope !== 'targets'/);
+  assert.match(source, /answerCompletionIds\.every\(\(item\) => completedSet\.has\(item\)\)/);
+  assert.match(source, /Promise\.all\(missing\.map\(\(item\) => setCompletion\(item, true\)\)\)/);
+  assert.match(source, /ATTACK \/ UNDERSTAND \/ DEFEND がすべて正解すると自動でCLEAR/);
+});
+
+test('understand and defend choices are displayed in a shuffled order', async () => {
+  const source = await readWebSource('ChallengePanel.tsx');
+  assert.match(source, /function shuffledChoices/);
+  assert.match(source, /choiceShuffleSeed/);
+  assert.match(source, /const visibleChoices = useMemo/);
+  assert.match(source, /visibleChoices\.map\(\(choice, index\)/);
+  assert.match(source, /String\.fromCharCode\(65 \+ index\)/);
+  assert.match(source, /toggleChoice\(choice\.id\)/);
+});
+
 test('tutorial includes the former basic operations between lessons 06 and 17', async () => {
   const source = await readWebSource('TutorialPanel.tsx');
   assert.ok(source.indexOf("id: '06'") < source.indexOf("id: '07'"));
@@ -173,6 +197,19 @@ test('target mutation commands carry the active session header', async () => {
   assert.doesNotMatch(tutorial, /-H 'X-TerminalBox-Session: \$TERMINALBOX_SESSION_ID'/);
   assert.match(terminal, /TERMINALBOX_SESSION_ID: session\.sessionId/);
   assert.match(executor, /TERMINALBOX_SESSION_ID: session\?\.sessionId/);
+});
+
+test('target proxy preserves path prefixes for browser redirects', async () => {
+  const [proxy, target] = await Promise.all([
+    readFile(new URL('../src/target-proxy.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../target/src/server.js', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(proxy, /'x-terminalbox-path-prefix': route\.prefix/);
+  assert.match(target, /const PATH_PREFIX_HEADER = 'x-terminalbox-path-prefix'/);
+  assert.match(target, /const redirectPath = \(request, path = '\/'\)/);
+  assert.match(target, /location: redirectPath\(request, '\/'\)/);
+  assert.match(target, /location: redirectPath\(request, product \? `\/store\/products\/\$\{product\.id\}` : '\/'\)/);
 });
 
 test('desktop workspace uses a compact four-pane viewport grid', async () => {

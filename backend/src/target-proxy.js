@@ -51,7 +51,10 @@ export function createTargetProxy(config) {
     const restoreUrl = rewriteTargetUrl(request, route.prefix);
     proxy.web(request, response, {
       target,
-      headers: { 'x-terminalbox-session': session.sessionId },
+      headers: {
+        'x-terminalbox-session': session.sessionId,
+        'x-terminalbox-path-prefix': route.prefix,
+      },
     });
     response.once('finish', restoreUrl);
     response.once('close', restoreUrl);

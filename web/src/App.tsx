@@ -24,6 +24,7 @@ interface PasteRequest {
 }
 
 type LearningTab = 'tutorial' | 'targets' | 'tools' | 'web-attacks';
+type TargetPanelId = 1 | 2 | 3 | 4 | 5 | 'tools' | 'web-attacks';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
 const CHALLENGE_STORAGE_KEY = 'terminalbox:challenge-completed';
@@ -135,6 +136,7 @@ export default function App() {
   const [resetSignal, setResetSignal] = useState(0);
   const [targetRefreshSignal, setTargetRefreshSignal] = useState(0);
   const [challengeTargetId, setChallengeTargetId] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [targetPanelId, setTargetPanelId] = useState<TargetPanelId>(1);
   const [paneSizes, setPaneSizes] = useState<PaneSizes>({ leftColumn: 50, leftTop: 50, rightTop: 50 });
   const workspaceRef = useRef<HTMLDivElement>(null);
   const leftColumnRef = useRef<HTMLDivElement>(null);
@@ -208,12 +210,17 @@ export default function App() {
       { id: 3 as const, index: recentHistory.lastIndexOf('http://target3:3000') },
       { id: 4 as const, index: recentHistory.lastIndexOf('http://target4:3000') },
       { id: 5 as const, index: recentHistory.lastIndexOf('http://target5:3000') },
+      { id: 'web-attacks' as const, index: recentHistory.lastIndexOf('http://labtarget:3100/web-attacks') },
+      { id: 'tools' as const, index: recentHistory.lastIndexOf('http://labtarget:3100') },
     ];
     const latestTarget = targetMatches.reduce((latest, candidate) => (
       candidate.index > latest.index ? candidate : latest
     ));
 
-    if (latestTarget.index >= 0) setChallengeTargetId(latestTarget.id);
+    if (latestTarget.index >= 0) {
+      setTargetPanelId(latestTarget.id);
+      if (typeof latestTarget.id === 'number') setChallengeTargetId(latestTarget.id);
+    }
 
     const eventCount = (history.match(/"status":"(?:updated|reset)"/g) ?? []).length;
     if (eventCount > targetEventCountRef.current) {
@@ -228,8 +235,16 @@ export default function App() {
 
   const selectChallengeTarget = useCallback((targetId: 1 | 2 | 3 | 4 | 5) => {
     setChallengeTargetId(targetId);
+    setTargetPanelId(targetId);
     setLearningTab('targets');
   }, []);
+
+  const selectLearningTab = useCallback((tab: LearningTab) => {
+    setLearningTab(tab);
+    if (tab === 'targets') setTargetPanelId(challengeTargetId);
+    if (tab === 'tools') setTargetPanelId('tools');
+    if (tab === 'web-attacks') setTargetPanelId('web-attacks');
+  }, [challengeTargetId]);
 
   const applyClientReset = useCallback(() => {
     window.localStorage.removeItem(TUTORIAL_STORAGE_KEY);
@@ -241,6 +256,7 @@ export default function App() {
     setPasteRequest(null);
     setLearningTab('tutorial');
     setChallengeTargetId(1);
+    setTargetPanelId(1);
     targetEventCountRef.current = 0;
     setResetSignal((value) => value + 1);
     void loadStatus();
@@ -389,7 +405,7 @@ export default function App() {
             <TargetPanel
               key={`target-${resetSignal}`}
               refreshSignal={targetRefreshSignal}
-              targetId={challengeTargetId}
+              targetId={targetPanelId}
               onTargetChange={selectChallengeTarget}
             />
           </div>
@@ -415,7 +431,7 @@ export default function App() {
                 aria-selected={learningTab === 'tutorial'}
                 aria-controls="tutorial-panel"
                 className={learningTab === 'tutorial' ? 'active' : ''}
-                onClick={() => setLearningTab('tutorial')}
+                onClick={() => selectLearningTab('tutorial')}
               >
                 チュートリアル
               </button>
@@ -426,7 +442,7 @@ export default function App() {
                 aria-selected={learningTab === 'targets'}
                 aria-controls="challenge-panel"
                 className={learningTab === 'targets' ? 'active' : ''}
-                onClick={() => setLearningTab('targets')}
+                onClick={() => selectLearningTab('targets')}
               >
                 ターゲット
               </button>
@@ -437,7 +453,7 @@ export default function App() {
                 aria-selected={learningTab === 'tools'}
                 aria-controls="challenge-panel"
                 className={learningTab === 'tools' ? 'active' : ''}
-                onClick={() => setLearningTab('tools')}
+                onClick={() => selectLearningTab('tools')}
               >
                 セキュリティツール
               </button>
@@ -448,7 +464,7 @@ export default function App() {
                 aria-selected={learningTab === 'web-attacks'}
                 aria-controls="challenge-panel"
                 className={learningTab === 'web-attacks' ? 'active' : ''}
-                onClick={() => setLearningTab('web-attacks')}
+                onClick={() => selectLearningTab('web-attacks')}
               >
                 Web Attacks
               </button>

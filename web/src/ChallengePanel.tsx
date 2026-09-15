@@ -20,6 +20,23 @@ interface ChallengeGroup {
   challenges: Challenge[];
 }
 
+function shuffleKey(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function shuffledChoices(choices: Challenge['choices'], seed: string) {
+  if (!choices) return [];
+  return choices
+    .map((choice, index) => ({ choice, rank: shuffleKey(`${seed}:${choice.id}:${index}`) }))
+    .sort((left, right) => left.rank - right.rank)
+    .map(({ choice }) => choice);
+}
+
 interface Props {
   onInsertCommand: (command: string) => void;
   resetSignal: number;
@@ -471,12 +488,25 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const [checking, setChecking] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [hintVisible, setHintVisible] = useState(false);
+  const [choiceShuffleSeed, setChoiceShuffleSeed] = useState(() => `${Date.now()}:${Math.random()}`);
   const completedSet = useMemo(() => new Set(completedIds), [completedIds]);
   const challenge = group.challenges.find((item) => item.id === selectedId) ?? group.challenges[0];
   const completionId = `${group.id}:${challenge.id}`;
   const completed = completedSet.has(completionId);
-  const scoredChallenges = scope === 'targets' ? group.challenges.filter((item) => item.answerId) : group.challenges;
+  const scoredChallenges = group.challenges;
   const groupCompleted = scoredChallenges.filter((item) => completedSet.has(`${group.id}:${item.id}`)).length;
+  const answerCompletionIds = useMemo(
+    () => group.challenges.filter((item) => item.answerId).map((item) => `${group.id}:${item.id}`),
+    [group],
+  );
+  const nonAnswerCompletionIds = useMemo(
+    () => group.challenges.filter((item) => !item.answerId).map((item) => `${group.id}:${item.id}`),
+    [group],
+  );
+  const visibleChoices = useMemo(
+    () => shuffledChoices(challenge.choices, `${choiceShuffleSeed}:${group.id}:${challenge.id}`),
+    [challenge.choices, challenge.id, choiceShuffleSeed, group.id],
+  );
 
   const loadProgress = useCallback(async () => {
     const response = await fetch('/api/challenges/progress', { credentials: 'include', cache: 'no-store' });
@@ -504,7 +534,15 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   useEffect(() => { void loadProgress(); }, [loadProgress, resetSignal]);
   useEffect(() => { setSelectedId(group.challenges[0].id); setQueuedCommand(null); setAnswer(''); setChoiceAnswer([]); setFeedback(''); }, [group]);
   useEffect(() => { setSelectedId(group.challenges[0].id); setAnswer(''); setChoiceAnswer([]); setFeedback(''); }, [group, resetSignal]);
+  useEffect(() => { setChoiceShuffleSeed(`${Date.now()}:${Math.random()}`); }, [resetSignal]);
   useEffect(() => setHintVisible(false), [selectedId, resetSignal]);
+  useEffect(() => {
+    if (scope !== 'targets' || answerCompletionIds.length === 0) return;
+    if (!answerCompletionIds.every((item) => completedSet.has(item))) return;
+    const missing = nonAnswerCompletionIds.filter((item) => !completedSet.has(item));
+    if (missing.length === 0) return;
+    void Promise.all(missing.map((item) => setCompletion(item, true)));
+  }, [answerCompletionIds, completedSet, nonAnswerCompletionIds, scope, setCompletion]);
 
   const queueCommand = (command: string) => {
     onInsertCommand(command);
@@ -595,7 +633,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
             <div className="challenge-answer">
               {challenge.choices ? (
                 <div className="choice-list" role={challenge.multiple ? 'group' : 'radiogroup'} aria-label="選択肢">
-                  {challenge.choices.map((choice) => (
+                  {visibleChoices.map((choice, index) => (
                     <label key={choice.id} className="choice-option">
                       <input
                         type={challenge.multiple ? 'checkbox' : 'radio'}
@@ -604,7 +642,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
                         disabled={completed || checking}
                         onChange={() => toggleChoice(choice.id)}
                       />
-                      <span>{choice.id}. {choice.label}</span>
+                      <span>{String.fromCharCode(65 + index)}. {choice.label}</span>
                     </label>
                   ))}
                 </div>
@@ -616,7 +654,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
             </div>
           ) : (
             scope === 'targets' ? (
-              <div className="lesson-card lesson-check"><span>FLAG CLEAR</span><p>この手順は確認用です。Target問題はFlagを取得して回答したときだけCLEARになります。</p></div>
+              <div className="lesson-card lesson-check"><span>PROGRESS</span><p>この手順は確認用です。ATTACK / UNDERSTAND / DEFEND がすべて正解すると自動でCLEARになります。</p></div>
             ) : (
               <div className="lesson-actions">
                 <button type="button" disabled={completed} onClick={() => void setCompletion(completionId, true)}>クリアにする</button>
