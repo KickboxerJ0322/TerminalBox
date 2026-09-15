@@ -10,6 +10,8 @@ interface Props {
   onHistoryChange: (history: string) => void;
   onFullHistoryChange: (history: string) => void;
   pasteRequest: PasteRequest | null;
+  terminalMode: 'kali' | 'linux-lab';
+  linuxLabTargetId?: 6 | 7 | 8 | 9;
 }
 
 type WorkspaceTab = 'terminal' | 'burp' | 'wireshark' | 'desktop';
@@ -29,7 +31,7 @@ const launchCommands: Partial<Record<WorkspaceTab, string>> = {
 
 const kaliGuiUrl = '/kali-gui/vnc.html?autoconnect=1&resize=remote&password=student&path=kali-gui/websockify';
 
-export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, pasteRequest }: Props) {
+export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, pasteRequest, terminalMode, linuxLabTargetId }: Props) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('terminal');
   const [guiInitialized, setGuiInitialized] = useState(false);
   const [terminalRequest, setTerminalRequest] = useState<PasteRequest | null>(pasteRequest);
@@ -38,7 +40,12 @@ export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, paste
     if (pasteRequest) setTerminalRequest(pasteRequest);
   }, [pasteRequest]);
 
+  useEffect(() => {
+    if (terminalMode === 'linux-lab') setActiveTab('terminal');
+  }, [terminalMode]);
+
   const selectTab = (tab: WorkspaceTab) => {
+    if (terminalMode === 'linux-lab' && tab !== 'terminal') return;
     setActiveTab(tab);
     if (tab !== 'terminal') setGuiInitialized(true);
     const command = launchCommands[tab];
@@ -58,6 +65,7 @@ export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, paste
             role="tab"
             aria-selected={activeTab === tab.id}
             className={activeTab === tab.id ? 'active' : ''}
+            disabled={terminalMode === 'linux-lab' && tab.id !== 'terminal'}
             onClick={() => selectTab(tab.id)}
           >
             <span aria-hidden="true">{tab.icon}</span>{tab.label}
@@ -65,7 +73,14 @@ export function KaliWorkspacePanel({ onHistoryChange, onFullHistoryChange, paste
         ))}
       </div>
       <div className={guiVisible ? 'kali-terminal-view kali-view-hidden' : 'kali-terminal-view'} aria-hidden={guiVisible}>
-        <TerminalPanel onHistoryChange={onHistoryChange} onFullHistoryChange={onFullHistoryChange} pasteRequest={terminalRequest} />
+        <TerminalPanel
+          key={`${terminalMode}-${linuxLabTargetId ?? 'kali'}`}
+          onHistoryChange={onHistoryChange}
+          onFullHistoryChange={onFullHistoryChange}
+          pasteRequest={terminalRequest}
+          mode={terminalMode}
+          linuxLabTargetId={linuxLabTargetId}
+        />
       </div>
       {guiInitialized && (
         <section className={guiVisible ? 'panel kali-gui-panel' : 'panel kali-gui-panel kali-view-hidden'} role="tabpanel" aria-label={activeDefinition.label} aria-hidden={!guiVisible}>

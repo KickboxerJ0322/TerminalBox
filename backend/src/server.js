@@ -8,6 +8,7 @@ import { getQuickReply } from './quick-replies.js';
 import { sanitizeConversationHistory } from './conversation-history.js';
 import { getAiStatus, getSystemStatus } from './status.js';
 import { resetLab } from './lab-reset.js';
+import { attachLinuxLabSocket, resetLinuxLab } from './linux-lab.js';
 import { isAllowedWebSocketOrigin } from './origin.js';
 import { createLabProxy, isLabHttpPath, isLabWebSocketPath } from './lab-proxy.js';
 import { createTargetProxy } from './target-proxy.js';
@@ -220,7 +221,7 @@ function getRequestProvider(requestBody) {
   return resolveAiProvider(config);
 }
 
-const CHALLENGE_COMPLETION_PATTERN = /^(?:[1-5]|tools|web):[0-9]{2}$/;
+const CHALLENGE_COMPLETION_PATTERN = /^(?:[1-9]|tools):[0-9]{2}$/;
 
 function isChallengeCompletionId(value) {
   return typeof value === 'string' && CHALLENGE_COMPLETION_PATTERN.test(value);
@@ -228,7 +229,7 @@ function isChallengeCompletionId(value) {
 
 function updateProgressSummary(session, completionId) {
   const target = completionId.split(':')[0];
-  if (['1', '2', '3', '4', '5'].includes(target)) {
+  if (['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(target)) {
     session.progress[`target${target}`] = [...session.completedChallengeIds].some((id) => id.startsWith(`${target}:`));
   }
 }
@@ -431,6 +432,20 @@ app.post('/api/lab/reset', async (request, response) => {
   } catch (error) {
     console.error(`Lab reset failed: ${error.message}`);
     response.status(500).json({ error: 'Lab reset failed', detail: error.message });
+  }
+});
+
+app.post('/api/linux-lab/reset', async (request, response) => {
+  try {
+    const session = await terminalBoxSession(request, response, { allowHeader: isLabService });
+    resetLinuxLab(session);
+    for (const completionId of [...session.completedChallengeIds]) {
+      if (/^[6-9]:/.test(completionId)) session.completedChallengeIds.delete(completionId);
+    }
+    for (const target of ['6', '7', '8', '9']) session.progress[`target${target}`] = false;
+    response.json({ status: 'reset', sessionId: session.sessionId, linuxLab: true });
+  } catch (error) {
+    response.status(error.status ?? 500).json({ error: 'Linux Lab reset failed', detail: error.message });
   }
 });
 
@@ -715,7 +730,7 @@ server.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  if (url.pathname !== '/ws/terminal') {
+  if (url.pathname !== '/ws/terminal' && url.pathname !== '/ws/linux-lab') {
     socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
     socket.destroy();
     return;
@@ -725,7 +740,19 @@ server.on('upgrade', (request, socket, head) => {
   });
 });
 
-terminalSockets.on('connection', (socket, request) => attachTerminalSocket(socket, request, config));
+terminalSockets.on('connection', (socket, request) => {
+  const url = new URL(request.url ?? '/', 'http://localhost');
+  if (url.pathname === '/ws/linux-lab') {
+    const headerSessionId = isLabService && isValidSessionId(request.headers['x-terminalbox-session'])
+      ? request.headers['x-terminalbox-session']
+      : null;
+    void sessionManager.getOrCreate(headerSessionId ?? readSessionCookie(request))
+      .then((session) => attachLinuxLabSocket(socket, request, session))
+      .catch((error) => socket.close(1011, error.message));
+    return;
+  }
+  attachTerminalSocket(socket, request, config);
+});
 
 server.listen(config.port, '0.0.0.0', () => {
   console.log(`TerminalBox ${config.serviceRole} backend listening on port ${config.port}`);

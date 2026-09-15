@@ -14,9 +14,10 @@ interface Challenge {
 }
 
 interface ChallengeGroup {
-  id: 1 | 2 | 3 | 4 | 5 | 'tools' | 'web';
+  id: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 'tools';
   title: string;
   subtitle: string;
+  category?: 'Web' | 'Linux / OS';
   challenges: Challenge[];
 }
 
@@ -40,9 +41,9 @@ function shuffledChoices(choices: Challenge['choices'], seed: string) {
 interface Props {
   onInsertCommand: (command: string) => void;
   resetSignal: number;
-  targetId: 1 | 2 | 3 | 4 | 5;
-  onTargetChange: (targetId: 1 | 2 | 3 | 4 | 5) => void;
-  scope: 'targets' | 'tools' | 'web-attacks';
+  targetId: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+  onTargetChange: (targetId: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9) => void;
+  scope: 'targets' | 'tools' | 'vulnerabilities';
 }
 
 const challengeGroups: ChallengeGroup[] = [
@@ -50,6 +51,7 @@ const challengeGroups: ChallengeGroup[] = [
     id: 1,
     title: '問題1',
     subtitle: '研修サイトの管理APIとFlag',
+    category: 'Web',
     challenges: [
       {
         id: '01', title: '公開バックアップを見つける',
@@ -121,6 +123,7 @@ const challengeGroups: ChallengeGroup[] = [
     id: 2,
     title: '問題2',
     subtitle: 'ECサイトのIDOR / Broken Access Control',
+    category: 'Web',
     challenges: [
       {
         id: '01', title: 'ブラウザUIからログインする',
@@ -195,6 +198,7 @@ const challengeGroups: ChallengeGroup[] = [
     id: 3,
     title: '問題3',
     subtitle: '入力値処理: SQL Injection',
+    category: 'Web',
     challenges: [
       {
         id: '01', title: 'ATTACK: 検索入力を改変する', answerId: 'target3', stage: 'attack',
@@ -241,6 +245,7 @@ const challengeGroups: ChallengeGroup[] = [
     id: 4,
     title: '問題4',
     subtitle: 'セッション / 認証: JWT検証不足',
+    category: 'Web',
     challenges: [
       {
         id: '01', title: 'ATTACK: トークンを改変する', answerId: 'target4', stage: 'attack',
@@ -288,6 +293,7 @@ const challengeGroups: ChallengeGroup[] = [
     id: 5,
     title: '問題5',
     subtitle: 'Defense in Depth: すべて対策済み',
+    category: 'Web',
     challenges: [
       {
         id: '01', title: 'ATTACK TEST: 防御を確認する', answerId: 'target5', stage: 'attack',
@@ -328,6 +334,194 @@ const challengeGroups: ChallengeGroup[] = [
         commands: [],
         hint: 'Target 5では、攻撃を試して失敗を確認することがゴールでした。',
         result: 'ATTACK TEST / UNDERSTAND / DEFEND を完了したら、Target学習は終了です。',
+      },
+    ],
+  },
+  {
+    id: 6,
+    title: 'Target 6 Copy Fail',
+    subtitle: 'Linux Kernel脆弱性: Copy Fail LPE',
+    category: 'Linux / OS',
+    challenges: [
+      {
+        id: '01', title: 'ATTACK: Copy Failを安全に再現する', answerId: 'target6', stage: 'attack',
+        goal: 'Linux LabでKernel LPEの流れを観察し、実Kernel exploitを使わずに疑似root化してFlagを取得してください。',
+        commands: ['uname -a', 'cat /home/student/copy-fail-notes.txt', 'cat /opt/copy-fail/README', '/opt/copy-fail/copy_fail_demo --explain', '/opt/copy-fail/copy_fail_demo --simulate', 'whoami', 'cat /root/flag.txt'],
+        hint: 'Linux LabはSession IDごとの安全な疑似環境です。`--simulate` はCloud RunやKaliのKernelへ触れず、Copy Failによって権限チェックが壊れた結果だけを再現します。',
+        result: '`root@linux-lab:~#` 相当の状態になった後、`/root/flag.txt` の `FLAG{...}` を回答します。',
+      },
+      {
+        id: '02', title: 'UNDERSTAND: 問題の種類', answerId: 'target6-understand', stage: 'understand',
+        goal: 'Copy Failがどの層の問題かを選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'Linux Kernelの脆弱性により、一般ユーザーからrootへ権限昇格できる問題。' },
+          { id: 'B', label: 'Webフォームの入力値をSQLへ連結した問題。' },
+          { id: 'C', label: 'sudoersで特定コマンドを許可しすぎた問題。' },
+        ],
+        hint: 'Copy Failは権限設定ミスではなく、Kernel内部の処理に起因するLPEとして扱います。',
+        result: 'Kernel脆弱性は、アプリ設定が正しくてもOSの権限境界を壊す可能性があります。',
+      },
+      {
+        id: '03', title: 'DEFEND: 実環境での対策', answerId: 'target6-defend', stage: 'defend', multiple: true,
+        goal: 'Kernel LPEへの対策として適切なものをすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'KernelとOSパッケージを迅速に更新する。' },
+          { id: 'B', label: '不要な権限・capability・危険なsyscallを減らす。' },
+          { id: 'C', label: 'コンテナやVMの隔離を前提に、多層防御と監視を行う。' },
+          { id: 'D', label: '一般ユーザーならKernel exploitの影響はないと考える。' },
+        ],
+        hint: 'LPEは「一般ユーザーで侵入された後」の被害拡大に直結します。',
+        result: 'A/B/Cが正解です。Kernel更新、権限最小化、隔離と監視を組み合わせます。',
+      },
+      {
+        id: '04', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'Copy FailはKernelの脆弱性です。一般ユーザーからrootになる危険性を、安全なLinux Lab内だけで確認しました。',
+        commands: [],
+        hint: '実環境では実Kernel exploit、AF_ALG攻撃、Cloud Run Kernel攻撃、Container Escapeを行ってはいけません。',
+        result: '何が問題か: Kernelの欠陥。なぜrootになるか: 権限境界が壊れるため。危険性: 侵入後に全権限を取られる。対策: 更新・最小権限・隔離・監視。',
+      },
+    ],
+  },
+  {
+    id: 7,
+    title: 'Target 7 File Permission',
+    subtitle: 'Linux File Permission: owner / group / rwx',
+    category: 'Linux / OS',
+    challenges: [
+      {
+        id: '01', title: 'ATTACK: 不適切な権限を悪用する', answerId: 'target7', stage: 'attack',
+        goal: 'owner / group / rwxを確認し、rootが実行するスクリプトが誰でも書き換え可能な危険性を体験してください。',
+        commands: ['cat /home/student/permission-notes.txt', 'ls -l /opt/perm-lab/maintenance.sh', 'cat /opt/perm-lab/maintenance.sh', "printf 'id\\ncat /root/flag.txt\\n' > /opt/perm-lab/maintenance.sh", '/opt/perm-lab/run-maintenance', 'cat /root/flag.txt'],
+        hint: '`-rwxrwxrwx` はowner/group/otherの全員が書き込み可能な状態です。rootが後で実行するファイルを書き換えられると、権限昇格につながります。',
+        result: 'Linux Lab内で疑似rootになった後、`/root/flag.txt` の `FLAG{...}` を回答します。',
+      },
+      {
+        id: '02', title: 'UNDERSTAND: 問題の種類', answerId: 'target7-understand', stage: 'understand',
+        goal: 'File Permission問題の原因を選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'rootが扱うファイルに過剰な書き込み権限があり、一般ユーザーが内容を変更できたため。' },
+          { id: 'B', label: 'Kernelのcopy処理そのものに欠陥があったため。' },
+          { id: 'C', label: 'SUIDビットが付いたroot所有バイナリがあったため。' },
+        ],
+        hint: 'ここで注目するのはrwxとowner/group/otherです。',
+        result: 'File Permissionは権限設定の問題です。誰が読めるか、書けるか、実行できるかを正しく制御します。',
+      },
+      {
+        id: '03', title: 'DEFEND: 権限設定の対策', answerId: 'target7-defend', stage: 'defend', multiple: true,
+        goal: '不適切なファイル権限への対策として適切なものをすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'rootが実行するファイルを一般ユーザー書き込み不可にする。' },
+          { id: 'B', label: 'owner / groupを用途に合わせて最小化する。' },
+          { id: 'C', label: 'chmod 777を避け、必要なrwxだけを付与する。' },
+          { id: 'D', label: '実行前にファイル内容を確認しない運用でよい。' },
+        ],
+        hint: '便利だから全員書き込み可にする、という設定は危険です。',
+        result: 'A/B/Cが正解です。権限は必要最小限にします。',
+      },
+      {
+        id: '04', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'File Permissionは権限設定の問題です。owner / group / rwxの誤りがroot権限の処理へつながる危険性を確認しました。',
+        commands: [],
+        hint: 'Kernelの欠陥ではなく、ファイルの所有者とモードの設計ミスです。',
+        result: '何が問題か: 過剰な書き込み権限。なぜrootになるか: root実行ファイルを一般ユーザーが改変できるため。対策: owner/group/chmodを最小化。',
+      },
+    ],
+  },
+  {
+    id: 8,
+    title: 'Target 8 SUID設定ミス',
+    subtitle: 'SUID設定ミス: root所有プログラム',
+    category: 'Linux / OS',
+    challenges: [
+      {
+        id: '01', title: 'ATTACK: SUID rootを調査する', answerId: 'target8', stage: 'attack',
+        goal: 'SUIDビットが付いたroot所有プログラムを見つけ、不適切な機能から疑似root化してFlagを取得してください。',
+        commands: ['cat /home/student/suid-notes.txt', 'find / -perm -4000 -type f 2>/dev/null', 'ls -l /usr/local/bin/backup-viewer', '/usr/local/bin/backup-viewer --root-shell', 'id', 'cat /root/flag.txt'],
+        hint: '`-rws` の `s` はSUIDを表します。root所有SUIDプログラムは、実行者がstudentでもroot権限で動く部分を持ちます。',
+        result: 'SUID helperの安全な疑似root化後、`/root/flag.txt` の `FLAG{...}` を回答します。',
+      },
+      {
+        id: '02', title: 'UNDERSTAND: 問題の種類', answerId: 'target8-understand', stage: 'understand',
+        goal: 'SUID設定ミスでroot化できる理由を選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'root所有のSUIDプログラムが、利用者にroot権限の危険な機能を許していたため。' },
+          { id: 'B', label: '一般ユーザーがrootのパスワードを知っていたため。' },
+          { id: 'C', label: 'robots.txtが公開されていたため。' },
+        ],
+        hint: 'SUIDは「実行時の権限」が通常のコマンドと異なります。',
+        result: 'SUIDは特殊権限の設定問題です。root所有SUIDは特に慎重に扱います。',
+      },
+      {
+        id: '03', title: 'DEFEND: SUIDの対策', answerId: 'target8-defend', stage: 'defend', multiple: true,
+        goal: 'SUID設定ミスへの対策として適切なものをすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: '不要なSUIDビットを削除する。' },
+          { id: 'B', label: 'SUIDプログラム内でシェル起動や任意ファイル読み取りを許さない。' },
+          { id: 'C', label: '定期的にSUIDファイルを棚卸しする。' },
+          { id: 'D', label: 'root所有ならSUIDを付けても常に安全。' },
+        ],
+        hint: 'SUIDは必要なプログラムだけに限定します。',
+        result: 'A/B/Cが正解です。特殊権限は棚卸しと最小化が重要です。',
+      },
+      {
+        id: '04', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'SUIDは特殊権限の設定問題です。root権限で実行されるプログラムの危険性を確認しました。',
+        commands: [],
+        hint: 'File Permissionのrwxミスとは異なり、SUIDでは実行時の有効権限が問題になります。',
+        result: '何が問題か: SUID設定ミス。なぜrootになるか: root所有プログラムがroot権限で危険操作を許すため。対策: SUID削除・安全実装・棚卸し。',
+      },
+    ],
+  },
+  {
+    id: 9,
+    title: 'Target 9 sudo設定ミス',
+    subtitle: 'sudo設定ミス: sudoersと過剰な権限委譲',
+    category: 'Linux / OS',
+    challenges: [
+      {
+        id: '01', title: 'ATTACK: sudo権限を調査する', answerId: 'target9', stage: 'attack',
+        goal: '`sudo -l` で許可された操作を確認し、過剰なsudoers設定から疑似root化してFlagを取得してください。',
+        commands: ['cat /home/student/sudo-notes.txt', 'sudo -l', 'sudo /usr/local/bin/log-viewer --root-shell', 'whoami', 'cat /root/flag.txt'],
+        hint: '`sudo -l` は現在のユーザーがsudoで実行できるコマンドを表示します。NOPASSWDで危険な機能を許すと権限昇格になります。',
+        result: 'sudoers設定ミスの疑似root化後、`/root/flag.txt` の `FLAG{...}` を回答します。',
+      },
+      {
+        id: '02', title: 'UNDERSTAND: 問題の種類', answerId: 'target9-understand', stage: 'understand',
+        goal: 'sudo設定ミスでroot化できる理由を選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: '管理者がsudoersでroot権限の危険なコマンドを過剰に委譲していたため。' },
+          { id: 'B', label: 'Kernelの脆弱性で権限境界が壊れたため。' },
+          { id: 'C', label: 'WebのSQL InjectionでDBを読めたため。' },
+        ],
+        hint: 'sudoは管理者による権限委譲の仕組みです。',
+        result: 'sudo設定ミスは管理者の権限委譲設定の問題です。',
+      },
+      {
+        id: '03', title: 'DEFEND: sudoersの対策', answerId: 'target9-defend', stage: 'defend', multiple: true,
+        goal: 'sudoers設定ミスへの対策として適切なものをすべて選んでください。',
+        commands: [],
+        choices: [
+          { id: 'A', label: 'sudoで許可するコマンドを必要最小限にする。' },
+          { id: 'B', label: 'シェル起動や任意ファイル読み取りにつながるコマンドを避ける。' },
+          { id: 'C', label: 'sudoers変更をレビューし、監査ログを確認する。' },
+          { id: 'D', label: 'NOPASSWDなら利用者が信頼できるので制限不要。' },
+        ],
+        hint: 'sudoersの1行はroot権限への入口になります。',
+        result: 'A/B/Cが正解です。委譲範囲の最小化とレビューが重要です。',
+      },
+      {
+        id: '04', title: 'MISSION COMPLETE', stage: 'summary',
+        goal: 'sudoは管理者による権限委譲の仕組みです。過剰なsudoers設定がroot取得につながる危険性を確認しました。',
+        commands: [],
+        hint: 'SUIDの特殊権限とは異なり、sudoではsudoersの許可ルールが問題になります。',
+        result: '何が問題か: sudoersの過剰委譲。なぜrootになるか: 許可コマンドがrootシェル相当を許すため。対策: 最小権限・危険機能排除・レビュー・監査。',
       },
     ],
   },
@@ -408,78 +602,15 @@ const challengeGroups: ChallengeGroup[] = [
       },
     ],
   },
-  {
-    id: 'web',
-    title: '問題5',
-    subtitle: 'Web Attacks 初級',
-    challenges: [
-      {
-        id: '01', title: 'Parameter Tampering', answerId: 'web-parameter',
-        goal: 'TBX Marketの商品購入リクエストを観察し、割引率を改変して研修用Flagを取得してください。',
-        commands: ["curl -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d 'product=1&discount=10' http://labtarget:3100/web-attacks/buy", "curl -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d 'product=1&discount=90' http://labtarget:3100/web-attacks/buy"],
-        hint: 'まず1本目で通常購入のレスポンスを確認します。次に、送信される `discount` はブラウザー側のhidden項目にすぎない点に注目してください。Burp Repeaterを使う場合は購入POSTを捕捉し、割引率だけを90へ変更して再送します。Terminalでは2本目のcurlが同じ操作です。成功レスポンス内の `TBX{...}` を回答欄へ入力します。',
-        result: '90%の研修割引が適用され、レスポンスに `TBX{...}` が表示されます。',
-      },
-      {
-        id: '02', title: 'IDOR / Broken Access Control', answerId: 'web-idor',
-        goal: 'プロフィールのユーザーIDを変更し、管理者プロフィールに残された研修用Flagを見つけてください。',
-        commands: ["curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" 'http://labtarget:3100/web-attacks/profile?id=1001'", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" 'http://labtarget:3100/web-attacks/profile?id=1003'"],
-        hint: '最初のコマンドで自分のプロフィールを取得し、URLの `id=1001` が表示対象を決めていることを確認します。連番になっているIDを少しずつ変更して、別ユーザーの情報が認可確認なしで返るか比べます。管理者に相当するプロフィールの研修メモにある `TBX{...}` を回答してください。',
-        result: '管理者プロフィールの研修メモから `TBX{...}` を確認できます。',
-      },
-      {
-        id: '03', title: 'SQL Injection', answerId: 'web-sqli',
-        goal: '商品検索の文字列がSQLへ安全に渡されているか調べ、研修用テーブルからFlagを取得してください。',
-        commands: ["curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://labtarget:3100/web-attacks/search --data-urlencode 'q=apple'", "curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://labtarget:3100/web-attacks/search --data-urlencode \"q=' UNION SELECT id,label,value FROM training_secrets--\""],
-        hint: 'まず通常検索のJSON構造を確認します。次に、検索語の末尾へシングルクォートを入れたときの挙動から、入力がSQL文へ連結されている可能性を考えます。2本目は元のSELECTと同じ3列になるよう `UNION SELECT` を組み、研修専用の `training_secrets` を参照します。結果行のvalueにある `TBX{...}` を回答します。',
-        result: '検索結果JSONに研修用secretの `TBX{...}` が追加されます。',
-      },
-      {
-        id: '04', title: 'Stored XSS（安全な模擬）', answerId: 'web-xss',
-        goal: 'コメントへ研修用マーカーを保存し、安全な模擬検出結果からFlagを取得してください。スクリプトは実行されません。',
-        commands: ["curl -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d 'author=student&comment=通常コメント' http://labtarget:3100/web-attacks/comments", "curl -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d 'author=student' --data-urlencode 'comment=<script>training()</script>' http://labtarget:3100/web-attacks/comments", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://labtarget:3100/web-attacks/comments"],
-        hint: 'まず1本目で通常コメントを投稿し、COMMENTS画面または3本目のcurlで保存後も表示されることを確認します。次に2本目で研修専用のscriptマーカーを投稿し、もう一度COMMENTSを取得します。サーバーは入力をDBへ保存しますが、表示時にはHTMLをエスケープし、JavaScriptを一切実行しません。保存文字列の近くに出る安全な検出通知から `TBX{...}` を探し、回答欄へ入力してください。',
-        result: '入力は文字列として表示され、安全な模擬検出通知に `TBX{...}` が現れます。',
-      },
-      {
-        id: '05', title: 'Path Traversal（仮想ファイル）', answerId: 'web-traversal',
-        goal: 'FILES機能の相対パス処理を調べ、仮想ファイル領域の研修メモを取得してください。実ファイルは読みません。',
-        commands: ["curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" 'http://labtarget:3100/web-attacks/files?name=manual.txt'", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" 'http://labtarget:3100/web-attacks/files?name=../private/training-note.txt'"],
-        hint: 'まず公開ファイル名を指定し、`name` が読み込み対象を決めていることを確認します。次に `../` を使ってpublicの一つ上を表すパスを試します。この演習は辞書で定義した仮想ファイルだけを返すため、OS上のパスには到達しません。研修メモ内の `TBX{...}` を回答します。',
-        result: '仮想のprivate研修メモから `TBX{...}` を確認できます。',
-      },
-      {
-        id: '06', title: 'Unrestricted File Upload（安全な模擬）', answerId: 'web-upload',
-        goal: '許可されるべきでない拡張子のファイルを送り、アップロード検証の不足を確認してください。内容は保存・実行されません。',
-        commands: ["printf 'normal image metadata' > /tmp/profile.txt", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -F 'file=@/tmp/profile.txt;type=text/plain' http://labtarget:3100/web-attacks/upload", "printf 'training only' > /tmp/training.php", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -F 'file=@/tmp/training.php;type=application/x-php' http://labtarget:3100/web-attacks/upload"],
-        hint: 'まず1本目で通常ファイルを作り、2本目の `curl -F` で送信して、Flagのない保存結果を確認します。次に3本目で内容が無害なまま危険な拡張子を持つ教材ファイルを作ります。4本目はmultipart/form-dataでそのファイル名とContent-Typeを送ります。サーバーは内容を破棄し、名前・種別・サイズだけをメモリDBへ記録します。危険な形式を不適切に受理したJSONから `TBX{...}` を探し、回答してください。',
-        result: 'レスポンスは `executed: false` を示し、検証不足を表す `TBX{...}` を返します。',
-      },
-      {
-        id: '07', title: 'SSRF（通信しない模擬）', answerId: 'web-ssrf',
-        goal: 'URLプレビューへ内部向けURLを指定し、模擬内部ルートのFlagを取得してください。外部通信は行われません。',
-        commands: ["curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://labtarget:3100/web-attacks/preview --data-urlencode 'url=https://market.tbx/products'", "curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://labtarget:3100/web-attacks/preview --data-urlencode 'url=http://internal.tbx/admin'"],
-        hint: '1本目で事前定義された公開URLの模擬結果を確認します。次にホスト名を内部サービス用のものへ変更します。サーバーは入力URLへ接続せず、完全一致する教材ルートだけをローカルの固定レスポンスへ割り当てます。`source` が模擬内部ルートを示すJSON内の `TBX{...}` を回答してください。',
-        result: '外部通信なしで、模擬内部サービスのJSONに `TBX{...}` が表示されます。',
-      },
-      {
-        id: '08', title: 'Broken Authentication / JWT', answerId: 'web-jwt',
-        goal: '署名されていない研修トークンのroleを書き換え、管理者APIへアクセスしてください。',
-        commands: ["curl -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d 'username=student&password=market123' http://labtarget:3100/web-attacks/login", "python3 -c \"import base64,json; t=input('token: ').strip(); p=json.loads(base64.urlsafe_b64decode(t+'='*(-len(t)%4))); p['role']='admin'; print(base64.urlsafe_b64encode(json.dumps(p,separators=(',',':')).encode()).decode().rstrip('='))\"", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Authorization: Bearer 変更後のトークン' http://labtarget:3100/web-attacks/admin"],
-        hint: '1本目のレスポンスからtokenをコピーします。2本目を実行してtokenを貼り付けると、Base64URLのJSONを復号し、`role` だけをadminへ変えた新しいtokenが表示されます。3本目の日本語部分をその値へ置き換えて送信します。署名検証がないため改変が受理され、管理者レスポンスの `TBX{...}` を取得できます。RESET後はnonceが変わり、古いtokenは無効になります。',
-        result: 'roleを改変した現行トークンで、管理者APIから `TBX{...}` を取得できます。',
-      },
-    ],
-  },
 ];
 
 export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTargetChange, scope }: Props) {
   const availableGroups = scope === 'tools'
     ? challengeGroups.filter((item) => item.id === 'tools')
-    : scope === 'web-attacks'
-      ? challengeGroups.filter((item) => item.id === 'web')
-      : challengeGroups.filter((item) => typeof item.id === 'number');
-  const group = (scope === 'targets' ? availableGroups.find((item) => item.id === targetId) : null) ?? availableGroups[0];
+    : scope === 'vulnerabilities'
+      ? challengeGroups.filter((item) => typeof item.id === 'number')
+      : challengeGroups.filter((item) => typeof item.id === 'number' && item.id <= 5);
+  const group = (scope !== 'tools' ? availableGroups.find((item) => item.id === targetId) : null) ?? availableGroups[0];
   const [selectedId, setSelectedId] = useState(group.challenges[0].id);
   const [queuedCommand, setQueuedCommand] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<string[]>([]);
@@ -537,7 +668,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   useEffect(() => { setChoiceShuffleSeed(`${Date.now()}:${Math.random()}`); }, [resetSignal]);
   useEffect(() => setHintVisible(false), [selectedId, resetSignal]);
   useEffect(() => {
-    if (scope !== 'targets' || answerCompletionIds.length === 0) return;
+    if ((scope !== 'targets' && scope !== 'vulnerabilities') || answerCompletionIds.length === 0) return;
     if (!answerCompletionIds.every((item) => completedSet.has(item))) return;
     const missing = nonAnswerCompletionIds.filter((item) => !completedSet.has(item));
     if (missing.length === 0) return;
@@ -593,7 +724,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   };
 
   return (
-    <section className="panel tutorial-panel challenge-panel" id="challenge-panel" role="tabpanel" aria-labelledby={scope === 'tools' ? 'tools-tab' : scope === 'web-attacks' ? 'web-attacks-tab' : 'targets-tab'}>
+    <section className="panel tutorial-panel challenge-panel" id="challenge-panel" role="tabpanel" aria-labelledby={scope === 'tools' ? 'tools-tab' : scope === 'vulnerabilities' ? 'vulnerabilities-tab' : 'targets-tab'}>
       <div className="panel-heading">
         <h2>{group.subtitle}</h2>
         <span className="ai-badge">{groupCompleted}/{scoredChallenges.length || group.challenges.length} CLEAR</span>
@@ -608,6 +739,24 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
             </button>
           );
         })}
+      </div>}
+      {scope === 'vulnerabilities' && <div className="vulnerability-target-tabs" aria-label="脆弱性カテゴリ">
+        {(['Web', 'Linux / OS'] as const).map((category) => (
+          <div key={category} className="vulnerability-category">
+            <span>{category}</span>
+            <div className="challenge-target-tabs" role="tablist" aria-label={`${category}のTargetを選択`}>
+              {availableGroups.filter((item) => item.category === category).map((item) => {
+                if (typeof item.id !== 'number') return null;
+                const itemId = item.id;
+                return (
+                  <button key={itemId} type="button" role="tab" aria-selected={itemId === targetId} className={itemId === targetId ? 'active' : ''} onClick={() => onTargetChange(itemId)}>
+                    {item.title}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>}
       <div className="tutorial-body">
         <nav className="lesson-list" aria-label={`${group.title}の一覧`}>
@@ -653,7 +802,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
               {feedback && <p className={completed ? 'correct' : 'incorrect'} role="status">{feedback}</p>}
             </div>
           ) : (
-            scope === 'targets' ? (
+            scope === 'targets' || scope === 'vulnerabilities' ? (
               <div className="lesson-card lesson-check"><span>PROGRESS</span><p>この手順は確認用です。ATTACK / UNDERSTAND / DEFEND がすべて正解すると自動でCLEARになります。</p></div>
             ) : (
               <div className="lesson-actions">

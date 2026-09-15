@@ -21,7 +21,7 @@ const DENIED_COMMANDS = new Set([
   'docker', 'kubectl', 'gcloud', 'aws', 'az', 'bash', 'sh', 'eval', 'exec', 'source', '.',
 ]);
 
-const INTERNAL_HOSTS = new Set(['target', 'target2', 'target3', 'labtarget', 'localhost', '127.0.0.1', '::1', 'kali']);
+const INTERNAL_HOSTS = new Set(['target', 'target2', 'target3', 'target4', 'target5', 'labtarget', 'localhost', '127.0.0.1', '::1', 'kali']);
 const OPERATORS = new Set([';', '&&', '||', '|', '>', '>>', '<', '1>', '1>>', '2>', '2>>']);
 const REDIRECTS = new Set(['>', '>>', '<', '1>', '1>>', '2>', '2>>']);
 

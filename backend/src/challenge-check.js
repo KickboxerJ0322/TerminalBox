@@ -17,6 +17,10 @@ const answers = new Map([
   ['web-upload', 'TBX{web_file_upload}'],
   ['web-ssrf', 'TBX{web_ssrf_internal}'],
   ['web-jwt', 'TBX{web_jwt_admin}'],
+  ['target6', 'FLAG{COPY_FAIL_LPE}'],
+  ['target7', 'FLAG{LINUX_PERMISSION}'],
+  ['target8', 'FLAG{SUID_MISCONFIG}'],
+  ['target9', 'FLAG{SUDO_MISCONFIG}'],
   ['target1-understand', 'A'],
   ['target1-defend', 'A,B,C'],
   ['target2-understand', 'A'],
@@ -27,6 +31,14 @@ const answers = new Map([
   ['target4-defend', 'A,B,C,D'],
   ['target5-understand', 'A'],
   ['target5-defend', 'A,B,C,D'],
+  ['target6-understand', 'A'],
+  ['target6-defend', 'A,B,C'],
+  ['target7-understand', 'A'],
+  ['target7-defend', 'A,B,C'],
+  ['target8-understand', 'A'],
+  ['target8-defend', 'A,B,C'],
+  ['target9-understand', 'A'],
+  ['target9-defend', 'A,B,C'],
 ]);
 
 function normalizeAnswer(id, answer) {

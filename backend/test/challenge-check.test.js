@@ -44,3 +44,19 @@ test('accepts target understand and defend choices without flag literals', () =>
   assert.equal(checkChallengeAnswer('target4-defend', 'A,B,C,D').body.correct, true);
   assert.equal(checkChallengeAnswer('target5-defend', 'A,B,C,D,E').body.correct, false);
 });
+
+test('accepts Linux Lab privilege escalation flags and choices', () => {
+  const expected = new Map([
+    ['target6', 'FLAG{COPY_FAIL_LPE}'],
+    ['target7', 'FLAG{LINUX_PERMISSION}'],
+    ['target8', 'FLAG{SUID_MISCONFIG}'],
+    ['target9', 'FLAG{SUDO_MISCONFIG}'],
+  ]);
+
+  for (const [id, flag] of expected) {
+    assert.equal(checkChallengeAnswer(id, flag).body.correct, true, id);
+    assert.equal(checkChallengeAnswer(`${id}-understand`, 'A').body.correct, true, id);
+    assert.equal(checkChallengeAnswer(`${id}-defend`, 'B,C,A').body.correct, true, id);
+    assert.equal(JSON.stringify(checkChallengeAnswer(id, 'FLAG{wrong}')).includes(flag), false, id);
+  }
+});

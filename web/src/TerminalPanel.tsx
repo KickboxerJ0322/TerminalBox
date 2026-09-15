@@ -13,11 +13,13 @@ interface Props {
   onHistoryChange: (history: string) => void;
   onFullHistoryChange: (history: string) => void;
   pasteRequest: PasteRequest | null;
+  mode: 'kali' | 'linux-lab';
+  linuxLabTargetId?: 6 | 7 | 8 | 9;
 }
 
 const HISTORY_LIMIT = 12_000;
 
-export function TerminalPanel({ onHistoryChange, onFullHistoryChange, pasteRequest }: Props) {
+export function TerminalPanel({ onHistoryChange, onFullHistoryChange, pasteRequest, mode, linuxLabTargetId = 6 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -99,7 +101,8 @@ export function TerminalPanel({ onHistoryChange, onFullHistoryChange, pasteReque
     const connect = () => {
       setConnection('connecting');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const socket = new WebSocket(`${protocol}//${window.location.host}/ws/terminal`);
+      const path = mode === 'linux-lab' ? `/ws/linux-lab?target=${linuxLabTargetId}` : '/ws/terminal';
+      const socket = new WebSocket(`${protocol}//${window.location.host}${path}`);
       socketRef.current = socket;
 
       socket.addEventListener('open', () => {
@@ -156,7 +159,7 @@ export function TerminalPanel({ onHistoryChange, onFullHistoryChange, pasteReque
       terminalRef.current = null;
       terminal.dispose();
     };
-  }, [onFullHistoryChange, onHistoryChange]);
+  }, [linuxLabTargetId, mode, onFullHistoryChange, onHistoryChange]);
 
   useEffect(() => {
     if (!pasteRequest) return;
@@ -175,7 +178,7 @@ export function TerminalPanel({ onHistoryChange, onFullHistoryChange, pasteReque
     <section className="panel terminal-panel" aria-labelledby="terminal-title">
       <div className="panel-heading">
         <div>
-          <h2 id="terminal-title">Terminal</h2>
+          <h2 id="terminal-title">{mode === 'linux-lab' ? 'Linux Lab Terminal' : 'Terminal'}</h2>
         </div>
         <span className={`connection connection-${connection}`}>
           <span aria-hidden="true" />

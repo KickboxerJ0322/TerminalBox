@@ -16,6 +16,10 @@ const INITIAL_PROGRESS = Object.freeze({
   target3: false,
   target4: false,
   target5: false,
+  target6: false,
+  target7: false,
+  target8: false,
+  target9: false,
 });
 
 async function prepareSessionRoot(directory) {
@@ -91,6 +95,7 @@ export class SessionManager {
       status: 'active',
       progress: initialProgress(),
       completedChallengeIds: new Set(),
+      linuxLab: null,
       terminalProcesses: new Set(),
       desktopProcess: null,
       desktopStartPromise: null,
@@ -135,6 +140,7 @@ export class SessionManager {
     await prepareSessionDirectories(session);
     session.progress = initialProgress();
     session.completedChallengeIds.clear();
+    session.linuxLab = null;
     session.lastAccessAt = this.now();
     return session;
   }

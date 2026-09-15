@@ -23,8 +23,11 @@ interface PasteRequest {
   text: string;
 }
 
-type LearningTab = 'tutorial' | 'targets' | 'tools' | 'web-attacks';
-type TargetPanelId = 1 | 2 | 3 | 4 | 5 | 'tools' | 'web-attacks';
+type WebTargetId = 1 | 2 | 3 | 4 | 5;
+type LinuxTargetId = 6 | 7 | 8 | 9;
+type VulnerabilityTargetId = WebTargetId | LinuxTargetId;
+type LearningTab = 'tutorial' | 'targets' | 'tools' | 'vulnerabilities';
+type TargetPanelId = VulnerabilityTargetId | 'tools';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
 const CHALLENGE_STORAGE_KEY = 'terminalbox:challenge-completed';
@@ -70,7 +73,7 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
           <div className="info-grid">
             <article><span>01</span><h3>Kaliワークスペース</h3><p>TerminalとKali Desktopを同じセッションの作業領域で利用できます。</p></article>
             <article><span>02</span><h3>ターゲット演習</h3><p>問題1から5の研修サイトを調査し、攻撃の体験から原因と防御まで学びます。</p></article>
-            <article><span>03</span><h3>Web Attacks</h3><p>TBX Marketの演習で基本的なWeb脆弱性を確認します。</p></article>
+            <article><span>03</span><h3>脆弱性</h3><p>WebとLinux / OSの脆弱性をカテゴリごとに学びます。</p></article>
             <article><span>04</span><h3>AI Agent</h3><p>オンラインAgentが承認ポリシーに沿ってTerminal操作を支援します。</p></article>
           </div>
         </div>
@@ -135,7 +138,8 @@ export default function App() {
   const [pasteRequest, setPasteRequest] = useState<PasteRequest | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [targetRefreshSignal, setTargetRefreshSignal] = useState(0);
-  const [challengeTargetId, setChallengeTargetId] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [challengeTargetId, setChallengeTargetId] = useState<WebTargetId>(1);
+  const [vulnerabilityTargetId, setVulnerabilityTargetId] = useState<VulnerabilityTargetId>(1);
   const [targetPanelId, setTargetPanelId] = useState<TargetPanelId>(1);
   const [paneSizes, setPaneSizes] = useState<PaneSizes>({ leftColumn: 50, leftTop: 50, rightTop: 50 });
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -210,7 +214,6 @@ export default function App() {
       { id: 3 as const, index: recentHistory.lastIndexOf('http://target3:3000') },
       { id: 4 as const, index: recentHistory.lastIndexOf('http://target4:3000') },
       { id: 5 as const, index: recentHistory.lastIndexOf('http://target5:3000') },
-      { id: 'web-attacks' as const, index: recentHistory.lastIndexOf('http://labtarget:3100/web-attacks') },
       { id: 'tools' as const, index: recentHistory.lastIndexOf('http://labtarget:3100') },
     ];
     const latestTarget = targetMatches.reduce((latest, candidate) => (
@@ -219,7 +222,10 @@ export default function App() {
 
     if (latestTarget.index >= 0) {
       setTargetPanelId(latestTarget.id);
-      if (typeof latestTarget.id === 'number') setChallengeTargetId(latestTarget.id);
+      if (typeof latestTarget.id === 'number') {
+        setChallengeTargetId(latestTarget.id);
+        setVulnerabilityTargetId(latestTarget.id);
+      }
     }
 
     const eventCount = (history.match(/"status":"(?:updated|reset)"/g) ?? []).length;
@@ -233,18 +239,39 @@ export default function App() {
     setPasteRequest({ id: Date.now(), text });
   }, []);
 
-  const selectChallengeTarget = useCallback((targetId: 1 | 2 | 3 | 4 | 5) => {
+  const selectChallengeTarget = useCallback((targetId: WebTargetId) => {
     setChallengeTargetId(targetId);
     setTargetPanelId(targetId);
     setLearningTab('targets');
+  }, []);
+
+  const selectVulnerabilityTarget = useCallback((targetId: VulnerabilityTargetId) => {
+    setVulnerabilityTargetId(targetId);
+    setTargetPanelId(targetId);
+    setLearningTab('vulnerabilities');
+  }, []);
+
+  const selectTargetPanelTarget = useCallback((targetId: TargetPanelId) => {
+    setTargetPanelId(targetId);
+    if (targetId === 'tools') {
+      setLearningTab('tools');
+      return;
+    }
+    setVulnerabilityTargetId(targetId);
+    if (targetId <= 5) {
+      setChallengeTargetId(targetId as WebTargetId);
+      setLearningTab('targets');
+      return;
+    }
+    setLearningTab('vulnerabilities');
   }, []);
 
   const selectLearningTab = useCallback((tab: LearningTab) => {
     setLearningTab(tab);
     if (tab === 'targets') setTargetPanelId(challengeTargetId);
     if (tab === 'tools') setTargetPanelId('tools');
-    if (tab === 'web-attacks') setTargetPanelId('web-attacks');
-  }, [challengeTargetId]);
+    if (tab === 'vulnerabilities') setTargetPanelId(vulnerabilityTargetId);
+  }, [challengeTargetId, vulnerabilityTargetId]);
 
   const applyClientReset = useCallback(() => {
     window.localStorage.removeItem(TUTORIAL_STORAGE_KEY);
@@ -256,6 +283,7 @@ export default function App() {
     setPasteRequest(null);
     setLearningTab('tutorial');
     setChallengeTargetId(1);
+    setVulnerabilityTargetId(1);
     setTargetPanelId(1);
     targetEventCountRef.current = 0;
     setResetSignal((value) => value + 1);
@@ -289,6 +317,10 @@ export default function App() {
     && status.kaliGui
     && status.target
     && status.aiReady === true;
+  const linuxLabTargetId: LinuxTargetId | undefined = typeof targetPanelId === 'number' && targetPanelId >= 6
+    ? targetPanelId as LinuxTargetId
+    : undefined;
+  const terminalMode = linuxLabTargetId ? 'linux-lab' : 'kali';
 
   const workspaceStyle = {
     '--workspace-left-fr': `${paneSizes.leftColumn}fr`,
@@ -389,6 +421,8 @@ export default function App() {
               onHistoryChange={updateHistory}
               onFullHistoryChange={updateFullHistory}
               pasteRequest={pasteRequest}
+              terminalMode={terminalMode}
+              linuxLabTargetId={linuxLabTargetId}
             />
             <div
               className="pane-resizer pane-resizer-horizontal"
@@ -406,7 +440,7 @@ export default function App() {
               key={`target-${resetSignal}`}
               refreshSignal={targetRefreshSignal}
               targetId={targetPanelId}
-              onTargetChange={selectChallengeTarget}
+              onTargetChange={selectTargetPanelTarget}
             />
           </div>
           <div
@@ -458,15 +492,15 @@ export default function App() {
                 セキュリティツール
               </button>
               <button
-                id="web-attacks-tab"
+                id="vulnerabilities-tab"
                 type="button"
                 role="tab"
-                aria-selected={learningTab === 'web-attacks'}
+                aria-selected={learningTab === 'vulnerabilities'}
                 aria-controls="challenge-panel"
-                className={learningTab === 'web-attacks' ? 'active' : ''}
-                onClick={() => selectLearningTab('web-attacks')}
+                className={learningTab === 'vulnerabilities' ? 'active' : ''}
+                onClick={() => selectLearningTab('vulnerabilities')}
               >
-                Web Attacks
+                脆弱性
               </button>
             </div>
             {learningTab === 'tutorial' && (
@@ -477,7 +511,9 @@ export default function App() {
                 onInsertCommand={queueTerminalPaste}
                 resetSignal={resetSignal}
                 targetId={challengeTargetId}
-                onTargetChange={selectChallengeTarget}
+                onTargetChange={(targetId) => {
+                  if (targetId <= 5) selectChallengeTarget(targetId as WebTargetId);
+                }}
                 scope="targets"
               />
             )}
@@ -486,17 +522,17 @@ export default function App() {
                 onInsertCommand={queueTerminalPaste}
                 resetSignal={resetSignal}
                 targetId={4}
-                onTargetChange={selectChallengeTarget}
+                onTargetChange={selectVulnerabilityTarget}
                 scope="tools"
               />
             )}
-            {learningTab === 'web-attacks' && (
+            {learningTab === 'vulnerabilities' && (
               <ChallengePanel
                 onInsertCommand={queueTerminalPaste}
                 resetSignal={resetSignal}
-                targetId={5}
-                onTargetChange={selectChallengeTarget}
-                scope="web-attacks"
+                targetId={vulnerabilityTargetId}
+                onTargetChange={selectVulnerabilityTarget}
+                scope="vulnerabilities"
               />
             )}
             </aside>

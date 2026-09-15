@@ -45,8 +45,9 @@ test('learning tabs put targets before security tools', async () => {
   ]);
   assert.ok(source.indexOf('id="tutorial-tab"') < source.indexOf('id="targets-tab"'));
   assert.ok(source.indexOf('id="targets-tab"') < source.indexOf('id="tools-tab"'));
-  assert.ok(source.indexOf('id="tools-tab"') < source.indexOf('id="web-attacks-tab"'));
+  assert.ok(source.indexOf('id="tools-tab"') < source.indexOf('id="vulnerabilities-tab"'));
   assert.doesNotMatch(source, /id="operations-tab"/);
+  assert.doesNotMatch(source, /id="web-attacks-tab"/);
   assert.match(styles, /\.learning-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(4,/);
 });
 
@@ -71,7 +72,7 @@ test('Live Training Target has iframe back navigation', async () => {
   assert.match(source, /sandbox="allow-forms allow-same-origin"/);
 });
 
-test('tool tabs open their matching lab target in the target panel', async () => {
+test('tool and vulnerability tabs open their matching panels', async () => {
   const [app, panel, target, styles] = await Promise.all([
     readWebSource('App.tsx'),
     readWebSource('ChallengePanel.tsx'),
@@ -79,36 +80,50 @@ test('tool tabs open their matching lab target in the target panel', async () =>
     readWebSource('styles.css'),
   ]);
 
-  assert.match(app, /scope="web-attacks"/);
+  assert.match(app, />\s*脆弱性\s*</);
+  assert.match(app, /scope="vulnerabilities"/);
   assert.match(app, /setTargetPanelId\('tools'\)/);
-  assert.match(app, /setTargetPanelId\('web-attacks'\)/);
+  assert.match(app, /setTargetPanelId\(vulnerabilityTargetId\)/);
   assert.doesNotMatch(app, /historyWithoutWebAttacksUrl/);
+  assert.doesNotMatch(app, /Web Attacks/);
   assert.match(target, /http:\/\/labtarget:3100\//);
-  assert.match(target, /http:\/\/labtarget:3100\/web-attacks\//);
   assert.match(target, /addressLabel: 'Kali内部アドレス'/);
   assert.match(target, /proxyPath: '\/tool-target\/'/);
-  assert.match(target, /proxyPath: '\/tool-target\/web-attacks\/'/);
-  assert.match(panel, /id: 'web'/);
-  assert.match(target, /\(\[1, 2, 3, 4, 5\] as const\)/);
+  assert.match(target, /linux-lab:\/\/target6-copy-fail/);
+  assert.match(target, /api\/linux-lab\/reset/);
+  assert.match(target, /Target 6 Copy Fail/);
+  assert.match(target, /ツール/);
+  assert.match(panel, /category: 'Web'/);
+  assert.match(panel, /category: 'Linux \/ OS'/);
+  assert.match(panel, /Target 9 sudo設定ミス/);
   assert.match(panel, /\/api\/challenges\/progress/);
   assert.match(panel, /completionId/);
   assert.match(styles, /\.target-site-tabs[^\n]+repeat\(5,/);
-
-  for (const id of ['web-parameter', 'web-idor', 'web-sqli', 'web-xss', 'web-traversal', 'web-upload', 'web-ssrf', 'web-jwt']) {
-    assert.match(panel, new RegExp(`answerId: '${id}'`));
-  }
-  assert.match(panel, /subtitle: 'Web Attacks/);
-
-  const webGroup = panel.slice(panel.indexOf("id: 'web'"), panel.indexOf('\n];', panel.indexOf("id: 'web'")));
-  assert.equal((webGroup.match(/hint: '/g) ?? []).length, 8);
-  for (const flag of [
-    'TBX{web_parameter_tampering}', 'TBX{web_idor_profile}', 'TBX{web_sqli_basic}', 'TBX{web_stored_xss}',
-    'TBX{web_path_traversal}', 'TBX{web_file_upload}', 'TBX{web_ssrf_internal}', 'TBX{web_jwt_admin}',
-  ]) {
-    assert.equal(webGroup.includes(flag), false, `hint/problem source must not reveal ${flag}`);
-  }
+  assert.match(styles, /\.vulnerability-target-tabs/);
   assert.match(app, /現在のセッションのTerminal、Desktop、Target、Challenge、AI Agent状態/);
 
+});
+
+test('Linux Lab switches the existing terminal and exposes only a simulated root area', async () => {
+  const [app, workspace, terminal, server, lab, proxy] = await Promise.all([
+    readWebSource('App.tsx'),
+    readWebSource('KaliWorkspacePanel.tsx'),
+    readWebSource('TerminalPanel.tsx'),
+    readFile(new URL('../src/server.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/linux-lab.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/lab-proxy.js', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(app, /terminalMode=\{terminalMode\}/);
+  assert.match(app, /linuxLabTargetId=\{linuxLabTargetId\}/);
+  assert.match(workspace, /terminalMode === 'linux-lab'/);
+  assert.match(terminal, /\/ws\/linux-lab\?target=\$\{linuxLabTargetId\}/);
+  assert.match(server, /attachLinuxLabSocket/);
+  assert.match(server, /api\/linux-lab\/reset/);
+  assert.match(proxy, /'\/ws\/linux-lab'/);
+  assert.match(lab, /No kernel exploit, AF_ALG, container escape, or Cloud Run attack was executed/);
+  assert.match(lab, /\/root\/flag\.txt/);
+  assert.match(lab, /fake-training-hash/);
 });
 test('AI attachment controls default to off and support full terminal text and capture', async () => {
   const [source, attachments, styles] = await Promise.all([
@@ -228,7 +243,7 @@ test('target 1 through 5 use attack, understand, and defend challenges', async (
   const target2Group = source.slice(source.indexOf('id: 2,'), source.indexOf('id: 3,'));
   const target3Group = source.slice(source.indexOf('id: 3,'), source.indexOf('id: 4,'));
   const target4Group = source.slice(source.indexOf('id: 4,'), source.indexOf('id: 5,'));
-  const target5Group = source.slice(source.indexOf('id: 5,'), source.indexOf("id: 'tools'"));
+  const target5Group = source.slice(source.indexOf('id: 5,'), source.indexOf('id: 6,'));
   assert.equal((target1Group.match(/id: '0/g) ?? []).length, 8);
   assert.equal((target2Group.match(/id: '0/g) ?? []).length, 8);
   assert.equal((target3Group.match(/id: '0/g) ?? []).length, 4);
@@ -253,6 +268,31 @@ test('target 1 through 5 use attack, understand, and defend challenges', async (
   assert.doesNotMatch(target2Group, /store-config\.json/);
   assert.doesNotMatch(source, /title: 'HTTP Request Basics'/);
   assert.doesNotMatch(source, /title: 'Multi-step Challenge'/);
+});
+
+test('target 6 through 9 provide Linux privilege escalation courses', async () => {
+  const source = await readWebSource('ChallengePanel.tsx');
+  const target6Group = source.slice(source.indexOf('id: 6,'), source.indexOf('id: 7,'));
+  const target7Group = source.slice(source.indexOf('id: 7,'), source.indexOf('id: 8,'));
+  const target8Group = source.slice(source.indexOf('id: 8,'), source.indexOf('id: 9,'));
+  const target9Group = source.slice(source.indexOf('id: 9,'), source.indexOf("id: 'tools'"));
+
+  for (const group of [target6Group, target7Group, target8Group, target9Group]) {
+    assert.equal((group.match(/id: '0/g) ?? []).length, 4);
+    assert.match(group, /category: 'Linux \/ OS'/);
+    assert.match(group, /UNDERSTAND/);
+    assert.match(group, /DEFEND/);
+    assert.match(group, /MISSION COMPLETE/);
+    assert.doesNotMatch(group, /AF_ALGを利用した実攻撃/);
+  }
+  assert.match(target6Group, /answerId: 'target6'/);
+  assert.match(target6Group, /Copy Fail/);
+  assert.match(target7Group, /answerId: 'target7'/);
+  assert.match(target7Group, /owner \/ group \/ rwx/);
+  assert.match(target8Group, /answerId: 'target8'/);
+  assert.match(target8Group, /SUID/);
+  assert.match(target9Group, /answerId: 'target9'/);
+  assert.match(target9Group, /sudoers/);
 });
 test('every learning category starts with its hint collapsed', async () => {
   const sources = await Promise.all([

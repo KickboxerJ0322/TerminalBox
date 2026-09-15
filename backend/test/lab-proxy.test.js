@@ -6,6 +6,7 @@ import { isLabHttpPath, isLabWebSocketPath } from '../src/lab-proxy.js';
 test('only approved Lab HTTP paths are proxied', () => {
   assert.equal(isLabHttpPath('/api/status'), false);
   assert.equal(isLabHttpPath('/api/lab/reset'), true);
+  assert.equal(isLabHttpPath('/api/linux-lab/reset'), true);
   assert.equal(isLabHttpPath('/target-site-3/api/status'), true);
   assert.equal(isLabHttpPath('/target-site-4/api/status'), true);
   assert.equal(isLabHttpPath('/target-site-5/api/status'), true);
@@ -17,8 +18,9 @@ test('only approved Lab HTTP paths are proxied', () => {
   assert.equal(isLabHttpPath('/target-site-evil'), false);
 });
 
-test('only terminal and noVNC WebSockets are proxied', () => {
+test('only lab terminal and noVNC WebSockets are proxied', () => {
   assert.equal(isLabWebSocketPath('/ws/terminal'), true);
+  assert.equal(isLabWebSocketPath('/ws/linux-lab'), true);
   assert.equal(isLabWebSocketPath('/kali-gui/websockify'), true);
   assert.equal(isLabWebSocketPath('/ws/admin'), false);
 });

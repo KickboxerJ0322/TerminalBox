@@ -3,6 +3,7 @@ import httpProxy from 'http-proxy';
 
 const LAB_HTTP_PREFIXES = [
   '/api/lab/reset',
+  '/api/linux-lab/reset',
   '/target-site',
   '/target-site-2',
   '/target-site-3',
@@ -12,7 +13,7 @@ const LAB_HTTP_PREFIXES = [
   '/kali-gui',
 ];
 
-const LAB_WEBSOCKET_PREFIXES = ['/ws/terminal', '/kali-gui'];
+const LAB_WEBSOCKET_PREFIXES = ['/ws/terminal', '/ws/linux-lab', '/kali-gui'];
 
 function startsWithAllowedPrefix(pathname, prefixes) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
