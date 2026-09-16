@@ -339,7 +339,7 @@ const challengeGroups: ChallengeGroup[] = [
   },
   {
     id: 6,
-    title: 'Target 6 Copy Fail',
+    title: '問題6 Copy Fail',
     subtitle: 'Linux Kernel脆弱性: Copy Fail LPE',
     category: 'Linux / OS',
     challenges: [
@@ -386,7 +386,7 @@ const challengeGroups: ChallengeGroup[] = [
   },
   {
     id: 7,
-    title: 'Target 7 File Permission',
+    title: '問題7 File Permission',
     subtitle: 'Linux File Permission: owner / group / rwx',
     category: 'Linux / OS',
     challenges: [
@@ -433,7 +433,7 @@ const challengeGroups: ChallengeGroup[] = [
   },
   {
     id: 8,
-    title: 'Target 8 SUID設定ミス',
+    title: '問題8 SUID設定ミス',
     subtitle: 'SUID設定ミス: root所有プログラム',
     category: 'Linux / OS',
     challenges: [
@@ -480,7 +480,7 @@ const challengeGroups: ChallengeGroup[] = [
   },
   {
     id: 9,
-    title: 'Target 9 sudo設定ミス',
+    title: '問題9 sudo設定ミス',
     subtitle: 'sudo設定ミス: sudoersと過剰な権限委譲',
     category: 'Linux / OS',
     challenges: [
@@ -608,7 +608,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
   const availableGroups = scope === 'tools'
     ? challengeGroups.filter((item) => item.id === 'tools')
     : scope === 'vulnerabilities'
-      ? challengeGroups.filter((item) => typeof item.id === 'number')
+      ? challengeGroups.filter((item) => typeof item.id === 'number' && item.id >= 6)
       : challengeGroups.filter((item) => typeof item.id === 'number' && item.id <= 5);
   const group = (scope !== 'tools' ? availableGroups.find((item) => item.id === targetId) : null) ?? availableGroups[0];
   const [selectedId, setSelectedId] = useState(group.challenges[0].id);
@@ -741,7 +741,7 @@ export function ChallengePanel({ onInsertCommand, resetSignal, targetId, onTarge
         })}
       </div>}
       {scope === 'vulnerabilities' && <div className="vulnerability-target-tabs" aria-label="脆弱性カテゴリ">
-        {(['Web', 'Linux / OS'] as const).map((category) => (
+        {(['Linux / OS'] as const).map((category) => (
           <div key={category} className="vulnerability-category">
             <span>{category}</span>
             <div className="challenge-target-tabs" role="tablist" aria-label={`${category}のTargetを選択`}>

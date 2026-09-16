@@ -46,8 +46,9 @@ services:
       TARGET_URLS: ${TARGET_URLS:-http://target:3000,http://target2:3000,http://target3:3000,http://target4:3000,http://target5:3000,http://labtarget:3100}
       KALI_GUI_URL: ${KALI_GUI_URL:-http://kali:6080}
       TERMINAL_HISTORY_LIMIT: ${TERMINAL_HISTORY_LIMIT:-6000}
-      MAX_AGENT_STEPS: ${MAX_AGENT_STEPS:-5}
+      MAX_AGENT_STEPS: ${MAX_AGENT_STEPS:-15}
       AGENT_COMMAND_TIMEOUT_MS: ${AGENT_COMMAND_TIMEOUT_MS:-10000}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-api-token}
       KALI_CONTAINER: ${KALI_CONTAINER:-terminalbox-kali}
       WS_AUTH_TOKEN: ${WS_AUTH_TOKEN:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000},http://127.0.0.1:3000,http://terminalbox-web

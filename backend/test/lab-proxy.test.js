@@ -35,3 +35,18 @@ test('Lab proxy and terminal preserve the browser session', async () => {
   assert.match(terminalSource, /isValidSessionId\(proxiedSessionId\)/);
   assert.match(terminalSource, /sessionManager\.getOrCreate\(requestSessionId\(request, config\)\)/);
 });
+
+test('internal Lab APIs require the Web service token and header session', async () => {
+  const [proxySource, serverSource] = await Promise.all([
+    readFile(new URL('../src/lab-proxy.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/server.js', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(proxySource, /x-terminalbox-internal-token/);
+  assert.match(proxySource, /body: JSON\.stringify\(payload\)/);
+  assert.doesNotMatch(proxySource, /\.\.\.\(sessionId \? \{ sessionId \} : \{\}\)/);
+  assert.match(serverSource, /function internalApiSession/);
+  assert.match(serverSource, /internal_api_forbidden/);
+  assert.match(serverSource, /internal_session_required/);
+  assert.doesNotMatch(serverSource, /typeof request\.body\?\.sessionId === 'string'/);
+});

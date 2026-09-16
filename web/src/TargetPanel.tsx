@@ -13,10 +13,10 @@ const targetDefinitions = {
   4: { kind: 'iframe', address: 'http://target4:3000/', proxyPath: '/target-site-4/', label: '問題4 セッション / 認証', addressLabel: 'Kali内部アドレス' },
   5: { kind: 'iframe', address: 'http://target5:3000/', proxyPath: '/target-site-5/', label: '問題5 Defense in Depth', addressLabel: 'Kali内部アドレス' },
   tools: { kind: 'iframe', address: 'http://labtarget:3100/', proxyPath: '/tool-target/', label: 'セキュリティツール ターゲット', addressLabel: 'Kali内部アドレス' },
-  6: { kind: 'linux-lab', address: 'linux-lab://target6-copy-fail', label: 'Target 6 Copy Fail', addressLabel: 'Linux Lab', course: 'Linux Kernel LPE' },
-  7: { kind: 'linux-lab', address: 'linux-lab://target7-file-permission', label: 'Target 7 File Permission', addressLabel: 'Linux Lab', course: 'owner / group / rwx' },
-  8: { kind: 'linux-lab', address: 'linux-lab://target8-suid', label: 'Target 8 SUID設定ミス', addressLabel: 'Linux Lab', course: 'SUID root helper' },
-  9: { kind: 'linux-lab', address: 'linux-lab://target9-sudo', label: 'Target 9 sudo設定ミス', addressLabel: 'Linux Lab', course: 'sudoers delegation' },
+  6: { kind: 'linux-lab', address: 'linux-lab://target6-copy-fail', label: '問題6 Copy Fail', addressLabel: 'Linux Lab', course: 'Linux Kernel LPE' },
+  7: { kind: 'linux-lab', address: 'linux-lab://target7-file-permission', label: '問題7 File Permission', addressLabel: 'Linux Lab', course: 'owner / group / rwx' },
+  8: { kind: 'linux-lab', address: 'linux-lab://target8-suid', label: '問題8 SUID設定ミス', addressLabel: 'Linux Lab', course: 'SUID root helper' },
+  9: { kind: 'linux-lab', address: 'linux-lab://target9-sudo', label: '問題9 sudo設定ミス', addressLabel: 'Linux Lab', course: 'sudoers delegation' },
 } as const;
 
 const targetTabs = [
@@ -26,10 +26,10 @@ const targetTabs = [
   { id: 4, label: '問題4' },
   { id: 5, label: '問題5' },
   { id: 'tools', label: 'ツール' },
-  { id: 6, label: 'Target 6' },
-  { id: 7, label: 'Target 7' },
-  { id: 8, label: 'Target 8' },
-  { id: 9, label: 'Target 9' },
+  { id: 6, label: '問題6' },
+  { id: 7, label: '問題7' },
+  { id: 8, label: '問題8' },
+  { id: 9, label: '問題9' },
 ] as const;
 
 export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) {

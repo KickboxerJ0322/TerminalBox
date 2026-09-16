@@ -103,12 +103,12 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 .challenge-target-tabs button { min-height: 27px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0d1210; font-size: 9px; cursor: pointer; }
 .challenge-target-tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
 .challenge-target-tabs button.active { color: #07100b; border-color: var(--accent); background: var(--accent); font-weight: 700; }
-.vulnerability-target-tabs { flex: 0 0 auto; padding: 7px 8px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.vulnerability-target-tabs { flex: 0 0 auto; padding: 7px 8px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: 1fr; gap: 8px; }
 .vulnerability-category { min-width: 0; }
 .vulnerability-category > span { display: block; margin: 0 0 5px; color: var(--accent); font-family: 'Cascadia Code', Consolas, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0; }
 .vulnerability-category .challenge-target-tabs { padding: 0; border: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); background: transparent; }
 
-.target-site-tabs { flex: 0 0 auto; min-height: 36px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+.target-site-tabs { flex: 0 0 auto; min-height: 36px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: 1fr; gap: 5px; }
 .target-site-tabs button { min-height: 27px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0d1210; font-size: 9px; cursor: pointer; }
 .target-site-tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
 .target-site-tabs button.active { color: #07100b; border-color: var(--accent); background: var(--accent); font-weight: 700; }
@@ -296,14 +296,15 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
   .header-meta > span:first-child, .intro-copy { display: none; }
   main { width: calc(100% - 28px); }
   .workspace-main { height: auto; padding-top: 14px; padding-bottom: 14px; }
-  .workspace-grid { grid-template-columns: 1fr; }
-  .pane-resizer { display: none; }
-  .workspace-column { display: flex; flex-direction: column; }
-  .workspace-column > .panel, .workspace-column > .side-workspace { height: min(520px, calc(100vh - 90px)); min-height: 420px; }
-  .workspace-column > .assistant-workspace { height: min(520px, calc(100vh - 90px)); }
-  .terminal-shell { height: 470px; }
-  .assistant-panel, .tutorial-panel, .target-panel { min-height: 520px; }
-  .tutorial-body { min-height: 520px; grid-template-columns: 150px minmax(0, 1fr); }
+  .workspace-grid { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  .pane-resizer-vertical { display: none; }
+  .pane-resizer-horizontal { display: block; min-height: 14px; }
+  .workspace-column { min-height: 880px; grid-template-rows: minmax(260px, var(--workspace-top-fr, 50fr)) 14px minmax(260px, var(--workspace-bottom-fr, 50fr)); }
+  .workspace-column > .panel, .workspace-column > .side-workspace { height: auto; min-height: 0; }
+  .workspace-column > .assistant-workspace { height: auto; min-height: 0; }
+  .terminal-shell { height: auto; min-height: 0; }
+  .assistant-panel, .tutorial-panel, .target-panel { min-height: 0; }
+  .tutorial-body { min-height: 0; grid-template-columns: 150px minmax(0, 1fr); }
   .lesson-bar { grid-template-columns: 45px 1fr; }
   .status-list { grid-column: 1 / -1; padding-top: 13px; border-top: 1px solid var(--border-soft); flex-wrap: wrap; }
   .online-settings { grid-template-columns: 1fr; }
@@ -315,7 +316,8 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
   .brand { font-size: 17px; }.header-meta { gap: 5px; }.header-meta > span:first-child, .system-online, .system-offline { display: none; }.gui-link, .info-link, .command-link, .reset-link { padding: 6px 5px; font-size: 8px; }
   .intro h1 { font-size: 28px; }
   .panel-heading { padding: 0 14px; }
-  .terminal-shell { height: 390px; min-height: 390px; padding-left: 10px; }
+  .workspace-column { min-height: 760px; }
+  .terminal-shell { height: auto; min-height: 0; padding-left: 10px; }
   .terminal-host { left: 10px; right: 10px; }
   .messages { padding: 13px; }
   .form-actions { align-items: flex-end; }.history-options { max-width: 180px; }.history-toggle { line-height: 1.5; }

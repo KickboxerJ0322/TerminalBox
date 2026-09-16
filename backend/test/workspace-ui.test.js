@@ -91,14 +91,16 @@ test('tool and vulnerability tabs open their matching panels', async () => {
   assert.match(target, /proxyPath: '\/tool-target\/'/);
   assert.match(target, /linux-lab:\/\/target6-copy-fail/);
   assert.match(target, /api\/linux-lab\/reset/);
-  assert.match(target, /Target 6 Copy Fail/);
+  assert.match(target, /問題6 Copy Fail/);
   assert.match(target, /ツール/);
   assert.match(panel, /category: 'Web'/);
   assert.match(panel, /category: 'Linux \/ OS'/);
-  assert.match(panel, /Target 9 sudo設定ミス/);
+  assert.match(panel, /問題9 sudo設定ミス/);
+  assert.match(panel, /typeof item\.id === 'number' && item\.id >= 6/);
+  assert.doesNotMatch(panel, /\(\['Web', 'Linux \/ OS'\] as const\)/);
   assert.match(panel, /\/api\/challenges\/progress/);
   assert.match(panel, /completionId/);
-  assert.match(styles, /\.target-site-tabs[^\n]+repeat\(5,/);
+  assert.match(styles, /\.target-site-tabs[^\n]+grid-template-columns: 1fr/);
   assert.match(styles, /\.vulnerability-target-tabs/);
   assert.match(app, /現在のセッションのTerminal、Desktop、Target、Challenge、AI Agent状態/);
 
@@ -235,6 +237,8 @@ test('desktop workspace uses a compact four-pane viewport grid', async () => {
   assert.match(styles, /\.workspace-column \{[^}]*grid-template-rows: minmax\(130px, var\(--workspace-top-fr/);
   assert.match(styles, /\.pane-resizer/);
   assert.match(styles, /@media \(max-width: 1100px\) \{[\s\S]*html, body, #root \{ height: auto; overflow: auto; \}/);
+  assert.match(styles, /@media \(max-width: 1100px\) \{[\s\S]*\.pane-resizer-horizontal \{ display: block; min-height: 14px; \}/);
+  assert.match(styles, /@media \(max-width: 1100px\) \{[\s\S]*grid-template-rows: minmax\(260px, var\(--workspace-top-fr/);
 });
 
 test('target 1 through 5 use attack, understand, and defend challenges', async () => {

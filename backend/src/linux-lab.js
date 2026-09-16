@@ -86,12 +86,12 @@ function listPath(state, path) {
 function catPath(state, path) {
   const targetId = state.activeTarget;
   const files = {
-    '/home/student/README.txt': 'Linux Lab is a safe per-session simulation. Select Target 6-9 and inspect the training files.',
+    '/home/student/README.txt': 'Linux Lab is a safe per-session simulation. Select 問題6-9 and inspect the training files.',
     '/home/student/copy-fail-notes.txt': 'Copy Fail demonstrates a kernel LPE class safely. The demo never touches the host kernel or AF_ALG.',
     '/home/student/permission-notes.txt': 'File Permission issues come from owner/group/rwx mistakes such as world-writable root-run scripts.',
     '/home/student/suid-notes.txt': 'SUID runs a binary with the file owner privileges. Unsafe SUID root programs can become privilege escalation paths.',
     '/home/student/sudo-notes.txt': 'sudoers grants delegated admin actions. Over-broad commands can hand users a root shell.',
-    '/opt/copy-fail/README': 'Target 6 Copy Fail: inspect the simulated kernel copy bug, then run /opt/copy-fail/copy_fail_demo --simulate.',
+    '/opt/copy-fail/README': '問題6 Copy Fail: inspect the simulated kernel copy bug, then run /opt/copy-fail/copy_fail_demo --simulate.',
     '/opt/perm-lab/maintenance.sh': '#!/bin/sh\n# root-run maintenance script\nprintf "daily backup complete\\n"\n',
     '/root/admin_note.txt': 'Training root note: this is a fake Linux Lab root area, not Cloud Run or Kali root.',
     '/etc/shadow': 'root:$y$terminalbox$fake-training-hash:19000:0:99999:7:::\nstudent:$y$terminalbox$fake-student-hash:19000:0:99999:7:::',

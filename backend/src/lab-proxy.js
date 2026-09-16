@@ -63,6 +63,11 @@ export function createLabProxy(config) {
     return toHeaderObject(headers);
   }
 
+  function internalApiHeaders(pathname) {
+    if (!pathname.startsWith('/internal/')) return {};
+    return config.internalApiToken ? { 'x-terminalbox-internal-token': config.internalApiToken } : {};
+  }
+
   async function proxyHttp(request, response, sessionId = null) {
     try {
       const headers = await authorizationHeaders();
@@ -105,8 +110,13 @@ export function createLabProxy(config) {
     const url = new URL(pathname, `${config.labServiceUrl}/`);
     const response = await fetch(url, {
       method: 'POST',
-      headers: { ...(await authorizationHeaders()), ...(sessionId ? { 'x-terminalbox-session': sessionId } : {}), 'content-type': 'application/json' },
-      body: JSON.stringify({ ...payload, ...(sessionId ? { sessionId } : {}) }),
+      headers: {
+        ...(await authorizationHeaders()),
+        ...internalApiHeaders(pathname),
+        ...(sessionId ? { 'x-terminalbox-session': sessionId } : {}),
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(35_000),
     });
     const body = await response.json().catch(() => ({}));

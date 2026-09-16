@@ -172,7 +172,7 @@ export async function requestLocalAgentAction({ state, options, systemPrompt, fe
 }
 
 export class AgentService {
-  constructor({ approvalStore, proposeAction, execute, maxSteps = 5 }) {
+  constructor({ approvalStore, proposeAction, execute, maxSteps = 15 }) {
     this.approvalStore = approvalStore;
     this.proposeAction = proposeAction;
     this.execute = execute;
@@ -188,6 +188,14 @@ export class AgentService {
       const proposal = await this.proposeAction(state, state.options);
       if (proposal.action === 'final_answer') {
         return { status: 'completed', message: proposal.message, steps: state.steps };
+      }
+
+      if (state.steps.at(-1)?.command === proposal.command) {
+        return {
+          status: 'step_limit',
+          message: '同じコマンドが連続して提案されたため停止しました。直前の結果を確認してから続けてください。',
+          steps: state.steps,
+        };
       }
 
       const policy = classifyCommand(proposal.command);

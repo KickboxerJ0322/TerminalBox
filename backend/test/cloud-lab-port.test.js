@@ -40,3 +40,22 @@ test('Cloud Lab target routes go through the session-aware backend proxy', async
     assert.doesNotMatch(block, /proxy_pass http:\/\/127\.0\.0\.[2-5]/);
   }
 });
+
+test('Cloud deployment isolates Kali egress and protects internal APIs', async () => {
+  const [cloudBuild, infrastructure, compose] = await Promise.all([
+    readRepositoryFile('cloudbuild.yaml'),
+    readRepositoryFile('cloud/setup-infrastructure.ps1'),
+    readRepositoryFile('compose.yaml'),
+  ]);
+
+  assert.match(cloudBuild, /--network-tags=\$\{_LAB_NETWORK_TAG\}/);
+  assert.match(cloudBuild, /--set-secrets=INTERNAL_API_TOKEN=terminalbox-internal-api-token:latest/);
+  assert.match(cloudBuild, /INTERNAL_API_TOKEN=terminalbox-internal-api-token:latest/);
+  assert.match(cloudBuild, /MAX_AGENT_STEPS=15/);
+  assert.match(infrastructure, /terminalbox-lab-deny-all-egress/);
+  assert.match(infrastructure, /--destination-ranges=0\.0\.0\.0\/0/);
+  assert.match(infrastructure, /terminalbox-internal-api-token/);
+  const kaliBlock = compose.slice(compose.indexOf('  kali:'), compose.indexOf('\n  target:', compose.indexOf('  kali:')));
+  assert.doesNotMatch(kaliBlock, /docker\.sock/);
+  assert.match(compose, /internal: true/);
+});

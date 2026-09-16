@@ -87,6 +87,27 @@ async function terminalBoxSession(request, response, { allowHeader = false } = {
   return session;
 }
 
+async function internalApiSession(request, response) {
+  if (isWebService) {
+    response.status(404).json({ error: 'Not found' });
+    return null;
+  }
+  if (!config.internalApiToken) {
+    response.status(503).json({ error: 'internal_api_not_configured' });
+    return null;
+  }
+  if (request.headers['x-terminalbox-internal-token'] !== config.internalApiToken) {
+    response.status(403).json({ error: 'internal_api_forbidden' });
+    return null;
+  }
+  const headerSessionId = request.headers['x-terminalbox-session'];
+  if (!isValidSessionId(headerSessionId)) {
+    response.status(400).json({ error: 'internal_session_required' });
+    return null;
+  }
+  return sessionManager.getOrCreate(headerSessionId);
+}
+
 async function executeAgentCommand(command, policy, approved, session) {
   if (isWebService) {
     return labProxy.requestJson('/internal/agent/execute', { command, approved }, session.sessionId);
@@ -476,12 +497,9 @@ app.post('/api/challenges/progress', async (request, response) => {
 });
 
 app.post('/internal/challenges/check-target-flag', async (request, response) => {
-  if (isWebService) {
-    response.status(404).json({ error: 'Not found' });
-    return;
-  }
   try {
-    const session = await terminalBoxSession(request, response, { allowHeader: isLabService });
+    const session = await internalApiSession(request, response);
+    if (!session) return;
     const dynamicResult = await checkDynamicChallengeAnswer(request.body?.id, request.body?.answer, session);
     if (!dynamicResult) {
       response.status(404).json({ error: 'Unknown challenge' });
@@ -510,14 +528,9 @@ app.post('/api/challenges/check', async (request, response) => {
 });
 
 app.post('/internal/agent/execute', async (request, response) => {
-  if (isWebService) {
-    response.status(404).json({ error: 'Not found' });
-    return;
-  }
   const command = typeof request.body?.command === 'string' ? request.body.command : '';
-  const session = await sessionManager.getOrCreate(
-    typeof request.body?.sessionId === 'string' ? request.body.sessionId : readSessionCookie(request),
-  );
+  const session = await internalApiSession(request, response);
+  if (!session) return;
   const policy = classifyCommand(command);
   if (policy.classification === CommandClassification.DENIED) {
     response.status(403).json({ error: 'agent_command_denied', reason: policy.reason });

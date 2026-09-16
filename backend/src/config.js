@@ -32,8 +32,9 @@ export const config = {
   kaliContainer: process.env.KALI_CONTAINER ?? 'terminalbox-kali',
   kaliExecMode: process.env.KALI_EXEC_MODE === 'local' ? 'local' : 'docker',
   historyLimit: numberFromEnv('TERMINAL_HISTORY_LIMIT', 2000, 500, 8000),
-  agentMaxSteps: numberFromEnv('MAX_AGENT_STEPS', 5, 1, 8),
+  agentMaxSteps: numberFromEnv('MAX_AGENT_STEPS', 15, 1, 15),
   agentCommandTimeoutMs: numberFromEnv('AGENT_COMMAND_TIMEOUT_MS', 10000, 1000, 30000),
+  internalApiToken: process.env.INTERNAL_API_TOKEN ?? '',
   wsAuthToken: process.env.WS_AUTH_TOKEN ?? '',
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000')
     .split(',')

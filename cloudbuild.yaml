@@ -58,6 +58,7 @@ steps:
       - --network-tags=${_LAB_NETWORK_TAG}
       - --vpc-egress=all-traffic
       - --set-env-vars=SERVICE_ROLE=lab,KALI_VNC_GEOMETRY=1440x900
+      - --set-secrets=INTERNAL_API_TOKEN=terminalbox-internal-api-token:latest
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
@@ -82,8 +83,8 @@ steps:
           --service-account='${_WEB_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com' \
           --network='${_NETWORK}' --subnet='${_SUBNET}' \
           --network-tags='${_WEB_NETWORK_TAG}' --vpc-egress=all-traffic \
-          --set-env-vars="SERVICE_ROLE=web,AI_PROVIDER=gemini,GEMINI_MODEL=gemini-3.7-flash,LAB_SERVICE_URL=$${LAB_URL},LAB_SERVICE_AUDIENCE=$${LAB_URL}" \
-          --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,TERMINALBOX_PASSWORD=terminalbox-access-password:latest
+          --set-env-vars="SERVICE_ROLE=web,AI_PROVIDER=gemini,GEMINI_MODEL=gemini-3.7-flash,MAX_AGENT_STEPS=15,LAB_SERVICE_URL=$${LAB_URL},LAB_SERVICE_AUDIENCE=$${LAB_URL}" \
+          --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,TERMINALBOX_PASSWORD=terminalbox-access-password:latest,INTERNAL_API_TOKEN=terminalbox-internal-api-token:latest
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:$BUILD_ID
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_WEB_SERVICE}:latest

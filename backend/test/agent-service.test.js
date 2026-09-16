@@ -119,3 +119,41 @@ test('read-only execution receives the active browser session', async () => {
   assert.equal(result.status, 'completed');
   assert.equal(receivedSession, session);
 });
+
+test('agent can continue through fifteen read-only steps', async () => {
+  const executed = [];
+  const service = new AgentService({
+    approvalStore: new ApprovalStore(),
+    maxSteps: 15,
+    proposeAction: async (state) => (state.steps.length < 15
+      ? { action: 'execute_command', command: `pwd # ${state.steps.length}`, reason: 'check' }
+      : { action: 'final_answer', message: 'done' }),
+    execute: async (command) => {
+      executed.push(command);
+      return { command, stdout: '/home/student\n', stderr: '', exitCode: 0, durationMs: 1 };
+    },
+  });
+
+  const result = await service.chat({ message: 'inspect', sessionId: 'session-a', options: {} });
+
+  assert.equal(result.status, 'step_limit');
+  assert.equal(executed.length, 15);
+});
+
+test('agent stops when the model repeats the same command consecutively', async () => {
+  const executed = [];
+  const service = new AgentService({
+    approvalStore: new ApprovalStore(),
+    proposeAction: async () => ({ action: 'execute_command', command: 'pwd', reason: 'repeat' }),
+    execute: async (command) => {
+      executed.push(command);
+      return { command, stdout: '/home/student\n', stderr: '', exitCode: 0, durationMs: 1 };
+    },
+  });
+
+  const result = await service.chat({ message: 'inspect', sessionId: 'session-a', options: {} });
+
+  assert.equal(result.status, 'step_limit');
+  assert.deepEqual(executed, ['pwd']);
+  assert.match(result.message, /同じコマンド/);
+});
