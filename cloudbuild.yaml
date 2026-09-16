@@ -32,6 +32,22 @@ steps:
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
+      - secrets
+      - add-iam-policy-binding
+      - terminalbox-internal-api-token
+      - --member=serviceAccount:${_LAB_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com
+      - --role=roles/secretmanager.secretAccessor
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - secrets
+      - add-iam-policy-binding
+      - terminalbox-internal-api-token
+      - --member=serviceAccount:${_WEB_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com
+      - --role=roles/secretmanager.secretAccessor
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
       - run
       - deploy
       - ${_LAB_SERVICE}

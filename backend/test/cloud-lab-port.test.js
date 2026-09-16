@@ -51,6 +51,12 @@ test('Cloud deployment isolates Kali egress and protects internal APIs', async (
   assert.match(cloudBuild, /--network-tags=\$\{_LAB_NETWORK_TAG\}/);
   assert.match(cloudBuild, /--set-secrets=INTERNAL_API_TOKEN=terminalbox-internal-api-token:latest/);
   assert.match(cloudBuild, /INTERNAL_API_TOKEN=terminalbox-internal-api-token:latest/);
+  assert.ok(
+    cloudBuild.indexOf('secrets\n      - add-iam-policy-binding\n      - terminalbox-internal-api-token')
+      < cloudBuild.indexOf('run\n      - deploy\n      - ${_LAB_SERVICE}'),
+  );
+  assert.match(cloudBuild, /--member=serviceAccount:\$\{_LAB_RUNTIME_SA\}@\$PROJECT_ID\.iam\.gserviceaccount\.com/);
+  assert.match(cloudBuild, /--member=serviceAccount:\$\{_WEB_RUNTIME_SA\}@\$PROJECT_ID\.iam\.gserviceaccount\.com/);
   assert.match(cloudBuild, /MAX_AGENT_STEPS=15/);
   assert.match(infrastructure, /terminalbox-lab-deny-all-egress/);
   assert.match(infrastructure, /--destination-ranges=0\.0\.0\.0\/0/);
