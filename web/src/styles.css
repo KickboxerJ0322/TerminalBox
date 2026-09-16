@@ -108,7 +108,7 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 .vulnerability-category > span { display: block; margin: 0 0 5px; color: var(--accent); font-family: 'Cascadia Code', Consolas, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0; }
 .vulnerability-category .challenge-target-tabs { padding: 0; border: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); background: transparent; }
 
-.target-site-tabs { flex: 0 0 auto; min-height: 36px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: 1fr; gap: 5px; }
+.target-site-tabs { flex: 0 0 auto; min-height: 36px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(10, minmax(56px, 1fr)); gap: 5px; overflow-x: auto; overflow-y: hidden;}
 .target-site-tabs button { min-height: 27px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0d1210; font-size: 9px; cursor: pointer; }
 .target-site-tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
 .target-site-tabs button.active { color: #07100b; border-color: var(--accent); background: var(--accent); font-weight: 700; }
