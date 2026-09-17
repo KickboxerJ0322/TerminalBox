@@ -1,10 +1,6 @@
-import Docker from 'dockerode';
 import { spawn } from 'node:child_process';
-import path from 'node:path';
 import { isValidSessionId, readSessionCookie } from './session/session-cookie.js';
 import { sessionManager } from './session/session-manager.js';
-
-const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 function isAuthorized(request, expectedToken) {
   if (!expectedToken) return true;
@@ -87,21 +83,6 @@ function requestSessionId(request, config) {
   return readSessionCookie(request);
 }
 
-async function ensureDockerSessionDirectories(container, session) {
-  const execution = await container.exec({
-    Cmd: ['/bin/sh', '-lc', [
-      'mkdir -p "$5" "$6" "$1" "$2" "$3" "$4"',
-      'chmod 711 "$5"',
-      'chown 1000:1000 "$6" "$1" "$2" "$3" "$4"',
-      'chmod 700 "$6" "$1" "$2" "$3" "$4"',
-    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory, path.dirname(session.baseDirectory), session.baseDirectory],
-    User: 'root',
-    AttachStdout: true,
-    AttachStderr: true,
-  });
-  await execution.start({ hijack: true, stdin: false });
-}
-
 export function attachTerminalSocket(socket, request, config) {
   if (!isAuthorized(request, config.wsAuthToken)) {
     socket.close(1008, 'Unauthorized');
@@ -110,78 +91,12 @@ export function attachTerminalSocket(socket, request, config) {
 
   const startWithSession = async () => {
     const session = await sessionManager.getOrCreate(requestSessionId(request, config));
-    if (config.kaliExecMode === 'local') {
-      attachLocalTerminal(socket, session);
-      return;
-    }
-    await startDockerTerminal(session);
+    attachLocalTerminal(socket, session);
   };
-
-  let dockerStream;
-  let exec;
 
   const send = (type, payload = {}) => {
     if (socket.readyState === 1) socket.send(JSON.stringify({ type, ...payload }));
   };
-
-  const startDockerTerminal = async (session) => {
-    try {
-      const container = docker.getContainer(config.kaliContainer);
-      const details = await container.inspect();
-      if (!details.State.Running) throw new Error('Kali container is not running');
-
-      const homeDirectory = session.homeDirectory;
-      await ensureDockerSessionDirectories(container, session);
-      exec = await container.exec({
-        Cmd: ['/bin/bash', '--noprofile', '--rcfile', '/etc/terminalbox.bashrc', '-i'],
-        User: 'student',
-        WorkingDir: homeDirectory,
-        AttachStdin: true,
-        AttachStdout: true,
-        AttachStderr: true,
-        Tty: true,
-        Env: [
-          `HOME=${homeDirectory}`,
-          `XDG_CONFIG_HOME=${homeDirectory}/.config`,
-          `XDG_DATA_HOME=${homeDirectory}/.local/share`,
-          `XDG_RUNTIME_DIR=${session.runtimeDirectory}`,
-          `TMPDIR=${session.runtimeDirectory}`,
-          'USER=student',
-          'LOGNAME=student',
-          `DISPLAY=:${session.displayNumber}`,
-          `TERMINALBOX_SESSION_ID=${session.sessionId}`,
-          'TERM=xterm-256color',
-          'COLORTERM=truecolor',
-        ],
-      });
-      dockerStream = await exec.start({ hijack: true, stdin: true, Tty: true });
-      dockerStream.on('data', (chunk) => send('output', { data: chunk.toString('utf8') }));
-      dockerStream.on('end', () => send('exit'));
-      dockerStream.on('error', (error) => send('error', { message: error.message }));
-      send('ready');
-    } catch (error) {
-      send('error', { message: `Terminal connection failed: ${error.message}` });
-      socket.close(1011, 'Terminal unavailable');
-    }
-  };
-
-  socket.on('message', async (raw) => {
-    try {
-      const message = JSON.parse(raw.toString());
-      if (message.type === 'input' && typeof message.data === 'string' && dockerStream) {
-        dockerStream.write(message.data.slice(0, 8192));
-      }
-      if (message.type === 'resize' && exec) {
-        const cols = Math.min(300, Math.max(20, Number(message.cols) || 80));
-        const rows = Math.min(120, Math.max(5, Number(message.rows) || 24));
-        await exec.resize({ w: cols, h: rows });
-      }
-    } catch {
-      send('error', { message: 'Invalid terminal message' });
-    }
-  });
-
-  socket.on('close', () => dockerStream?.destroy());
   startWithSession().catch((error) => {
     send('error', { message: `Terminal connection failed: ${error.message}` });
     socket.close(1011, 'Terminal unavailable');

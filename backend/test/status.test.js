@@ -5,31 +5,24 @@ import { getSystemStatus } from '../src/status.js';
 const config = {
   targetUrl: 'http://target:3000',
   kaliGuiUrl: 'http://kali:6080',
-  ollamaUrl: 'http://ollama:11434',
-  ollamaModel: 'test-model',
-  aiProvider: 'ollama',
-  geminiApiKey: '',
+  geminiApiKey: 'secret',
   geminiModel: 'gemini-test-model',
 };
 
 test('system status includes a ready Kali GUI', async () => {
   const fetchImpl = async (url) => ({
     ok: true,
-    json: async () => url.endsWith('/api/tags')
-      ? { models: [{ name: 'test-model' }] }
-      : {},
+    json: async () => ({}),
   });
 
   assert.deepEqual(await getSystemStatus(config, fetchImpl), {
     backend: true,
     kaliGui: true,
     target: true,
-    ollama: true,
-    model: 'test-model',
-    modelInstalled: true,
-    aiProvider: 'ollama',
+    model: 'gemini-test-model',
+    aiProvider: 'gemini',
     aiReady: true,
-    geminiConfigured: false,
+    geminiConfigured: true,
   });
 });
 
@@ -43,8 +36,6 @@ test('system status reports only the unavailable service as not ready', async ()
   assert.equal(status.backend, true);
   assert.equal(status.kaliGui, false);
   assert.equal(status.target, true);
-  assert.equal(status.ollama, true);
-  assert.equal(status.modelInstalled, false);
-  assert.equal(status.aiProvider, 'ollama');
-  assert.equal(status.aiReady, false);
+  assert.equal(status.aiProvider, 'gemini');
+  assert.equal(status.aiReady, true);
 });

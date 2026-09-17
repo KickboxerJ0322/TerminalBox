@@ -11,11 +11,10 @@ interface Status {
   backend: boolean;
   kaliGui: boolean;
   target: boolean;
-  ollama: boolean;
   model: string;
-  modelInstalled: boolean;
   aiProvider?: string;
   aiReady?: boolean;
+  geminiConfigured?: boolean;
 }
 
 interface PasteRequest {
@@ -68,13 +67,13 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="info-content">
           <p>
-            TerminalBox は、匿名セッションごとにTerminal、Target、Challenge、AI Agentの状態を分けて使う学習Labです。
+            TerminalBox は Cloud Run 版のみを正式構成とする学習Labです。公開Webと非公開Labを分け、匿名セッションごとにTerminal、Target、Challenge、AI Agentの状態を管理します。
           </p>
           <div className="info-grid">
-            <article><span>01</span><h3>Kaliワークスペース</h3><p>TerminalとKali Desktopを同じセッションの作業領域で利用できます。</p></article>
-            <article><span>02</span><h3>ターゲット演習</h3><p>問題1から5の研修サイトを調査し、攻撃の体験から原因と防御まで学びます。</p></article>
-            <article><span>03</span><h3>脆弱性</h3><p>WebとLinux / OSの脆弱性をカテゴリごとに学びます。</p></article>
-            <article><span>04</span><h3>AI Agent</h3><p>オンラインAgentが承認ポリシーに沿ってTerminal操作を支援します。</p></article>
+            <article><span>01</span><h3>Cloud Run構成</h3><p>ブラウザは公開Webへ接続し、TerminalやTargetは非公開Labへ安全に中継されます。</p></article>
+            <article><span>02</span><h3>Kaliワークスペース</h3><p>TerminalとKali Desktopを同じセッションの作業領域で利用できます。</p></article>
+            <article><span>03</span><h3>ターゲット演習</h3><p>研修サイトとツール演習を調査し、攻撃の体験から原因と防御まで学びます。</p></article>
+            <article><span>04</span><h3>AI Agent</h3><p>Geminiを使うオンラインAgentが承認ポリシーに沿ってLab内のTerminal操作を支援します。</p></article>
           </div>
         </div>
       </section>
@@ -562,7 +561,6 @@ export default function App() {
                 key={`assistant-online-${resetSignal}`}
                 panelId="assistant-online-panel"
                 tabId="assistant-online-title"
-                provider="gemini"
                 terminalHistory={history}
                 fullTerminalHistory={fullTerminalHistory}
                 status={status}

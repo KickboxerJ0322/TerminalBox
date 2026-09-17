@@ -42,10 +42,12 @@ test('Cloud Lab target routes go through the session-aware backend proxy', async
 });
 
 test('Cloud deployment isolates Kali egress and protects internal APIs', async () => {
-  const [cloudBuild, infrastructure, compose] = await Promise.all([
+  const [cloudBuild, infrastructure, startLab, terminalSource, executorSource] = await Promise.all([
     readRepositoryFile('cloudbuild.yaml'),
     readRepositoryFile('cloud/setup-infrastructure.ps1'),
-    readRepositoryFile('compose.yaml'),
+    readRepositoryFile('cloud/start-lab.sh'),
+    readRepositoryFile('backend/src/terminal.js'),
+    readRepositoryFile('backend/src/agent/command-executor.js'),
   ]);
 
   assert.match(cloudBuild, /--network-tags=\$\{_LAB_NETWORK_TAG\}/);
@@ -55,13 +57,14 @@ test('Cloud deployment isolates Kali egress and protects internal APIs', async (
     cloudBuild.indexOf('secrets\n      - add-iam-policy-binding\n      - terminalbox-internal-api-token')
       < cloudBuild.indexOf('run\n      - deploy\n      - ${_LAB_SERVICE}'),
   );
-  assert.match(cloudBuild, /--member=serviceAccount:\$\{_LAB_RUNTIME_SA\}@\$PROJECT_ID\.iam\.gserviceaccount\.com/);
+  assert.match(cloudBuild, /--service-account=\$\{_LAB_RUNTIME_SA\}@\$PROJECT_ID\.iam\.gserviceaccount\.com/);
   assert.match(cloudBuild, /--member=serviceAccount:\$\{_WEB_RUNTIME_SA\}@\$PROJECT_ID\.iam\.gserviceaccount\.com/);
   assert.match(cloudBuild, /MAX_AGENT_STEPS=15/);
   assert.match(infrastructure, /terminalbox-lab-deny-all-egress/);
   assert.match(infrastructure, /--destination-ranges=0\.0\.0\.0\/0/);
   assert.match(infrastructure, /terminalbox-internal-api-token/);
-  const kaliBlock = compose.slice(compose.indexOf('  kali:'), compose.indexOf('\n  target:', compose.indexOf('  kali:')));
-  assert.doesNotMatch(kaliBlock, /docker\.sock/);
-  assert.match(compose, /internal: true/);
+  assert.match(startLab, /SERVICE_ROLE=lab/);
+  assert.doesNotMatch(startLab, /KALI_EXEC_MODE|AI_PROVIDER/);
+  assert.doesNotMatch(terminalSource, /dockerode|docker\.sock|getContainer/);
+  assert.doesNotMatch(executorSource, /dockerode|docker\.sock|getContainer/);
 });

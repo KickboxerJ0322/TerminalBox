@@ -13,7 +13,7 @@ import { isAllowedWebSocketOrigin } from './origin.js';
 import { createLabProxy, isLabHttpPath, isLabWebSocketPath } from './lab-proxy.js';
 import { createTargetProxy } from './target-proxy.js';
 import { checkChallengeAnswer } from './challenge-check.js';
-import { AgentService, requestGeminiAgentAction, requestLocalAgentAction } from './agent/agent-service.js';
+import { AgentService, requestGeminiAgentAction } from './agent/agent-service.js';
 import { ApprovalStore } from './agent/approval-store.js';
 import { classifyCommand, CommandClassification } from './agent/command-policy.js';
 import { executeAgentPlan } from './agent/command-executor.js';
@@ -118,23 +118,12 @@ async function executeAgentCommand(command, policy, approved, session) {
 const agentService = !isLabService ? new AgentService({
   approvalStore,
   maxSteps: config.agentMaxSteps,
-  proposeAction: (state, options) => (options.provider === 'local'
-    ? requestLocalAgentAction({ state, options, systemPrompt: agentSystemPrompt })
-    : requestGeminiAgentAction({ state, options, systemPrompt: agentSystemPrompt })),
+  proposeAction: (state, options) => requestGeminiAgentAction({ state, options, systemPrompt: agentSystemPrompt }),
   execute: executeAgentCommand,
 }) : null;
 
-function getAgentProvider(requestBody) {
-  const requested = typeof requestBody?.provider === 'string' ? requestBody.provider.trim().toLowerCase() : '';
-  return requested === 'local' || requested === 'ollama' ? 'local' : 'gemini';
-}
-
 function getAgentOptions(requestBody) {
-  const provider = getAgentProvider(requestBody);
-  if (provider === 'local') {
-    return { provider, url: config.ollamaUrl, model: config.ollamaModel };
-  }
-  return { provider, ...getGeminiOptions(requestBody) };
+  return { provider: 'gemini', ...getGeminiOptions(requestBody) };
 }
 
 async function requestTargetFlagCheck(targetIndex, answer, sessionId) {
@@ -238,7 +227,7 @@ function getScreenCapture(requestBody) {
 
 function getRequestProvider(requestBody) {
   const requested = typeof requestBody?.provider === 'string' ? requestBody.provider.trim().toLowerCase() : '';
-  if (requested === 'ollama' || requested === 'gemini') return requested;
+  if (requested === 'gemini') return requested;
   return resolveAiProvider(config);
 }
 
@@ -321,76 +310,11 @@ async function sendGeminiChat(response, context, conversationHistory, options, s
   response.end();
 }
 
-async function sendOllamaChat(response, context, conversationHistory, screenCapture) {
-  const ollamaResponse = await fetch(`${config.ollamaUrl}/api/chat`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: config.ollamaModel,
-      stream: true,
-      think: false,
-      keep_alive: '30m',
-      options: {
-        num_predict: 80,
-      },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...conversationHistory,
-        {
-          role: 'user',
-          content: context,
-          ...(screenCapture ? { images: [screenCapture.data] } : {}),
-        },
-      ],
-    }),
-    signal: AbortSignal.timeout(300_000),
-  });
-
-  if (!ollamaResponse.ok) {
-    const detail = (await ollamaResponse.text()).slice(0, 500);
-    throw new Error(`Ollama returned ${ollamaResponse.status}: ${detail}`);
-  }
-  if (!ollamaResponse.body) throw new Error('Ollama returned an empty response stream');
-
-  const reader = ollamaResponse.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let hasContent = false;
-
-  const forwardLine = (line) => {
-    if (!line.trim()) return;
-    const payload = JSON.parse(line);
-    if (payload.error) throw new Error(payload.error);
-    const content = payload.message?.content;
-    if (typeof content === 'string' && content) {
-      hasContent = true;
-      writeNdjson(response, { content });
-    }
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done });
-    let newlineIndex = buffer.indexOf('\n');
-    while (newlineIndex !== -1) {
-      forwardLine(buffer.slice(0, newlineIndex));
-      buffer = buffer.slice(newlineIndex + 1);
-      newlineIndex = buffer.indexOf('\n');
-    }
-    if (done) break;
-  }
-
-  forwardLine(buffer);
-  if (!hasContent) writeNdjson(response, { error: 'AI の応答が空でした。' });
-  writeNdjson(response, { done: true, model: config.ollamaModel, provider: 'ollama' });
-  response.end();
-}
-
 app.get('/api/health', (_request, response) => {
   response.json({
     status: 'ok',
     serviceRole: config.serviceRole,
-    model: resolveAiProvider(config) === 'gemini' ? config.geminiModel : config.ollamaModel,
+    model: config.geminiModel,
     aiProvider: resolveAiProvider(config),
     target: config.targetUrl,
   });
@@ -426,9 +350,7 @@ app.get('/api/status', async (_request, response) => {
     ...labStatus,
     backend: true,
     ...(aiStatus.status === 'fulfilled' ? aiStatus.value : {
-      ollama: false,
-      model: resolveAiProvider(config) === 'gemini' ? config.geminiModel : config.ollamaModel,
-      modelInstalled: false,
+      model: config.geminiModel,
       aiProvider: resolveAiProvider(config),
       aiReady: false,
       geminiConfigured: Boolean(config.geminiApiKey),
@@ -572,15 +494,12 @@ app.post('/api/agent/chat', async (request, response) => {
     ].join('\n') : '';
     const context = prepareContext(message, terminalHistory, terminalHistoryMode);
     const agentOptions = getAgentOptions(request.body);
-    const localVisionNotice = agentOptions.provider === 'local' && screenCapture
-      ? '\n\nこのローカルモデルは画像入力に対応していません。Terminal contextだけで継続してください。'
-      : '';
     const result = await agentService.chat({
-      message: `${conversationContext}${context}${localVisionNotice}`,
+      message: `${conversationContext}${context}`,
       sessionId: session.sessionId,
       session,
       options: agentOptions,
-      screenCapture: agentOptions.provider === 'local' ? null : screenCapture,
+      screenCapture,
     });
     response.json(result);
   } catch (error) {
@@ -683,17 +602,11 @@ app.post('/api/chat', async (request, response) => {
   const context = prepareContext(message, terminalHistory, terminalHistoryMode);
 
   try {
-    if (provider === 'gemini') {
-      await sendGeminiChat(response, context, conversationHistory, getGeminiOptions(request.body), screenCapture);
-    } else {
-      await sendOllamaChat(response, context, conversationHistory, screenCapture);
-    }
+    await sendGeminiChat(response, context, conversationHistory, getGeminiOptions(request.body), screenCapture);
   } catch (error) {
     console.error(`${provider} request failed:`, error.message);
     const errorPayload = {
-      error: provider === 'gemini'
-        ? 'Gemini API への問い合わせに失敗しました。API キー、モデル名、ネットワーク設定を確認してください。'
-        : 'ローカル AI への問い合わせに失敗しました。Ollama の起動状態とモデルの読み込みを確認してください。',
+      error: 'Gemini API request failed.',
       detail: error.message,
     };
     if (!response.writableEnded) response.end(`${JSON.stringify(errorPayload)}\n`);
@@ -768,15 +681,5 @@ terminalSockets.on('connection', (socket, request) => {
 });
 
 server.listen(config.port, '0.0.0.0', () => {
-  console.log(`TerminalBox ${config.serviceRole} backend listening on port ${config.port}`);
-  if (resolveAiProvider(config) !== 'ollama') return;
-  fetch(`${config.ollamaUrl}/api/generate`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ model: config.ollamaModel, prompt: '', stream: false, keep_alive: '30m' }),
-    signal: AbortSignal.timeout(300_000),
-  }).then((result) => {
-    if (!result.ok) throw new Error(`Ollama returned ${result.status}`);
-    console.log(`Preloaded Ollama model: ${config.ollamaModel}`);
-  }).catch((error) => console.warn(`Could not preload Ollama model: ${error.message}`));
+  console.log('TerminalBox ' + config.serviceRole + ' backend listening on port ' + config.port);
 });

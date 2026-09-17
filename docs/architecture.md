@@ -1,54 +1,80 @@
 # TerminalBox architecture
 
+TerminalBox is Cloud Run only. The retired local Docker Compose runtime, Docker socket control, Docker exec terminal path, and Ollama/local AI backend are not part of the supported architecture.
+
 ## Runtime flow
 
 ```text
 Browser
-  ├─ / ────────────────────> /kali-gui/ (Kali desktop entry)
-  ├─ /terminalbox/ ────────> TerminalBox learning workspace
-  ├─ HTTP ─────────────────> terminalbox-web (nginx)
-  │                            ├─ /api/* ──────> terminalbox-backend
-  │                            └─ /kali-gui/* ─> kali (noVNC/websockify)
-  ├─ noVNC WebSocket ──────────┘                    └─ TigerVNC ─> XFCE
-  └─ xterm.js WebSocket ───────┘ /ws/terminal
-                                    ├─ Docker exec TTY ──> kali (student/bash)
-                                    └─ Ollama API ───────> ollama (Liquid AI LFM)
-
-kali ── lab network / Docker DNS ──> target:3000
-kali ── lab network / Docker DNS ──> labtarget:3100,4100
-Kali Firefox ── lab network ───────> terminalbox-web/terminalbox/
+  |
+  | HTTPS /terminalbox/, /api/*, /ws/*, /kali-gui/*, target proxy paths
+  v
+Cloud Run: terminalbox (public)
+  - nginx serves the built React app
+  - backend handles sessions, AI, AI Agent orchestration, approvals
+  - backend obtains Google ID tokens for private Lab calls
+  |
+  | authenticated service-to-service HTTP/WebSocket
+  v
+Cloud Run: terminalbox-lab (private)
+  - Kali terminal and noVNC desktop
+  - training targets on loopback hostnames
+  - challenge target and tool target
+  - Agent executor running as student
 ```
 
-`terminalbox-web`だけがホストへポートを公開します。NginxはAPIとWebSocketをバックエンドへ中継します。ブラウザはOllamaやDocker APIへ直接アクセスしません。
+## Services
 
-## Networks
+| Service | Visibility | Main files | Responsibility |
+|---|---|---|---|
+| `terminalbox` | Public Cloud Run service | `Dockerfile.web.cloud`, `cloud/start-web.sh`, `cloud/nginx-web.conf` | Web UI, Basic auth, Gemini access, Lab proxy, AI Agent orchestration |
+| `terminalbox-lab` | Private Cloud Run service | `Dockerfile.lab.cloud`, `cloud/start-lab.sh`, `cloud/nginx-lab.conf` | Kali/noVNC, terminal, targets, Lab reset, Agent command execution |
 
-| Service | `edge` | internal `lab` | Host port |
-|---|---:|---:|---:|
-| terminalbox-web | yes | yes | 3000 (configurable) |
-| terminalbox-backend | yes | yes | none |
-| kali | no | yes | none |
-| target | no | yes | none |
-| challenge-target | no | yes | none |
-| ollama | yes | yes | none |
+The browser never talks directly to Lab. All browser-visible Lab paths are proxied through the public Web service. Private internal Agent execution and target flag checks are service-to-service only.
 
-Kaliは`lab`にのみ接続するため、Dockerの外へ直接ルーティングされません。`target`というサービス名はDocker DNSで解決されます。`terminalbox-web`はKali GUIを中継するため両方のネットワークに参加しますが、nginxが公開する内部サービス経路は`/kali-gui/`に限定されます。Ollamaが`edge`にも接続するのはモデル取得のためです。
+## Lab Internals
 
-## GUI lifecycle
+`cloud/start-lab.sh` adds the internal hostnames to `/etc/hosts`:
 
-Kaliコンテナ起動時に`student`ユーザーでTigerVNC、XFCE、noVNC/websockifyを開始します。VNCはコンテナ内のlocalhostだけで待ち受け、ホストへポート公開しません。ブラウザからのHTTPとWebSocketは`terminalbox-web`が`/kali-gui/`からKaliのnoVNCへ中継します。ホームは`noexec`付きtmpfsのため、XFCE起動スクリプトは読み取り専用イメージ内に配置します。
+```text
+target    -> 127.0.0.2:3000
+target2   -> 127.0.0.3:3000
+target3   -> 127.0.0.4:3000
+target4   -> 127.0.0.5:3000
+target5   -> 127.0.0.6:3000
+labtarget -> 127.0.0.7:3100 and 127.0.0.7:4100
+```
 
-## Terminal lifecycle
+The backend terminal, desktop manager, Lab reset, and Agent executor run local processes inside the Lab container as `student`. They do not use Docker Engine or `/var/run/docker.sock`.
 
-WebSocket接続ごとにバックエンドがKaliコンテナ内で、`student`ユーザーの `/bin/bash -l` をTTY付きで開始します。入力・出力・リサイズだけをJSONメッセージとして中継し、切断時にストリームを破棄します。この境界は将来、認証後にユーザー別コンテナ名を解決する実装へ置き換えられます。
+## AI
 
-## AI context
+Gemini is the only supported AI backend.
 
-ブラウザはTTY出力とAI会話の直近履歴をメモリ上に保持します。「端末履歴を含める」が有効な場合はバックエンド側で `TERMINAL_HISTORY_LIMIT` に切り詰め、「AI会話履歴を含める」が有効な場合は直近4メッセージ・最大1000文字に制限します。設定ファイル `config/ai-system-prompt.txt`、選択された履歴、現在の質問をOllama `/api/chat`へ送信します。会話や端末履歴は永続化しません。
+- `terminalbox` receives `GEMINI_API_KEY` from Secret Manager.
+- `terminalbox-lab` receives no Gemini secret.
+- Normal chat and AI Agent planning call Gemini from the Web service.
+- AI Agent commands are rechecked by command-policy before execution in Lab.
 
-## Production migration notes
+## Networking
 
-- GCEではDocker EngineとCompose pluginを導入し、同じ`compose.yaml`を使用できます。
-- HTTPS終端、認証、レート制限を前段プロキシで追加してください。
-- 単一の共有KaliはMVP向けです。複数ユーザー公開前にセッションごとの短命コンテナへ変更してください。
-- Docker socketの直接マウントは信頼されたローカルMVPに限定し、公開環境では限定APIだけを許可するSocket Proxyまたは専用runnerへ変更してください。
+- Web service egress is allowed so it can call Gemini and private Lab.
+- Lab service uses Direct VPC egress and the `terminalbox-lab-deny-egress` network tag.
+- `cloud/setup-infrastructure.ps1` creates `terminalbox-lab-deny-all-egress`, denying Lab IPv4 egress to `0.0.0.0/0`.
+- Lab still requires normal Cloud Run platform traffic such as metadata, DNS, and service infrastructure traffic.
+
+## Build Inputs
+
+Cloud Build requires:
+
+- `cloudbuild.yaml`
+- `Dockerfile.web.cloud`
+- `Dockerfile.lab.cloud`
+- `cloud/`
+- `web/`
+- `backend/`
+- `kali/`
+- `target/`
+- `challenge-target/`
+- `challenges/`
+- `config/`

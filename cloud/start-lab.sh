@@ -24,8 +24,6 @@ start_process su -s /bin/sh student -c 'CHALLENGE_HTTP_HOST=127.0.0.7 CHALLENGE_
 start_process env \
   PORT=3001 \
   SERVICE_ROLE=lab \
-  AI_PROVIDER=gemini \
-  KALI_EXEC_MODE=local \
   TARGET_URL=http://target:3000 \
   TARGET_URLS=http://target:3000,http://target2:3000,http://target3:3000,http://target4:3000,http://target5:3000,http://labtarget:3100 \
   KALI_GUI_URL=http://127.0.0.1:6080 \

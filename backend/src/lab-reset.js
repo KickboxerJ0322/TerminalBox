@@ -1,9 +1,6 @@
-import Docker from 'dockerode';
 import { execFile } from 'node:child_process';
-import path from 'node:path';
 import { promisify } from 'node:util';
 
-const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const execFileAsync = promisify(execFile);
 
 export const HOME_RESET_SCRIPT = String.raw`
@@ -27,63 +24,6 @@ chmod 0755 "$desktop/TerminalBox.desktop"
 mkdir -p "$home/Downloads"
 HOME="$home" /usr/local/bin/seed-training-home
 `;
-
-async function collectExecOutput(stream) {
-  let output = '';
-  await new Promise((resolve, reject) => {
-    stream.on('data', (chunk) => {
-      output = `${output}${chunk.toString('utf8')}`.slice(-4000);
-    });
-    stream.on('end', resolve);
-    stream.on('error', reject);
-  });
-  return output.trim();
-}
-
-async function ensureDockerSessionDirectories(container, session) {
-  const execution = await container.exec({
-    Cmd: ['/bin/sh', '-lc', [
-      'mkdir -p "$5" "$6" "$1" "$2" "$3" "$4"',
-      'chmod 711 "$5"',
-      'chown 1000:1000 "$6" "$1" "$2" "$3" "$4"',
-      'chmod 700 "$6" "$1" "$2" "$3" "$4"',
-    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory, path.dirname(session.baseDirectory), session.baseDirectory],
-    User: 'root',
-    AttachStdout: true,
-    AttachStderr: true,
-  });
-  await execution.start({ hijack: true, stdin: false });
-}
-
-async function resetKaliHome(containerName, session) {
-  const container = docker.getContainer(containerName);
-  const details = await container.inspect();
-  if (!details.State.Running) throw new Error('Kali container is not running');
-  await ensureDockerSessionDirectories(container, session);
-
-  const exec = await container.exec({
-    Cmd: ['/bin/sh', '-c', HOME_RESET_SCRIPT],
-    User: 'student',
-    Env: [
-      `TBX_SESSION_HOME=${session.homeDirectory}`,
-      `HOME=${session.homeDirectory}`,
-      `XDG_CONFIG_HOME=${session.homeDirectory}/.config`,
-      `XDG_DATA_HOME=${session.homeDirectory}/.local/share`,
-      `XDG_RUNTIME_DIR=${session.runtimeDirectory}`,
-      `TMPDIR=${session.runtimeDirectory}`,
-      `DISPLAY=:${session.displayNumber}`,
-    ],
-    AttachStdout: true,
-    AttachStderr: true,
-    Tty: true,
-  });
-  const stream = await exec.start({ hijack: true, stdin: false, Tty: true });
-  const output = await collectExecOutput(stream);
-  const result = await exec.inspect();
-  if (result.ExitCode !== 0) {
-    throw new Error(`Kali home reset failed (${result.ExitCode}): ${output || 'no output'}`);
-  }
-}
 
 async function resetLocalKaliHome(session) {
   await execFileAsync('/bin/sh', ['-c', HOME_RESET_SCRIPT], {
@@ -117,9 +57,7 @@ async function resetTarget(url, session) {
 export async function resetLab(config, session) {
   const [targets] = await Promise.all([
     Promise.all(config.targetUrls.map((url) => resetTarget(url, session))),
-    config.kaliExecMode === 'local'
-      ? resetLocalKaliHome(session)
-      : resetKaliHome(config.kaliContainer, session),
+    resetLocalKaliHome(session),
   ]);
   return { status: 'reset', sessionId: session.sessionId, targets: targets.length, kaliHome: true };
 }

@@ -130,47 +130,6 @@ export async function requestGeminiAgentAction({ state, options, systemPrompt, f
   return parseAgentAction(extractGeminiText(await response.json()));
 }
 
-export async function requestLocalAgentAction({ state, options, systemPrompt, fetchImpl = fetch }) {
-  const observations = state.steps.map((step) => ({
-    command: step.command,
-    classification: step.classification,
-    approved: step.approved,
-    result: step.result ? {
-      stdout: step.result.stdout.slice(0, 12_000),
-      stderr: step.result.stderr.slice(0, 6_000),
-      exitCode: step.result.exitCode,
-    } : null,
-  }));
-  const prompt = [
-    systemPrompt,
-    '',
-    'Return only JSON. Use {"action":"final_answer","message":"..."} for explanations or completed work.',
-    'Use {"action":"execute_command","command":"...","reason":"..."} only when a terminal command is needed.',
-    'For requests such as checking the current directory, current user, file list, command history, or terminal state, propose exactly one safe read-only command first.',
-    `User request: ${state.message}`,
-    `Observations: ${JSON.stringify(observations)}`,
-  ].join('\n');
-  const response = await fetchImpl(`${options.url}/api/chat`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: options.model,
-      stream: false,
-      think: false,
-      keep_alive: '30m',
-      format: 'json',
-      messages: [{ role: 'user', content: prompt }],
-    }),
-    signal: AbortSignal.timeout(120_000),
-  });
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500);
-    throw new Error(`Ollama returned ${response.status}: ${detail}`);
-  }
-  const body = await response.json();
-  return parseAgentAction(body.message?.content ?? body.response ?? '');
-}
-
 export class AgentService {
   constructor({ approvalStore, proposeAction, execute, maxSteps = 15 }) {
     this.approvalStore = approvalStore;

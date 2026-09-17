@@ -23,17 +23,18 @@ test('Kali workspace keeps one noVNC session and activates the selected GUI tool
 });
 
 test('Kali noVNC can connect and render inside the workspace frame', async () => {
-  const nginx = await readRootSource('web/nginx.conf');
-  const kaliLocation = nginx.slice(nginx.indexOf('location /kali-gui/ {'), nginx.indexOf('\n  }', nginx.indexOf('location /kali-gui/ {')));
+  const nginx = await readRootSource('cloud/nginx-web.conf');
+  const kaliLocation = nginx.slice(nginx.indexOf('location ~ ^/'), nginx.indexOf('\n  }', nginx.indexOf('location ~ ^/')));
 
+  assert.match(kaliLocation, /kali-gui/);
   assert.match(kaliLocation, /proxy_set_header Upgrade \$http_upgrade/);
-  assert.match(kaliLocation, /add_header X-Frame-Options SAMEORIGIN always/);
+  assert.match(nginx, /add_header X-Frame-Options SAMEORIGIN always/);
 });
 
 test('online AI and security tool wording are the defaults', async () => {
   const source = await readWebSource('App.tsx');
 
-  assert.match(source, /provider="gemini"/);
+  assert.match(source, /<AgentPanel/);
   assert.doesNotMatch(source, /assistant-local/);
   assert.match(source, />\s*セキュリティツール\s*</);
 });
@@ -61,7 +62,8 @@ test('AI Agent is online-only without local tabs', async () => {
   assert.doesNotMatch(app, /useState<AssistantTab>/);
   assert.doesNotMatch(app, />\s*ローカル\s*</);
   assert.match(agent, /fetch\(allow \? '\/api\/agent\/approve' : '\/api\/agent\/cancel'/);
-  assert.match(agent, /provider: 'gemini' \| 'local'/);
+  assert.match(agent, /provider: 'gemini'/);
+  assert.doesNotMatch(agent, /ollama|modelInstalled/);
   assert.doesNotMatch(styles, /\.assistant-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(2,/);
 });
 
@@ -100,7 +102,7 @@ test('tool and vulnerability tabs open their matching panels', async () => {
   assert.doesNotMatch(panel, /\(\['Web', 'Linux \/ OS'\] as const\)/);
   assert.match(panel, /\/api\/challenges\/progress/);
   assert.match(panel, /completionId/);
-  assert.match(styles, /\.target-site-tabs[^\n]+grid-template-columns: 1fr/);
+  assert.match(styles, /\.target-site-tabs[^\n]+grid-template-columns: repeat\(10,/);
   assert.match(styles, /\.vulnerability-target-tabs/);
   assert.match(app, /現在のセッションのTerminal、Desktop、Target、Challenge、AI Agent状態/);
 

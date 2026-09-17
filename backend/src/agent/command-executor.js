@@ -1,8 +1,5 @@
 import { spawn } from 'node:child_process';
-import path from 'node:path';
-import Docker from 'dockerode';
 
-const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 const EXECUTOR_PATH = '/usr/local/bin/terminalbox-agent-executor';
 const OUTPUT_LIMIT = 70_000;
 
@@ -70,60 +67,6 @@ function executeLocal(plan, command, timeoutMs, session) {
   });
 }
 
-async function ensureDockerSessionDirectories(container, session) {
-  const execution = await container.exec({
-    Cmd: ['/bin/sh', '-lc', [
-      'mkdir -p "$5" "$6" "$1" "$2" "$3" "$4"',
-      'chmod 711 "$5"',
-      'chown 1000:1000 "$6" "$1" "$2" "$3" "$4"',
-      'chmod 700 "$6" "$1" "$2" "$3" "$4"',
-    ].join(' && '), 'sh', session.homeDirectory, session.runtimeDirectory, session.logDirectory, session.stateDirectory, path.dirname(session.baseDirectory), session.baseDirectory],
-    User: 'root',
-    AttachStdout: true,
-    AttachStderr: true,
-  });
-  await execution.start({ hijack: true, stdin: false });
-}
-
-async function executeDocker(plan, command, config, timeoutMs, session) {
-  const startedAt = Date.now();
-  const container = docker.getContainer(config.kaliContainer);
-  const details = await container.inspect();
-  if (!details.State.Running) throw new Error('Kali container is not running');
-  const timeoutSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
-  const homeDirectory = session?.homeDirectory ?? '/home/student';
-  if (session) await ensureDockerSessionDirectories(container, session);
-  const execution = await container.exec({
-    Cmd: ['/usr/bin/timeout', '--signal=KILL', `${timeoutSeconds}s`, EXECUTOR_PATH, encodePlan(plan)],
-    User: 'student',
-    WorkingDir: homeDirectory,
-    AttachStdout: true,
-    AttachStderr: true,
-    Tty: true,
-    Env: [
-      `HOME=${homeDirectory}`, `XDG_CONFIG_HOME=${homeDirectory}/.config`, `XDG_DATA_HOME=${homeDirectory}/.local/share`,
-      `TERMINALBOX_SESSION_ID=${session?.sessionId ?? ''}`,
-      'USER=student', 'LOGNAME=student', 'LANG=ja_JP.UTF-8', 'PAGER=cat', 'GIT_PAGER=cat',
-      'SYSTEMD_PAGER=cat', 'GIT_CONFIG_NOSYSTEM=1', 'GIT_CONFIG_GLOBAL=/dev/null',
-      'GIT_OPTIONAL_LOCKS=0', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-    ],
-  });
-  const stream = await execution.start({ hijack: true, stdin: false, Tty: true });
-  let output = '';
-  await new Promise((resolve, reject) => {
-    stream.on('data', (chunk) => { output = (output + chunk.toString('utf8')).slice(-OUTPUT_LIMIT); });
-    stream.on('end', resolve);
-    stream.on('error', reject);
-  });
-  const inspection = await execution.inspect();
-  if (inspection.ExitCode === 124 || inspection.ExitCode === 137) {
-    return { command, stdout: '', stderr: 'Agent command timed out.', exitCode: 124, durationMs: Date.now() - startedAt, timedOut: true };
-  }
-  return parseRunnerOutput(output, command, startedAt);
-}
-
 export function executeAgentPlan(plan, command, config, timeoutMs = 10_000, session = null) {
-  return config.kaliExecMode === 'local'
-    ? executeLocal(plan, command, timeoutMs, session)
-    : executeDocker(plan, command, config, timeoutMs, session);
+  return executeLocal(plan, command, timeoutMs, session);
 }

@@ -5,21 +5,13 @@ const numberFromEnv = (name, fallback, min, max) => {
   return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 };
 
-const providerFromEnv = () => {
-  const value = (process.env.AI_PROVIDER ?? 'ollama').toLowerCase();
-  return ['ollama', 'gemini', 'auto'].includes(value) ? value : 'ollama';
-};
-
 export const config = {
   port: numberFromEnv('PORT', 3001, 1, 65535),
-  serviceRole: (process.env.SERVICE_ROLE ?? 'combined').toLowerCase(),
+  serviceRole: (process.env.SERVICE_ROLE ?? 'web').toLowerCase(),
   publicDemoMode: (process.env.PUBLIC_DEMO_MODE ?? 'false').toLowerCase() === 'true',
   maxActiveSessions: numberFromEnv('MAX_ACTIVE_SESSIONS', 20, 1, 100),
   labServiceUrl: (process.env.LAB_SERVICE_URL ?? '').replace(/\/$/, ''),
   labServiceAudience: (process.env.LAB_SERVICE_AUDIENCE ?? process.env.LAB_SERVICE_URL ?? '').replace(/\/$/, ''),
-  aiProvider: providerFromEnv(),
-  ollamaUrl: (process.env.OLLAMA_URL ?? 'http://ollama:11434').replace(/\/$/, ''),
-  ollamaModel: process.env.OLLAMA_MODEL ?? 'LiquidAI/lfm2.5-1.2b-instruct:q4_k_m',
   geminiApiKey: process.env.GEMINI_API_KEY ?? '',
   geminiModel: process.env.GEMINI_MODEL ?? 'gemini-3.7-flash',
   geminiUrl: (process.env.GEMINI_URL ?? 'https://generativelanguage.googleapis.com').replace(/\/$/, ''),
@@ -29,8 +21,6 @@ export const config = {
     .map((url) => url.trim().replace(/\/$/, ''))
     .filter(Boolean),
   kaliGuiUrl: (process.env.KALI_GUI_URL ?? 'http://kali:6080').replace(/\/$/, ''),
-  kaliContainer: process.env.KALI_CONTAINER ?? 'terminalbox-kali',
-  kaliExecMode: process.env.KALI_EXEC_MODE === 'local' ? 'local' : 'docker',
   historyLimit: numberFromEnv('TERMINAL_HISTORY_LIMIT', 2000, 500, 8000),
   agentMaxSteps: numberFromEnv('MAX_AGENT_STEPS', 15, 1, 15),
   agentCommandTimeoutMs: numberFromEnv('AGENT_COMMAND_TIMEOUT_MS', 10000, 1000, 30000),
@@ -44,9 +34,8 @@ export const config = {
   agentPromptFile: process.env.AGENT_SYSTEM_PROMPT_FILE ?? '/app/config/agent-system-prompt.txt',
 };
 
-export function resolveAiProvider(currentConfig = config) {
-  if (currentConfig.aiProvider === 'auto') return currentConfig.geminiApiKey ? 'gemini' : 'ollama';
-  return currentConfig.aiProvider;
+export function resolveAiProvider() {
+  return 'gemini';
 }
 
 export async function loadSystemPrompt() {
