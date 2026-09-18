@@ -1,4 +1,4 @@
-import { chmod, chown, mkdir, rm } from 'node:fs/promises';
+import { chmod, chown, mkdir, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -9,6 +9,8 @@ const STUDENT_UID = 1000;
 const STUDENT_GID = 1000;
 const SESSION_ROOT_MODE = 0o711;
 const SESSION_DIRECTORY_MODE = 0o700;
+const BURP_PROXY_PORT_BASE = 18_000;
+const TRACKED_TOOL_PID_FILES = ['burp.pid', 'wireshark.pid'];
 
 const INITIAL_PROGRESS = Object.freeze({
   target1: false,
@@ -46,6 +48,30 @@ async function prepareSessionDirectories(session) {
     prepareStudentDirectory(session.logDirectory),
     prepareStudentDirectory(session.stateDirectory),
   ]);
+}
+
+async function processBelongsToSession(pid, sessionId) {
+  try {
+    const environment = await readFile(`/proc/${pid}/environ`, 'utf8');
+    const entries = environment.split('\0');
+    return entries.includes(`TERMINALBOX_SESSION_ID=${sessionId}`) || entries.includes(`TBX_SESSION_ID=${sessionId}`);
+  } catch {
+    return false;
+  }
+}
+
+async function stopTrackedToolProcesses(session) {
+  const toolDirectory = path.join(session.runtimeDirectory, 'terminalbox-tools');
+  for (const pidFileName of TRACKED_TOOL_PID_FILES) {
+    const pidFile = path.join(toolDirectory, pidFileName);
+    let rawPid;
+    try { rawPid = await readFile(pidFile, 'utf8'); } catch { continue; }
+    const pid = Number.parseInt(rawPid.trim(), 10);
+    if (Number.isSafeInteger(pid) && pid > 1 && await processBelongsToSession(pid, session.sessionId)) {
+      try { process.kill(pid, 'SIGTERM'); } catch { /* already exited */ }
+    }
+    await rm(pidFile, { force: true });
+  }
 }
 
 function initialProgress() {
@@ -92,6 +118,7 @@ export class SessionManager {
       displayNumber,
       vncPort: 5900 + displayNumber,
       novncPort: 6100 + displayNumber,
+      burpProxyPort: BURP_PROXY_PORT_BASE + displayNumber,
       status: 'active',
       agentRequestCount: 0,
       progress: initialProgress(),
@@ -128,6 +155,7 @@ export class SessionManager {
   async reset(sessionId) {
     const session = this.get(sessionId);
     if (!session) return null;
+    await stopTrackedToolProcesses(session);
     for (const child of session.terminalProcesses) {
       child.kill?.('SIGHUP');
     }
@@ -159,6 +187,7 @@ export class SessionManager {
   async destroy(sessionId) {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
+    await stopTrackedToolProcesses(session);
     for (const child of session.terminalProcesses) {
       child.kill?.('SIGHUP');
     }
