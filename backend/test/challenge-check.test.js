@@ -47,10 +47,10 @@ test('accepts target understand and defend choices without flag literals', () =>
 
 test('accepts Linux Lab privilege escalation flags and choices', () => {
   const expected = new Map([
-    ['target6', 'FLAG{COPY_FAIL_LPE}'],
-    ['target7', 'FLAG{LINUX_PERMISSION}'],
-    ['target8', 'FLAG{SUID_MISCONFIG}'],
-    ['target9', 'FLAG{SUDO_MISCONFIG}'],
+    ['target6', 'TBX{target6_c6}'],
+    ['target7', 'TBX{target7_d7}'],
+    ['target8', 'TBX{target8_e8}'],
+    ['target9', 'TBX{target9_f9}'],
   ]);
 
   for (const [id, flag] of expected) {

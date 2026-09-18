@@ -74,7 +74,7 @@ const getSessionId = (request) => {
 
 const flagForSession = (prefix, sessionId) => {
   const salt = randomBytes(18).toString('hex');
-  const digestLength = prefix === 'target1' ? 2 : 12;
+  const digestLength = 2;
   const digest = createHash('sha256').update(`${prefix}:${sessionId}:${salt}`).digest('hex').slice(0, digestLength);
   return { value: `TBX{${prefix}_${digest}}`, salt };
 };
@@ -102,7 +102,7 @@ const makeInitialState = (sessionId) => {
     state.nonce = randomBytes(10).toString('hex');
   }
   if (PROFILE_ID === '5') {
-    state.flag = flagForSession('secure_target_verified', sessionId);
+    state.flag = flagForSession('target5', sessionId);
     state.products = makeSecureProducts();
     state.authSecret = randomBytes(24).toString('hex');
     state.loginNonce = randomBytes(10).toString('hex');

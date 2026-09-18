@@ -1,10 +1,10 @@
 const LINUX_TARGETS = new Set([6, 7, 8, 9]);
 
 const FLAGS = Object.freeze({
-  6: 'FLAG{COPY_FAIL_LPE}',
-  7: 'FLAG{LINUX_PERMISSION}',
-  8: 'FLAG{SUID_MISCONFIG}',
-  9: 'FLAG{SUDO_MISCONFIG}',
+  6: 'TBX{target6_c6}',
+  7: 'TBX{target7_d7}',
+  8: 'TBX{target8_e8}',
+  9: 'TBX{target9_f9}',
 });
 
 const HOME_FILES = [
