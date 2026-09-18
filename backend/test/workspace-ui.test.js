@@ -32,8 +32,11 @@ test('Burp and Wireshark launchers are isolated per anonymous session', async ()
 
   assert.doesNotMatch(launcher, /pgrep/);
   assert.match(launcher, /terminalbox-tools/);
-  assert.match(launcher, /burp\.pid/);
-  assert.match(launcher, /wireshark\.pid/);
+  assert.match(launcher, /pid_file="\$tool_dir\/\$1\.pid"/);
+  assert.match(launcher, /tool_running burp/);
+  assert.match(launcher, /remember_pid burp "\$!"/);
+  assert.match(launcher, /tool_running wireshark/);
+  assert.match(launcher, /remember_pid wireshark "\$!"/);
   assert.match(launcher, /TBX_SESSION_LOG_DIR/);
   assert.match(launcher, /TERMINALBOX_BURP_PROXY_PORT/);
   assert.match(launcher, /--config-file=\$burp_config/);
