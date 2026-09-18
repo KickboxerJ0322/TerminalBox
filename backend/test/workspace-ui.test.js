@@ -22,6 +22,31 @@ test('Kali workspace keeps one noVNC session and activates the selected GUI tool
   assert.match(styles, /\.kali-gui-panel\.kali-view-hidden\s*\{\s*display:\s*none/);
 });
 
+test('Burp and Wireshark launchers are isolated per anonymous session', async () => {
+  const [launcher, terminal, sessionManager, challenge] = await Promise.all([
+    readRootSource('kali/activate-tool.sh'),
+    readFile(new URL('../src/terminal.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/session/session-manager.js', import.meta.url), 'utf8'),
+    readWebSource('ChallengePanel.tsx'),
+  ]);
+
+  assert.doesNotMatch(launcher, /pgrep/);
+  assert.match(launcher, /terminalbox-tools/);
+  assert.match(launcher, /burp\.pid/);
+  assert.match(launcher, /wireshark\.pid/);
+  assert.match(launcher, /TBX_SESSION_LOG_DIR/);
+  assert.match(launcher, /TERMINALBOX_BURP_PROXY_PORT/);
+  assert.match(launcher, /--config-file=\$burp_config/);
+  assert.match(launcher, /listener_port/);
+  assert.match(terminal, /TBX_SESSION_LOG_DIR: session\.logDirectory/);
+  assert.match(terminal, /TERMINALBOX_BURP_PROXY_PORT: String\(session\.burpProxyPort\)/);
+  assert.match(sessionManager, /stopTrackedToolProcesses/);
+  assert.match(sessionManager, /BURP_PROXY_PORT_BASE \+ displayNumber/);
+  assert.match(challenge, /Temporary project/);
+  assert.match(challenge, /Manual proxy configuration/);
+  assert.match(challenge, /Display Filter/);
+});
+
 test('Kali noVNC can connect and render inside the workspace frame', async () => {
   const nginx = await readRootSource('cloud/nginx-web.conf');
   const kaliLocation = nginx.slice(nginx.indexOf('location ~ ^/'), nginx.indexOf('\n  }', nginx.indexOf('location ~ ^/')));
