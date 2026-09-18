@@ -532,17 +532,17 @@ const challengeGroups: ChallengeGroup[] = [
     challenges: [
       {
         id: '01', title: 'Burp Suite Community', answerId: 'burp',
-        goal: 'Kali DesktopでBurp Suiteを起動し、FirefoxのHTTP Proxyを `127.0.0.1:8080` に設定します。割引申請を捕捉してRepeaterへ送り、`discount`を書き換えてFlagを取得してください。',
-        commands: ['firefox http://labtarget:3100/burp/'],
-        hint: 'Applications → Web Application Analysis → burpsuite から起動し、Temporary project → Use Burp defaults を選びます。Proxy → Interceptで「Intercept is on」を確認し、Firefoxの設定 → Network SettingsでManual proxyを選択してHTTP Proxyを127.0.0.1、Portを8080にします。Firefoxで割引申請を送るとBurpにリクエストが止まるので、右クリックしてSend to Repeaterを選びます。Repeaterで本文のhiddenパラメータ `discount` を90へ変更してSendを押し、右側のレスポンスに出る `TBX{...}` を確認します。',
-        result: 'レスポンスに表示された `TBX{...}` を回答欄へ入力します。',
+        goal: 'TerminalBoxのBurp Suiteタブから自分のセッション専用Burpを起動し、Kali Desktop上のFirefoxをセッション専用Proxyへ接続します。割引申請をInterceptしてRepeaterへ送り、`discount` を書き換えてFlagを取得してください。',
+        commands: ['echo "Burp Proxy = 127.0.0.1:$TERMINALBOX_BURP_PROXY_PORT"', 'curl -I http://labtarget:3100/burp/'],
+        hint: '【1】TerminalBox左上の `Burp Suite` タブを押します。直接Applicationsメニューから起動せず、このタブから起動するとSession IDごとのDISPLAY・PID・ログ・Proxyポートが使われます。【2】初回だけBurpの利用条件画面が出た場合は内容を確認して進み、`Temporary project` → `Next` → `Use Burp defaults` → `Start Burp` を選びます。【3】提示コマンド `echo ...` で自分のProxyポートを確認します。Burpの `Settings` → `Tools` → `Proxy` → `Proxy listeners` に `127.0.0.1:表示されたポート` がRunningであることを確認します。【4】Kali DesktopでFirefox ESRを開き、右上メニュー → `Settings` → `General` → 一番下の `Network Settings` → `Settings...` → `Manual proxy configuration` を選びます。HTTP Proxyを `127.0.0.1`、Portを先ほど表示された番号にし、`No proxy for` は空にします。この問題はHTTPなのでHTTP Proxyの設定だけで進められます。【5】Firefoxで `http://labtarget:3100/burp/` を開きます。【6】Burpで `Proxy` → `Intercept` を開き、ボタンが `Intercept is on` になっていることを確認してからFirefoxの「10%割引を申請」を押します。【7】Burpで停止したPOSTリクエストを右クリック → `Send to Repeater`。 `Repeater` タブへ移動し、本文の `discount=10` を `discount=90` に変更して `Send` を押します。【8】右側Responseに表示される `TBX{...}` を回答します。Firefoxが読み込めない場合は、ProxyのHost/Port、Burp listenerのRunning、`No proxy for` が空かを順に確認してください。',
+        result: 'RepeaterのResponseに表示された `TBX{...}` を回答欄へ入力します。',
       },
       {
         id: '02', title: 'Wireshark / tshark', answerId: 'wireshark',
-        goal: '配布PCAPからHTTPリクエストを調べ、`X-Training-Flag` ヘッダーを発見してください。Cloud版でも利用できるオフライン解析問題です。',
+        goal: 'TerminalBoxのWiresharkタブで自分のセッション専用Wiresharkを起動し、配布済みPCAPからHTTPリクエストを調べて `X-Training-Flag` ヘッダーを発見してください。Cloud版ではライブキャプチャではなく安全なオフライン解析を行います。',
         commands: ["tshark -r ~/TerminalBox-Labs/capture.pcapng -Y http -V | grep -i -A2 'training-flag'", 'wireshark ~/TerminalBox-Labs/capture.pcapng'],
-        hint: 'Applications → Sniffing - Spoofing → wireshark から起動し、File → Openで `~/TerminalBox-Labs/capture.pcapng` を開きます。上部の表示フィルターへ `http` と入力してEnterを押し、残ったパケットを選択します。中央ペインのHypertext Transfer Protocolを展開し、`X-Training-Flag` ヘッダーの値を探します。GUIが使えない場合は提示コマンドの `-r` がPCAP読込、`-Y http` がHTTPだけの表示、`-V` が詳細表示です。',
-        result: '`X-Training-Flag` の値を回答します。',
+        hint: '【1】TerminalBox左上の `Wireshark` タブを押します。このタブから起動するとSession IDごとのDISPLAY・PID・ログを使います。Cloud Runではライブパケット取得権限を使わないため、起動画面のネットワークインターフェースは選択しません。【2】通常は教材 `capture.pcapng` が自動で開きます。開かない場合は `File` → `Open`。ファイル選択画面で `Ctrl+L` を押し、`~/TerminalBox-Labs/capture.pcapng` と入力してOpenします。【3】画面上部の横長欄は「Display Filter」です。ここへ `http` と入力してEnterを押します。Capture Filter欄ではないので注意してください。【4】上段のPacket ListでProtocolがHTTPの行をクリックします。【5】中央のPacket Detailsで `Hypertext Transfer Protocol` を展開し、Request Headersの中にある `X-Training-Flag` を探します。値の `TBX{...}` が回答です。【6】見つけにくい場合は複数のHTTPパケットを順に選びます。GUI操作が難しい場合は1本目のtsharkコマンドを使えます。`-r` は保存済みPCAPを読む指定、`-Y http` はHTTPだけを表示するDisplay Filter、`-V` は各パケットの詳細表示、最後の `grep` はTraining-Flag周辺だけを抜き出します。',
+        result: '`X-Training-Flag` ヘッダーの `TBX{...}` を回答します。',
       },
       {
         id: '03', title: 'Gobuster', answerId: 'gobuster',
