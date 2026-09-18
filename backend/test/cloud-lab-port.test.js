@@ -4,12 +4,13 @@ import test from 'node:test';
 
 const readRepositoryFile = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
 
-test('Cloud Lab keeps port 8080 available for the Burp proxy', async () => {
-  const [nginxConfig, labDockerfile, cloudBuild, challengePanel] = await Promise.all([
+test('Cloud Lab keeps ingress separate from per-session Burp proxy ports', async () => {
+  const [nginxConfig, labDockerfile, cloudBuild, challengePanel, sessionManager] = await Promise.all([
     readRepositoryFile('cloud/nginx-lab.conf'),
     readRepositoryFile('Dockerfile.lab.cloud'),
     readRepositoryFile('cloudbuild.yaml'),
     readRepositoryFile('web/src/ChallengePanel.tsx'),
+    readRepositoryFile('backend/src/session/session-manager.js'),
   ]);
 
   assert.match(nginxConfig, /listen 8081;/);
@@ -19,7 +20,9 @@ test('Cloud Lab keeps port 8080 available for the Burp proxy', async () => {
   assert.match(nginxConfig, /location = \/internal\/agent\/execute/);
   assert.match(nginxConfig, /location = \/internal\/challenges\/check-target-flag/);
   assert.match(cloudBuild, /- \$\{_LAB_SERVICE\}[\s\S]*?- --port=8081/);
-  assert.match(challengePanel, /HTTP Proxyを127\.0\.0\.1、Portを8080/);
+  assert.match(sessionManager, /BURP_PROXY_PORT_BASE = 18_000/);
+  assert.match(sessionManager, /burpProxyPort: BURP_PROXY_PORT_BASE \+ displayNumber/);
+  assert.match(challengePanel, /TERMINALBOX_BURP_PROXY_PORT/);
 });
 
 test('Cloud Run concurrency is high enough for noVNC parallel assets', async () => {
