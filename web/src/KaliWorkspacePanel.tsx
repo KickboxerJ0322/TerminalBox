@@ -24,8 +24,8 @@ const workspaceTabs: Array<{ id: WorkspaceTab; icon: string; label: string }> = 
 ];
 
 const launchCommands: Partial<Record<WorkspaceTab, string>> = {
-  burp: 'nohup terminalbox-activate-tool burp >/tmp/terminalbox-activate-burp.log 2>&1 &\r',
-  wireshark: 'nohup terminalbox-activate-tool wireshark >/tmp/terminalbox-activate-wireshark.log 2>&1 &\r',
+  burp: 'nohup terminalbox-activate-tool burp >"$TBX_SESSION_LOG_DIR/activate-burp.log" 2>&1 &\r',
+  wireshark: 'nohup terminalbox-activate-tool wireshark >"$TBX_SESSION_LOG_DIR/activate-wireshark.log" 2>&1 &\r',
   desktop: 'terminalbox-activate-tool desktop\r',
 };
 
