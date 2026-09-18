@@ -65,7 +65,8 @@ export function createLabProxy(config) {
 
   function internalApiHeaders(pathname) {
     if (!pathname.startsWith('/internal/')) return {};
-    return config.internalApiToken ? { 'x-terminalbox-internal-token': config.internalApiToken } : {};
+    const token = config.internalApiToken?.trim();
+    return token ? { 'x-terminalbox-internal-token': token } : {};
   }
 
   async function proxyHttp(request, response, sessionId = null) {

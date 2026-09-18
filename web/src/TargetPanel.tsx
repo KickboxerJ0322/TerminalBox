@@ -25,11 +25,11 @@ const targetTabs = [
   { id: 3, label: '問題3' },
   { id: 4, label: '問題4' },
   { id: 5, label: '問題5' },
-  { id: 'tools', label: 'ツール' },
   { id: 6, label: '問題6' },
   { id: 7, label: '問題7' },
   { id: 8, label: '問題8' },
   { id: 9, label: '問題9' },
+  { id: 'tools', label: 'ツール' },
 ] as const;
 
 export function TargetPanel({ refreshSignal, targetId, onTargetChange }: Props) {

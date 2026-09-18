@@ -5,7 +5,8 @@ test('environment configuration is normalized and bounded', async () => {
   process.env.PORT = '99999';
   process.env.TERMINAL_HISTORY_LIMIT = '20';
   process.env.MAX_AGENT_STEPS = '99';
-  process.env.INTERNAL_API_TOKEN = 'internal-test-token';
+  process.env.AGENT_SESSION_LIMIT = '999';
+  process.env.INTERNAL_API_TOKEN = ' internal-test-token ';
   process.env.ALLOWED_ORIGINS = 'http://localhost:3000, https://terminalbox.example ';
 
   const { config } = await import(`../src/config.js?test=${Date.now()}`);
@@ -13,6 +14,7 @@ test('environment configuration is normalized and bounded', async () => {
   assert.equal(config.port, 65535);
   assert.equal(config.historyLimit, 500);
   assert.equal(config.agentMaxSteps, 15);
+  assert.equal(config.agentSessionLimit, 100);
   assert.equal(config.internalApiToken, 'internal-test-token');
   assert.equal(config.geminiModel, 'gemini-3.7-flash');
   assert.deepEqual(config.allowedOrigins, ['http://localhost:3000', 'https://terminalbox.example']);

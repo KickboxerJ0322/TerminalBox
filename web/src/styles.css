@@ -165,25 +165,35 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 .history-toggle input { accent-color: var(--accent); }
 .history-toggle-capture { color: var(--muted); }
 
-.agent-panel .messages { min-height: 0; }
-.agent-panel .chat-form { flex: 0 0 auto; }
-.agent-notice { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--muted); background: #0b120f; font-size: 10px; line-height: 1.5; }
+.agent-panel .messages { min-height: 0; padding: 8px; }
+.agent-panel .message { margin-bottom: 10px; line-height: 1.58; }
+.agent-panel .message-role { margin-bottom: 3px; }
+.agent-panel .message > div { padding: 8px 9px; }
+.agent-panel .message-user { margin-left: 8px; }
+.agent-panel .chat-form { flex: 0 0 auto; padding: 7px 8px 8px; }
+.agent-panel .chat-form > label { margin-bottom: 4px; }
+.agent-panel .chat-form textarea { min-height: 34px; padding: 7px 8px; line-height: 1.45; }
+.agent-panel .form-actions { gap: 8px; margin-top: 7px; }
+.agent-panel .history-options { gap: 4px 9px; }
+.agent-heading-badges { display: flex; align-items: center; gap: 6px; }
+.agent-usage { padding: 5px 7px; border: 1px solid var(--border); border-radius: 2px; color: var(--muted); font-family: 'Cascadia Code', Consolas, monospace; font-size: 8px; }
+.agent-notice { padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--muted); background: #0b120f; font-size: 9px; line-height: 1.35; }
 .agent-message > div { width: 100%; }
-.agent-step { margin: 10px 0; padding: 12px; border: 1px solid var(--border); border-radius: 4px; background: #080d0b; }
+.agent-step { margin: 6px 0; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: #080d0b; }
 .agent-step-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text); }
-.agent-step p { margin: 8px 0; color: var(--muted); }
-.agent-step pre, .agent-approval pre, .agent-denied pre { margin: 8px 0; padding: 9px 11px; overflow: auto; border: 1px solid var(--border); border-radius: 3px; color: var(--accent); background: #050806; white-space: pre-wrap; }
+.agent-step p { margin: 6px 0; color: var(--muted); }
+.agent-step pre, .agent-approval pre, .agent-denied pre { margin: 6px 0; padding: 7px 8px; overflow: auto; border: 1px solid var(--border); border-radius: 3px; color: var(--accent); background: #050806; white-space: pre-wrap; }
 .agent-classification { padding: 3px 6px; border: 1px solid currentColor; border-radius: 3px; font-size: 9px; }
 .agent-read_only { color: var(--accent); }
 .agent-confirm_required { color: #ffd166; }
 .agent-denied { color: #ff7d7d; }
-.agent-result { margin-top: 10px; color: var(--text); }
+.agent-result { margin-top: 6px; color: var(--text); }
 .agent-result small { color: var(--muted); }
 .agent-stderr { color: #ff9b9b !important; }
-.agent-final { margin-top: 12px; color: var(--text); white-space: pre-wrap; }
-.agent-approval, .agent-denied { margin-top: 10px; padding: 13px; border: 1px solid #735f25; border-radius: 4px; background: #171406; }
+.agent-final { margin-top: 7px; color: var(--text); white-space: pre-wrap; }
+.agent-approval, .agent-denied { margin-top: 7px; padding: 9px; border: 1px solid #735f25; border-radius: 4px; background: #171406; }
 .agent-denied { border-color: #713434; background: #170909; }
-.agent-approval-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.agent-approval-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .agent-approval-actions button { width: auto; min-width: 110px; }
 .agent-form-actions { align-items: flex-end; }
 .capture-note { flex-basis: 100%; margin: 0; color: var(--muted); font-family: 'Yu Gothic UI', sans-serif; font-size: 8px; }

@@ -35,6 +35,7 @@ interface AgentResponse {
   reason?: string;
   expiresAt?: number;
   steps?: AgentStep[];
+  usage?: { used: number; limit: number };
 }
 
 interface Entry {
@@ -105,6 +106,7 @@ export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistor
   const [includeScreenCapture, setIncludeScreenCapture] = useState(false);
   const [captureMessage, setCaptureMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [agentUsage, setAgentUsage] = useState<{ used: number; limit: number } | null>(null);
   const [apiKey] = useState(() => storedValue(GEMINI_API_KEY_STORAGE, ''));
   const [geminiModel] = useState(() => storedValue(GEMINI_MODEL_STORAGE, DEFAULT_GEMINI_MODEL));
   const managedGemini = status?.aiProvider === 'gemini' && status?.geminiConfigured === true;
@@ -172,6 +174,7 @@ export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistor
         }),
       });
       const agentResponse = await responseJson(response);
+      if (agentResponse.usage) setAgentUsage(agentResponse.usage);
       setEntries((current) => [...current, { role: 'agent', response: agentResponse }]);
     } catch (error) {
       setEntries((current) => [...current, { role: 'agent', text: `エラー: ${error instanceof Error ? error.message : 'Agent処理に失敗しました。'}` }]);
@@ -208,7 +211,10 @@ export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistor
     <section className="panel assistant-panel agent-panel" id={panelId} role="tabpanel" aria-labelledby={tabId}>
       <div className="panel-heading">
         <h2 id={tabId}>AI Agent</h2>
-        <span className={`ai-badge ${ready ? '' : 'ai-badge-wait'}`}>{ready ? '実行できます' : '設定待ち'}</span>
+        <div className="agent-heading-badges">
+          {agentUsage && <span className="agent-usage">{agentUsage.used}/{agentUsage.limit}</span>}
+          <span className={`ai-badge ${ready ? '' : 'ai-badge-wait'}`}>{ready ? '実行できます' : '設定待ち'}</span>
+        </div>
       </div>
       <div className="agent-notice">
         オンラインAIを使用中。閲覧操作は自動実行し、変更操作は承認後にstudent権限で実行します。禁止操作は実行しません。
@@ -247,7 +253,7 @@ export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistor
       </div>
       <form className="chat-form" onSubmit={submit}>
         <label htmlFor={`${panelId}-question`}>TerminalBox内で行うことを依頼する</label>
-        <textarea id={`${panelId}-question`} value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={handleKeyDown} placeholder="例: OSと現在のユーザーを確認して" rows={3} maxLength={2000} disabled={Boolean(pending)} />
+        <textarea id={`${panelId}-question`} value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={handleKeyDown} placeholder="例: OSと現在のユーザーを確認して" rows={1} maxLength={2000} disabled={Boolean(pending)} />
         <div className="form-actions agent-form-actions">
           <div className="history-options">
             <label className="history-toggle">

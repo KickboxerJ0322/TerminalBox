@@ -480,17 +480,6 @@ export default function App() {
                 ターゲット
               </button>
               <button
-                id="tools-tab"
-                type="button"
-                role="tab"
-                aria-selected={learningTab === 'tools'}
-                aria-controls="challenge-panel"
-                className={learningTab === 'tools' ? 'active' : ''}
-                onClick={() => selectLearningTab('tools')}
-              >
-                セキュリティツール
-              </button>
-              <button
                 id="vulnerabilities-tab"
                 type="button"
                 role="tab"
@@ -500,6 +489,17 @@ export default function App() {
                 onClick={() => selectLearningTab('vulnerabilities')}
               >
                 脆弱性
+              </button>
+              <button
+                id="tools-tab"
+                type="button"
+                role="tab"
+                aria-selected={learningTab === 'tools'}
+                aria-controls="challenge-panel"
+                className={learningTab === 'tools' ? 'active' : ''}
+                onClick={() => selectLearningTab('tools')}
+              >
+                セキュリティツール
               </button>
             </div>
             {learningTab === 'tutorial' && (

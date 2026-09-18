@@ -45,8 +45,8 @@ test('learning tabs put targets before security tools', async () => {
     readWebSource('styles.css'),
   ]);
   assert.ok(source.indexOf('id="tutorial-tab"') < source.indexOf('id="targets-tab"'));
-  assert.ok(source.indexOf('id="targets-tab"') < source.indexOf('id="tools-tab"'));
-  assert.ok(source.indexOf('id="tools-tab"') < source.indexOf('id="vulnerabilities-tab"'));
+  assert.ok(source.indexOf('id="targets-tab"') < source.indexOf('id="vulnerabilities-tab"'));
+  assert.ok(source.indexOf('id="vulnerabilities-tab"') < source.indexOf('id="tools-tab"'));
   assert.doesNotMatch(source, /id="operations-tab"/);
   assert.doesNotMatch(source, /id="web-attacks-tab"/);
   assert.match(styles, /\.learning-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(4,/);
@@ -95,6 +95,7 @@ test('tool and vulnerability tabs open their matching panels', async () => {
   assert.match(target, /api\/linux-lab\/reset/);
   assert.match(target, /問題6 Copy Fail/);
   assert.match(target, /ツール/);
+  assert.ok(target.indexOf("{ id: 9, label: '問題9' }") < target.indexOf("{ id: 'tools', label: 'ツール' }"));
   assert.match(panel, /category: 'Web'/);
   assert.match(panel, /category: 'Linux \/ OS'/);
   assert.match(panel, /問題9 sudo設定ミス/);
@@ -122,6 +123,7 @@ test('Linux Lab switches the existing terminal and exposes only a simulated root
   assert.match(app, /linuxLabTargetId=\{linuxLabTargetId\}/);
   assert.match(workspace, /terminalMode === 'linux-lab'/);
   assert.match(terminal, /\/ws\/linux-lab\?target=\$\{linuxLabTargetId\}/);
+  assert.doesNotMatch(terminal, /fitAddon\.fit\(\);\s*terminal\.focus\(\);/);
   assert.match(server, /attachLinuxLabSocket/);
   assert.match(server, /api\/linux-lab\/reset/);
   assert.match(proxy, /'\/ws\/linux-lab'/);
@@ -159,6 +161,8 @@ test('AI Agent keeps its send controls visible and supports the same attachments
   assert.match(source, /includeTerminalHistory \? terminalHistory : ''/);
   assert.match(source, /includeFullTerminalHistory \? 'full' : 'recent'/);
   assert.match(source, /screenCapture,/);
+  assert.match(source, /rows=\{1\}/);
+  assert.match(source, /agentUsage/);
   assert.match(source, /loading \? '送信中' : '送信'/);
   assert.match(app, /terminalHistory=\{history\}[\s\S]*fullTerminalHistory=\{fullTerminalHistory\}/);
   assert.match(styles, /\.agent-panel \.messages\s*\{\s*min-height:\s*0/);

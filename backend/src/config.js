@@ -23,8 +23,9 @@ export const config = {
   kaliGuiUrl: (process.env.KALI_GUI_URL ?? 'http://kali:6080').replace(/\/$/, ''),
   historyLimit: numberFromEnv('TERMINAL_HISTORY_LIMIT', 2000, 500, 8000),
   agentMaxSteps: numberFromEnv('MAX_AGENT_STEPS', 15, 1, 15),
+  agentSessionLimit: numberFromEnv('AGENT_SESSION_LIMIT', 10, 1, 100),
   agentCommandTimeoutMs: numberFromEnv('AGENT_COMMAND_TIMEOUT_MS', 10000, 1000, 30000),
-  internalApiToken: process.env.INTERNAL_API_TOKEN ?? '',
+  internalApiToken: (process.env.INTERNAL_API_TOKEN ?? '').trim(),
   wsAuthToken: process.env.WS_AUTH_TOKEN ?? '',
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000')
     .split(',')

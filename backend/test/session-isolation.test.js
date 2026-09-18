@@ -78,7 +78,7 @@ test('Session A target changes are not visible to Session B and reset A leaves B
 
     const flagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
     const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
-    assert.match(flagA.flag, /^TBX\{target1_[0-9a-f]{12}\}$/);
+    assert.match(flagA.flag, /^TBX\{target1_[0-9a-f]{2}\}$/);
     assert.equal(lockedFlagB.status, 403);
 
     const updateB = await fetch(`${baseUrl}/api/admin/notice`, {

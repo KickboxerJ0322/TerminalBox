@@ -93,6 +93,7 @@ export class SessionManager {
       vncPort: 5900 + displayNumber,
       novncPort: 6100 + displayNumber,
       status: 'active',
+      agentRequestCount: 0,
       progress: initialProgress(),
       completedChallengeIds: new Set(),
       linuxLab: null,

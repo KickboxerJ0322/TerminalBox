@@ -52,7 +52,6 @@ export function TerminalPanel({ onHistoryChange, onFullHistoryChange, pasteReque
     terminal.loadAddon(fitAddon);
     terminal.open(host);
     fitAddon.fit();
-    terminal.focus();
 
     terminalRef.current = terminal;
 

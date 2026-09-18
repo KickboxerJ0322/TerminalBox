@@ -74,7 +74,8 @@ const getSessionId = (request) => {
 
 const flagForSession = (prefix, sessionId) => {
   const salt = randomBytes(18).toString('hex');
-  const digest = createHash('sha256').update(`${prefix}:${sessionId}:${salt}`).digest('hex').slice(0, 12);
+  const digestLength = prefix === 'target1' ? 2 : 12;
+  const digest = createHash('sha256').update(`${prefix}:${sessionId}:${salt}`).digest('hex').slice(0, digestLength);
   return { value: `TBX{${prefix}_${digest}}`, salt };
 };
 

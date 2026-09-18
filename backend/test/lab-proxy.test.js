@@ -47,6 +47,20 @@ test('internal Lab APIs require the Web service token and header session', async
   assert.doesNotMatch(proxySource, /\.\.\.\(sessionId \? \{ sessionId \} : \{\}\)/);
   assert.match(serverSource, /function internalApiSession/);
   assert.match(serverSource, /internal_api_forbidden/);
+  assert.match(serverSource, /const suppliedToken/);
+  assert.match(serverSource, /suppliedToken !== config\.internalApiToken/);
   assert.match(serverSource, /internal_session_required/);
   assert.doesNotMatch(serverSource, /typeof request\.body\?\.sessionId === 'string'/);
+});
+
+test('AI Agent usage is limited per browser session', async () => {
+  const [serverSource, sessionSource] = await Promise.all([
+    readFile(new URL('../src/server.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/session/session-manager.js', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(sessionSource, /agentRequestCount: 0/);
+  assert.match(serverSource, /agent_session_limit_reached/);
+  assert.match(serverSource, /session\.agentRequestCount =/);
+  assert.match(serverSource, /config\.agentSessionLimit/);
 });

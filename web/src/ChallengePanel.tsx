@@ -83,7 +83,7 @@ const challengeGroups: ChallengeGroup[] = [
         goal: '改ざん条件を満たした後、Target 1からセッション専用Flagを取得し、下の回答欄へ入力してください。',
         commands: ["curl -s -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/api/flag"],
         hint: 'RESETすると攻略状態とFlagは初期化されます。他セッションのFlagはこの回答では使えません。',
-        result: 'Target 1が返した `TBX{target1_...}` を回答欄へ入力し、正解時だけCLEARになります。',
+        result: 'Target 1が返した `TBX{target1_3e}` 形式のFlagを回答欄へ入力し、正解時だけCLEARになります。',
       },
       {
         id: '06', title: 'UNDERSTAND: なぜ成功したか', answerId: 'target1-understand', stage: 'understand',
