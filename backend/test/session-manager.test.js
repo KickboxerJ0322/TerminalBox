@@ -16,6 +16,7 @@ test('anonymous sessions allocate noVNC ports outside the X11 display port range
     assert.equal(session.displayNumber, 11);
     assert.equal(session.vncPort, 5911);
     assert.equal(session.novncPort, 6111);
+    assert.equal(session.burpProxyPort, 18011);
     if (process.platform !== 'win32') {
       assert.equal(rootMode, 0o711);
       assert.equal(baseMode, 0o700);
