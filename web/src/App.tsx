@@ -66,15 +66,30 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
           <button type="button" aria-label="閉じる" onClick={onClose}>x</button>
         </div>
         <div className="info-content">
-          <p>
-            TerminalBox は Cloud Run 版のみを正式構成とする学習Labです。公開Webと非公開Labを分け、匿名セッションごとにTerminal、Target、Challenge、AI Agentの状態を管理します。
+          <p className="info-lead">
+            TerminalBoxは、Kali Linux・演習用Target・学習教材・AI Agentをブラウザ上にまとめたサイバーセキュリティ学習環境です。環境構築に時間を取られず、実際に手を動かしながら攻撃の原因と防御を学べます。
           </p>
           <div className="info-grid">
-            <article><span>01</span><h3>Cloud Run構成</h3><p>ブラウザは公開Webへ接続し、TerminalやTargetは非公開Labへ安全に中継されます。</p></article>
-            <article><span>02</span><h3>Kaliワークスペース</h3><p>TerminalとKali Desktopを同じセッションの作業領域で利用できます。</p></article>
-            <article><span>03</span><h3>ターゲット演習</h3><p>研修サイトとツール演習を調査し、攻撃の体験から原因と防御まで学びます。</p></article>
-            <article><span>04</span><h3>AI Agent</h3><p>Geminiを使うオンラインAgentが承認ポリシーに沿ってLab内のTerminal操作を支援します。</p></article>
+            <article><span>01</span><h3>Kaliワークスペース</h3><p>Kali TerminalとnoVNCによるKali Desktopを、同じセッションの作業領域で利用できます。PCでは4ペインの境界をドラッグして広さを調整できます。</p></article>
+            <article><span>02</span><h3>Webセキュリティ演習</h3><p>秘密情報管理、認可、入力値処理、セッション・認証、Defense in Depthを、ATTACK → UNDERSTAND → DEFENDの順で学びます。</p></article>
+            <article><span>03</span><h3>Linux脆弱性演習</h3><p>Copy Fail、File Permission、SUID、sudo設定ミスを安全な疑似Linux Labで体験し、権限境界と対策を学びます。</p></article>
+            <article><span>04</span><h3>セキュリティツール</h3><p>Burp Suite、Wireshark、Gobuster、Nikto、sqlmap、John the Ripper、Hashcat、Netcat、Hydra、Metasploitを用意しています。</p></article>
+            <article><span>05</span><h3>AI Agent</h3><p>Geminiが実行結果を確認しながら、最大15ステップまで調査を支援します。読み取り操作は自動実行し、変更操作は実行前に承認を求めます。</p></article>
+            <article><span>06</span><h3>Flagと学習進捗</h3><p>演習で取得したFlagを回答するとCLEARになります。Target、Challenge、進捗は匿名セッションごとに分けて管理されます。</p></article>
+            <article><span>07</span><h3>安全なネットワーク</h3><p>ブラウザは公開Webを経由して非公開Labへ接続します。Labから一般のインターネットへの通信は制限され、用意されたTargetだけを演習対象とします。</p></article>
+            <article><span>08</span><h3>セッション分離とRESET</h3><p>ホーム、Terminal、Kali Desktop、GUIツール、ログ、演習状態をセッション単位で分離します。RESETは現在のセッションだけを初期化します。</p></article>
           </div>
+          <section className="info-flow" aria-labelledby="info-flow-title">
+            <span className="eyebrow">LEARNING FLOW</span>
+            <h3 id="info-flow-title">基本的な進め方</h3>
+            <ol>
+              <li>学習パネルでTutorialと演習手順を確認する</li>
+              <li>Terminal・Target・Kali Desktopで調査する</li>
+              <li>必要に応じてAI Agentへ質問し、提案された操作を確認する</li>
+              <li>Flagを取得して回答し、解説と防御策まで確認する</li>
+            </ol>
+          </section>
+          <p className="info-note">WiresharkはCloud環境の制約に合わせ、配布されたPCAPを使うオフライン解析です。演習はTerminalBox内に用意されたTargetだけを対象にしてください。</p>
         </div>
       </section>
     </div>
