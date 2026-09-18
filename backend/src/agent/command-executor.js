@@ -36,7 +36,11 @@ function executeLocal(plan, command, timeoutMs, session) {
       gid: 1000,
       env: {
         HOME: homeDirectory, XDG_CONFIG_HOME: `${homeDirectory}/.config`, XDG_DATA_HOME: `${homeDirectory}/.local/share`,
-        TERMINALBOX_SESSION_ID: session?.sessionId ?? '',
+        XDG_RUNTIME_DIR: session?.runtimeDirectory ?? `${homeDirectory}/.terminalbox/run`, TMPDIR: session?.runtimeDirectory ?? `${homeDirectory}/.terminalbox/run`,
+        TERMINALBOX_SESSION_ID: session?.sessionId ?? '', TBX_SESSION_ID: session?.sessionId ?? '',
+        TBX_SESSION_LOG_DIR: session?.logDirectory ?? `${homeDirectory}/.terminalbox/logs`,
+        TBX_SESSION_STATE_DIR: session?.stateDirectory ?? `${homeDirectory}/.terminalbox/state`,
+        TERMINALBOX_BURP_PROXY_PORT: String(session?.burpProxyPort ?? 8080), DISPLAY: session ? `:${session.displayNumber}` : ':1',
         USER: 'student', LOGNAME: 'student', LANG: 'ja_JP.UTF-8', PAGER: 'cat',
         GIT_PAGER: 'cat', SYSTEMD_PAGER: 'cat', GIT_CONFIG_NOSYSTEM: '1',
         GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0',
