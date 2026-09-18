@@ -61,7 +61,10 @@ function desktopEnvironment(session) {
     KALI_VNC_GEOMETRY: process.env.KALI_VNC_GEOMETRY ?? '1440x900',
     KALI_VNC_PASSWORD: process.env.KALI_VNC_PASSWORD ?? 'student',
     TBX_SESSION_ID: session.sessionId,
+    TERMINALBOX_SESSION_ID: session.sessionId,
     TBX_SESSION_LOG_DIR: session.logDirectory,
+    TBX_SESSION_STATE_DIR: session.stateDirectory,
+    TERMINALBOX_BURP_PROXY_PORT: String(session.burpProxyPort),
     TBX_DESKTOP_LOG: `${session.logDirectory}/desktop.log`,
   };
 }
