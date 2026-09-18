@@ -49,22 +49,20 @@ test('Cloud deployment isolates Kali egress and protects internal APIs', async (
     readRepositoryFile('backend/src/terminal.js'),
     readRepositoryFile('backend/src/agent/command-executor.js'),
   ]);
-  const normalizedCloudBuild = cloudBuild.replace(/\r\n/g, '\n');
 
   assert.match(cloudBuild, /--network-tags=\$\{_LAB_NETWORK_TAG\}/);
   assert.match(cloudBuild, /--set-secrets=INTERNAL_API_TOKEN=terminalbox-internal-api-token:latest/);
   assert.match(cloudBuild, /INTERNAL_API_TOKEN=terminalbox-internal-api-token:latest/);
   assert.match(cloudBuild, /AGENT_SESSION_LIMIT=10/);
-  assert.ok(
-    normalizedCloudBuild.indexOf('secrets\n      - add-iam-policy-binding\n      - terminalbox-internal-api-token')
-      < normalizedCloudBuild.indexOf('run\n      - deploy\n      - ${_LAB_SERVICE}'),
-  );
+  assert.doesNotMatch(cloudBuild, /secrets\s+- add-iam-policy-binding\s+- terminalbox-internal-api-token/);
   assert.match(cloudBuild, /--service-account=\$\{_LAB_RUNTIME_SA\}@\$PROJECT_ID\.iam\.gserviceaccount\.com/);
   assert.match(cloudBuild, /--member=serviceAccount:\$\{_WEB_RUNTIME_SA\}@\$PROJECT_ID\.iam\.gserviceaccount\.com/);
   assert.match(cloudBuild, /MAX_AGENT_STEPS=15/);
   assert.match(infrastructure, /terminalbox-lab-deny-all-egress/);
   assert.match(infrastructure, /--destination-ranges=0\.0\.0\.0\/0/);
   assert.match(infrastructure, /terminalbox-internal-api-token/);
+  assert.match(infrastructure, /gcloud secrets add-iam-policy-binding terminalbox-internal-api-token --member="serviceAccount:\$WebServiceAccount" --role=roles\/secretmanager\.secretAccessor/);
+  assert.match(infrastructure, /gcloud secrets add-iam-policy-binding terminalbox-internal-api-token --member="serviceAccount:\$LabServiceAccount" --role=roles\/secretmanager\.secretAccessor/);
   assert.match(startLab, /SERVICE_ROLE=lab/);
   assert.doesNotMatch(startLab, /KALI_EXEC_MODE|AI_PROVIDER/);
   assert.doesNotMatch(terminalSource, /dockerode|docker\.sock|getContainer/);
