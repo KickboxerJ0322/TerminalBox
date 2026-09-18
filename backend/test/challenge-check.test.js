@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { checkChallengeAnswer } from '../src/challenge-check.js';
+import { linuxLabFlag } from '../src/linux-lab.js';
 
 test('accepts a correct tool challenge answer', () => {
   const result = checkChallengeAnswer('netcat', ' TBX{netcat_line_protocol}\n');
@@ -46,17 +47,19 @@ test('accepts target understand and defend choices without flag literals', () =>
 });
 
 test('accepts Linux Lab privilege escalation flags and choices', () => {
-  const expected = new Map([
-    ['target6', 'TBX{target6_c6}'],
-    ['target7', 'TBX{target7_d7}'],
-    ['target8', 'TBX{target8_e8}'],
-    ['target9', 'TBX{target9_f9}'],
-  ]);
+  const sessionA = '11111111-1111-4111-8111-111111111111';
+  const sessionB = '22222222-2222-4222-8222-222222222222';
 
-  for (const [id, flag] of expected) {
-    assert.equal(checkChallengeAnswer(id, flag).body.correct, true, id);
+  for (let targetId = 6; targetId <= 9; targetId += 1) {
+    const id = `target${targetId}`;
+    const flag = linuxLabFlag(sessionA, targetId);
+    const otherSessionFlag = linuxLabFlag(sessionB, targetId);
+    assert.match(flag, new RegExp(`^TBX\\{target${targetId}_[0-9a-f]{2}\\}$`), id);
+    assert.notEqual(flag, otherSessionFlag, id);
+    assert.equal(checkChallengeAnswer(id, flag, sessionA).body.correct, true, id);
+    assert.equal(checkChallengeAnswer(id, otherSessionFlag, sessionA).body.correct, false, id);
     assert.equal(checkChallengeAnswer(`${id}-understand`, 'A').body.correct, true, id);
     assert.equal(checkChallengeAnswer(`${id}-defend`, 'B,C,A').body.correct, true, id);
-    assert.equal(JSON.stringify(checkChallengeAnswer(id, 'FLAG{wrong}')).includes(flag), false, id);
+    assert.equal(JSON.stringify(checkChallengeAnswer(id, 'FLAG{wrong}', sessionA)).includes(flag), false, id);
   }
 });

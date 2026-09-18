@@ -144,7 +144,7 @@ test('Target 2 IDOR flag is session-scoped and locked until cross-store update',
     assert.equal(updatePartnerProduct.solved, true);
 
     const flagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
-    assert.match(flagA.flag, /^TBX\{target2_[0-9a-f]{12}\}$/);
+    assert.match(flagA.flag, /^TBX\{target2_[0-9a-f]{2}\}$/);
 
     const flagCheck = await fetch(`${baseUrl}/api/flag/check`, {
       method: 'POST',
@@ -185,11 +185,11 @@ test('Target 3 SQL injection flag is session-scoped', async () => {
       headers: { 'x-terminalbox-session': SESSION_A },
     }).then((response) => response.json());
     assert.equal(injected.rows.some((row) => row.label === 'training_flag'), true);
-    assert.match(injected.rows.find((row) => row.label === 'training_flag').value, /^TBX\{target3_[0-9a-f]{12}\}$/);
+    assert.match(injected.rows.find((row) => row.label === 'training_flag').value, /^TBX\{target3_[0-9a-f]{2}\}$/);
 
     const flagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
     const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
-    assert.match(flagA.flag, /^TBX\{target3_[0-9a-f]{12}\}$/);
+    assert.match(flagA.flag, /^TBX\{target3_[0-9a-f]{2}\}$/);
     assert.equal(lockedFlagB.status, 403);
   } finally {
     await stopProcess(child);
@@ -221,7 +221,7 @@ test('Target 4 unsigned token challenge is session-scoped', async () => {
     const admin = await fetch(`${baseUrl}/api/admin`, {
       headers: { authorization: `Bearer ${adminToken}`, 'x-terminalbox-session': SESSION_A },
     }).then((response) => response.json());
-    assert.match(admin.flag, /^TBX\{target4_[0-9a-f]{12}\}$/);
+    assert.match(admin.flag, /^TBX\{target4_[0-9a-f]{2}\}$/);
 
     const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
     assert.equal(lockedFlagB.status, 403);
@@ -273,7 +273,7 @@ test('Target 5 returns verification flag only after blocked attack checks', asyn
 
     const flagA = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } }).then((response) => response.json());
     const lockedFlagB = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
-    assert.match(flagA.flag, /^TBX\{secure_target_verified_[0-9a-f]{12}\}$/);
+    assert.match(flagA.flag, /^TBX\{target5_[0-9a-f]{2}\}$/);
     assert.equal(lockedFlagB.status, 403);
   } finally {
     await stopProcess(child);

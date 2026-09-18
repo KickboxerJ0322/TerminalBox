@@ -1,3 +1,5 @@
+import { linuxLabFlag } from './linux-lab.js';
+
 const answers = new Map([
   ['burp', 'TBX{burp_repeater_2026}'],
   ['wireshark', 'TBX{tshark_http_pcap}'],
@@ -17,10 +19,6 @@ const answers = new Map([
   ['web-upload', 'TBX{web_file_upload}'],
   ['web-ssrf', 'TBX{web_ssrf_internal}'],
   ['web-jwt', 'TBX{web_jwt_admin}'],
-  ['target6', 'TBX{target6_c6}'],
-  ['target7', 'TBX{target7_d7}'],
-  ['target8', 'TBX{target8_e8}'],
-  ['target9', 'TBX{target9_f9}'],
   ['target1-understand', 'A'],
   ['target1-defend', 'A,B,C'],
   ['target2-understand', 'A'],
@@ -54,12 +52,16 @@ function normalizeAnswer(id, answer) {
   return trimmed;
 }
 
-export function checkChallengeAnswer(id, answer) {
-  if (typeof id !== 'string' || !answers.has(id)) return { status: 404, body: { error: 'Unknown challenge' } };
+export function checkChallengeAnswer(id, answer, sessionId) {
+  const linuxTargetMatch = typeof id === 'string' ? id.match(/^target([6-9])$/) : null;
+  const expected = typeof id === 'string'
+    ? answers.get(id) ?? (linuxTargetMatch && typeof sessionId === 'string' ? linuxLabFlag(sessionId, linuxTargetMatch[1]) : null)
+    : null;
+  if (expected === null || expected === undefined) return { status: 404, body: { error: 'Unknown challenge' } };
   if (typeof answer !== 'string' || answer.trim().length < 1 || answer.length > 200) {
     return { status: 400, body: { error: '回答を入力してください。' } };
   }
-  const correct = normalizeAnswer(id, answer) === answers.get(id);
+  const correct = normalizeAnswer(id, answer) === expected;
   return {
     status: 200,
     body: {

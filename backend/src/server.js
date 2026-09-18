@@ -445,7 +445,7 @@ app.post('/api/challenges/check', async (request, response) => {
   try {
     const session = await terminalBoxSession(request, response);
     const result = await checkDynamicChallengeAnswer(request.body?.id, request.body?.answer, session)
-      ?? checkChallengeAnswer(request.body?.id, request.body?.answer);
+      ?? checkChallengeAnswer(request.body?.id, request.body?.answer, session.sessionId);
     if (result.body.correct && isChallengeCompletionId(request.body?.completionId)) {
       setChallengeCompletion(session, request.body.completionId, true);
       result.body.completedIds = [...session.completedChallengeIds];

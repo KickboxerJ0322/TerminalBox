@@ -1,11 +1,18 @@
+import { createHash } from 'node:crypto';
+
 const LINUX_TARGETS = new Set([6, 7, 8, 9]);
 
-const FLAGS = Object.freeze({
-  6: 'TBX{target6_c6}',
-  7: 'TBX{target7_d7}',
-  8: 'TBX{target8_e8}',
-  9: 'TBX{target9_f9}',
-});
+export function linuxLabFlag(sessionId, targetId) {
+  const id = Number.parseInt(String(targetId ?? ''), 10);
+  if (typeof sessionId !== 'string' || sessionId.length === 0 || !LINUX_TARGETS.has(id)) {
+    throw new Error('Valid Linux Lab session and target are required');
+  }
+  const digest = createHash('sha256')
+    .update(`terminalbox-linux-lab:${sessionId}:target${id}`)
+    .digest('hex')
+    .slice(0, 2);
+  return `TBX{target${id}_${digest}}`;
+}
 
 const HOME_FILES = [
   'README.txt',
@@ -15,10 +22,12 @@ const HOME_FILES = [
   'sudo-notes.txt',
 ];
 
-function createLinuxLabState() {
+function createLinuxLabState(sessionId) {
   return {
+    sessionId,
     activeTarget: 6,
     history: [],
+    flags: Object.fromEntries([...LINUX_TARGETS].map((id) => [id, linuxLabFlag(sessionId, id)])),
     targetState: Object.fromEntries([...LINUX_TARGETS].map((id) => [id, {
       user: 'student',
       cwd: '/home/student',
@@ -28,12 +37,12 @@ function createLinuxLabState() {
 }
 
 function getLinuxLabState(session) {
-  if (!session.linuxLab) session.linuxLab = createLinuxLabState();
+  if (!session.linuxLab) session.linuxLab = createLinuxLabState(session.sessionId);
   return session.linuxLab;
 }
 
 export function resetLinuxLab(session) {
-  session.linuxLab = createLinuxLabState();
+  session.linuxLab = createLinuxLabState(session.sessionId);
   return session.linuxLab;
 }
 
@@ -95,7 +104,7 @@ function catPath(state, path) {
     '/opt/perm-lab/maintenance.sh': '#!/bin/sh\n# root-run maintenance script\nprintf "daily backup complete\\n"\n',
     '/root/admin_note.txt': 'Training root note: this is a fake Linux Lab root area, not Cloud Run or Kali root.',
     '/etc/shadow': 'root:$y$terminalbox$fake-training-hash:19000:0:99999:7:::\nstudent:$y$terminalbox$fake-student-hash:19000:0:99999:7:::',
-    '/root/flag.txt': FLAGS[targetId],
+    '/root/flag.txt': state.flags[targetId],
   };
   const normalized = path === '~' ? '/home/student/README.txt' : path;
   if (normalized === '/root/admin_note.txt' || normalized === '/etc/shadow' || normalized === '/root/flag.txt') {
@@ -126,7 +135,7 @@ function handleCommand(state, command) {
   }
   if (trimmed === 'labctl reset') {
     const activeTarget = state.activeTarget;
-    Object.assign(state, createLinuxLabState(), { activeTarget });
+    Object.assign(state, createLinuxLabState(state.sessionId), { activeTarget });
     return `Linux Lab Target ${activeTarget} reset.`;
   }
   if (/^labctl\s+target\s+[6789]$/.test(trimmed)) {
