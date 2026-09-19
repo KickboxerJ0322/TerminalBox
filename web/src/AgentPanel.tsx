@@ -140,7 +140,7 @@ export function AgentPanel({ panelId, tabId, terminalHistory, fullTerminalHistor
     const typedMessage = question.trim();
     const hasTerminalAttachment = includeTerminalHistory || includeFullTerminalHistory;
     const message = typedMessage || (hasTerminalAttachment
-      ? 'ターミナル記録を確認し、現在の状況に必要な操作を行ってください。'
+      ? '添付したターミナル記録を読み取り、実行されたコマンドと出力から現在の状況を分析して、日本語で分かりやすく回答してください。記録だけでは判断できない場合に限り、追加の確認操作を行ってください。'
       : includeScreenCapture ? '添付したTerminalBox画面を確認し、必要な操作を行ってください。' : '');
     if (!message || loading || pending || !ready) return;
     const conversationHistory = includeConversationHistory ? entries
