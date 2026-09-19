@@ -187,6 +187,7 @@ test('AI Agent keeps its send controls visible and supports the same attachments
   assert.match(source, /includeScreenCapture, setIncludeScreenCapture\] = useState\(false\)/);
   assert.match(source, /includeConversationHistory \? entries/);
   assert.match(source, /includeTerminalHistory \? terminalHistory : ''/);
+  assert.match(source, /添付したターミナル記録を読み取り、実行されたコマンドと出力から現在の状況を分析/);
   assert.match(source, /includeFullTerminalHistory \? 'full' : 'recent'/);
   assert.match(source, /screenCapture,/);
   assert.match(source, /rows=\{1\}/);
