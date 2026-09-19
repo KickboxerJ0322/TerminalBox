@@ -70,6 +70,10 @@ test('agent JSON parser tolerates code fences and plain text answers', () => {
   assert.deepEqual(parseAgentAction('確認しました。\n{"action":"final_answer","message":"完了"}'), {
     action: 'final_answer', message: '完了',
   });
+  assert.throws(
+    () => parseAgentAction('{"action":"final_answer","message":"'),
+    /incomplete JSON/,
+  );
   assert.throws(() => parseAgentAction('{}'), /unsupported action/);
 });
 
@@ -91,8 +95,31 @@ test('Agent Gemini request uses the online endpoint and never Ollama', async () 
   assert.match(requestBody.contents[0].parts[0].text, /JSONオブジェクト1つだけ/);
   assert.match(requestBody.contents[0].parts[0].text, /\{"action":"execute_command","command":"\.\.\.","reason":"\.\.\."\}/);
   assert.match(requestBody.contents[0].parts[0].text, /現在のディレクトリ、ユーザー、ファイル一覧、直近のコマンド確認/);
+  assert.match(requestBody.contents[0].parts[0].text, /記録だけで状況を説明できる場合/);
+  assert.equal(requestBody.generationConfig.maxOutputTokens, 1024);
   assert.deepEqual(requestBody.contents[0].parts[1], { inlineData: { mimeType: 'image/jpeg', data: 'YWJj' } });
   assert.equal(action.action, 'final_answer');
+});
+
+test('Agent retries one truncated structured response instead of displaying raw JSON', async () => {
+  let calls = 0;
+  const action = await requestGeminiAgentAction({
+    state: { message: 'ターミナル記録を確認', steps: [] },
+    options: { apiKey: 'secret', model: 'gemini-test', url: 'https://gemini.invalid' },
+    systemPrompt: 'agent prompt',
+    fetchImpl: async () => {
+      calls += 1;
+      return {
+        ok: true,
+        json: async () => ({ candidates: [{ content: { parts: [{ text: calls === 1
+          ? '{"action":"final_answer","message":"'
+          : '{"action":"final_answer","message":"pwdの結果から現在位置は /tmp です。"}' }] } }] }),
+      };
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(action.message, 'pwdの結果から現在位置は /tmp です。');
 });
 
 test('read-only execution receives the active browser session', async () => {
