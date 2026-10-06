@@ -1,214 +1,191 @@
 # TerminalBox
 
-TerminalBox は、**Kali Linux・演習用ターゲット・学習教材・AI Agent をブラウザ上にまとめたサイバーセキュリティ学習環境**です。
+**TerminalBoxは、ブラウザでコマンドを実行しながら、サイバーセキュリティの仕組みと対策を学べる実習環境です。**
 
-ローカル PC に Kali Linux や多数のセキュリティツールを個別構築しなくても、Google Cloud Run 上の隔離された Lab で、ターミナル操作、Web セキュリティ、Linux 権限管理、代表的なセキュリティツールを実際に触りながら学べることを目指しています。
+教材を読み、演習用サイトを調べ、結果を確認し、分からないところをAIに質問できます。自分のPCにLinuxや多数のセキュリティツールをインストールする手間を減らし、実際に手を動かす学習に集中できます。
 
-現在の正式構成は **Google Cloud Run 版のみ**です。以前のローカル Docker Compose 版、Ollama、ローカル LLM は廃止しており、ローカル Docker での起動・検証は想定していません。
+Google Cloud Run上で動作し、Kali Linux、演習用サイト、学習教材、AI Agentを一つの画面にまとめています。
 
-## TerminalBox でできること
+## はじめての方へ
 
-TerminalBox の画面は、学習中に必要な情報をできるだけ 1 画面で確認できるように構成しています。
+- **Kali Linux**：セキュリティの調査に使うツールを集めたLinuxです。TerminalBoxではクラウド上のKaliを操作します。
+- **ターミナル**：文字で命令（コマンド）を入力して、コンピューターを操作する画面です。
+- **ターゲット（Target）**：練習のために用意されたサイトや環境です。
+- **脆弱性**：情報の漏えいや、本来できない操作につながるプログラム・設定の弱点です。
+- **Flag**：演習の成功を確認するための文字列です。取得したFlagを回答欄に入力すると、正解した問題がCLEARになります。
 
-- **Kali Terminal**: Linux コマンドや各種セキュリティツールを実行
-- **Target**: 演習用 Web サイトやツール用ターゲットを表示
-- **チュートリアル / ターゲット / セキュリティツール / 脆弱性**: 手順、ヒント、解説、Flag 判定を表示
-- **AI Agent**: Gemini がターミナル操作を支援
-- **Kali Desktop**: noVNC 経由で Kali の GUI を利用
-- **RESET**: 現在のセッションだけを初期状態へ戻す
+「攻撃ができた」で終わらず、**何が原因だったのか、どうすれば防げるのか**まで学ぶことを目指しています。
 
-画面は 4 ペイン構成で、左右・上下の境界をドラッグして表示領域を調整できます。
+## 画面の見方
 
-```text
-+---------------------------+---------------------------+
-| Kali Terminal             | 学習パネル                |
-|                           | Tutorial / Target /       |
-|                           | Tools / Vulnerabilities   |
-+---------------------------+---------------------------+
-| Target                    | AI Agent                  |
-|                           |                           |
-+---------------------------+---------------------------+
-```
+PCでは、次の4つの領域を同時に使えます。境界線をドラッグして、左右の幅や上下の高さを調整できます。狭い画面では縦に並び、スクロールして利用します。
 
-## 学習コンテンツ
-
-### Web セキュリティ
-
-Target 1〜5 は、単に攻撃手順を実行するだけではなく、基本的に **ATTACK → UNDERSTAND → DEFEND** の順で学ぶ構成です。
-
-| Target | テーマ | 主な学習内容 |
+| 位置 | 領域 | 使い方 |
 | --- | --- | --- |
-| Target 1 | 秘密情報管理 | 公開領域に置かれた設定・Secret の危険性 |
-| Target 2 | 認可 | IDOR / Broken Access Control、認証と認可の違い |
-| Target 3 | 入力値処理 | SQL Injection、Parameterized Query、入力値検証 |
-| Target 4 | セッション / 認証 | JWT 相当トークンの改変、署名・有効期限・失効管理 |
-| Target 5 | Defense in Depth | Target 1〜4 の攻撃が防御されることを確認 |
+| 左上 | Kaliワークスペース | コマンド実行、Burp Suite、Wireshark、Kali Desktopの操作 |
+| 右上 | 学習パネル | 教材、演習手順、ヒント、回答欄を確認 |
+| 左下 | Target | 演習用サイトやLinux演習の状態を確認 |
+| 右下 | AI Agent | 質問、実行結果の解説、調査の支援 |
 
-Flag は演習の進行状態に応じて取得し、TerminalBox 上で回答して正解すると CLEAR になります。
+### 学習パネルのタブ
 
-### Linux / OS の脆弱性・設定ミス
+現在の表示順は、**チュートリアル → ターゲット → 脆弱性 → セキュリティツール**です。
 
-「脆弱性」タブでは、Web アプリとは別に Linux の権限境界を学びます。
+| タブ | 学ぶこと |
+| --- | --- |
+| チュートリアル | コマンド操作やKali Desktopの使い方を、手順に沿って練習 |
+| ターゲット | 問題1〜5で、Webサイトの秘密情報管理、認可、入力値処理、認証と防御を学習 |
+| 脆弱性 | 問題6〜9で、Linuxの権限や設定ミスによる影響を疑似環境で学習 |
+| セキュリティツール | 10種類のツールを、専用の演習環境で実際に使用 |
 
-| 問題 | テーマ | 主な学習内容 |
+### Kaliワークスペースのタブ
+
+| タブ | 用途 |
+| --- | --- |
+| Terminal | Linuxコマンドや調査ツールを実行 |
+| Burp Suite | Web通信を観察・編集するツールを起動 |
+| Wireshark | 記録された通信データを調べるツールを起動 |
+| Kali Desktop | Linuxのデスクトップをブラウザで操作 |
+
+GUIツールは共通のKali Desktop上で起動します。起動直後は表示まで数秒かかることがあります。「別画面で開く」から大きな画面でも利用できます。問題6〜9の疑似Linux演習中は、Terminalを使います。
+
+上部の**INFO**はアプリの説明、**COMMAND**はコマンドの一覧、**RESET**は現在の演習環境の初期化です。
+
+## 学習の進め方
+
+1. 運営者から案内されたURLを開き、必要なアクセス認証を行います。
+2. 初めて使う場合は「チュートリアル」でコマンド操作を練習します。
+3. 「ターゲット」で問題を選び、右上の手順を読みます。
+4. 左上のTerminalでコマンドを実行し、左下のサイトや実行結果の変化を確認します。
+5. 条件を満たしたらFlagを取得し、教材の回答欄に入力します。
+6. 原因と防御方法の設問に回答し、なぜ成功したのかを振り返ります。
+7. 「脆弱性」や「セキュリティツール」へ進み、学習範囲を広げます。
+
+困ったときはAI Agentへ「この結果はどういう意味？」「次に何を確認すればよい？」と質問できます。最初からやり直したいときはRESETを使います。
+
+## 演習の内容
+
+### Webセキュリティ：問題1〜5
+
+基本的に、**ATTACK（実際に試す）→ UNDERSTAND（原因を理解する）→ DEFEND（対策を学ぶ）**の順で進めます。
+
+| 問題 | テーマ | 体験する内容 |
 | --- | --- | --- |
-| 問題6 | Copy Fail | Kernel LPE の考え方を安全な疑似環境で再現 |
-| 問題7 | File Permission | owner / group / rwx と過剰な書き込み権限 |
-| 問題8 | SUID 設定ミス | root 所有 SUID プログラムの危険性 |
-| 問題9 | sudo 設定ミス | sudoers と過剰な権限委譲 |
+| 問題1 | 秘密情報管理 | 公開されたバックアップ設定が、管理機能の悪用につながることを確認 |
+| 問題2 | 認可 | ログインできることと、他人のデータを操作できることの違いを確認（IDOR） |
+| 問題3 | 入力値処理 | 入力がSQLの命令として扱われる問題を体験（SQL Injection） |
+| 問題4 | セッション・認証 | ログイン状態を示すトークンの改変と、検証の重要性を学習 |
+| 問題5 | 多層防御 | 問題1〜4の対策が施されたサイトで、攻撃が防がれることを確認 |
 
-Copy Fail を含む Linux 演習は、Cloud Run の実 Kernel を攻撃するものではありません。セッションごとの安全な疑似 Linux Lab で、権限昇格が起きた場合の結果を再現します。
+問題5は、防御を確認する演習です。問題ごとの達成条件は教材に記載されています。Flagはセッションごとに生成され、`TBX{target1_**}`のような形式で表示されます。
 
-### セキュリティツール
+### Linuxの脆弱性・設定ミス：問題6〜9
 
-Kali Desktop / Terminal から代表的なツールを学習できます。
+| 問題 | テーマ | 学ぶこと |
+| --- | --- | --- |
+| 問題6 | Copy Fail | OSの中核であるカーネルの不具合によって、権限が昇格する考え方 |
+| 問題7 | File Permission | ファイルの所有者・グループ・読み書き実行の権限と、過剰な書き込み権限 |
+| 問題8 | SUID設定ミス | 所有者の権限で動作するプログラムの設定が、危険につながる仕組み |
+| 問題9 | sudo設定ミス | 管理者権限を委ねる設定と、必要以上の権限を与える危険性 |
 
-- Burp Suite Community
-- Wireshark / tshark
-- Gobuster
-- Nikto
-- sqlmap
-- John the Ripper
-- Hashcat
-- Netcat
-- Hydra
-- Metasploit Framework
+問題6〜9は、**疑似Linux Lab**で実施します。Cloud Runの実際のカーネルを攻撃する演習ではなく、教材用に権限昇格やファイル操作の結果を再現します。Flagもセッションごとに異なります。
 
-Wireshark は Cloud Run の制約に合わせ、リアルタイム packet capture ではなく配布 PCAP を使ったオフライン解析を行います。
+### セキュリティツール：10種類の実践教材
 
-## AI Agent
+| ツール | 主な用途 |
+| --- | --- |
+| Burp Suite Community | ブラウザとWebサイトの間の通信を観察・編集 |
+| Wireshark / tshark | 通信の記録を画面やコマンドで解析 |
+| Gobuster | Webサイトのディレクトリやファイルを探索 |
+| Nikto | Webサーバーの設定や既知の問題を調査 |
+| sqlmap | SQL Injectionの検証 |
+| John the Ripper | パスワードの強度を検証 |
+| Hashcat | ハッシュ化されたパスワードの強度を検証 |
+| Netcat | TCP通信の接続や送受信を確認 |
+| Hydra | ログイン認証に対する試行を演習 |
+| Metasploit Framework | 脆弱性検証の仕組みを学習 |
 
-TerminalBox の AI Agent は **Gemini API** を利用します。現在の標準モデルは `gemini-3.7-flash` です。
+ツール用の演習先は`labtarget`です。WiresharkはCloud Runの制約に合わせ、配布された通信記録ファイル（PCAP）を使うオフライン解析です。
 
-AI Agent はユーザーの依頼を見て、必要に応じて Lab 内のコマンドを提案・実行します。
+## AI Agentでできること
 
-- 読み取り系コマンドは自動実行可能
-- 更新・変更を伴うコマンドはユーザー承認が必要
-- 禁止対象のコマンドは実行しない
-- 1 回の依頼で最大 15 ステップまで自律的に続行
-- 同じコマンドを連続提案した場合は停止
-- 実行結果を次の判断材料として Gemini に返し、必要なら追加調査を継続
+Geminiを使い、質問への回答やコマンド実行を支援します。会話履歴、直近のターミナル記録、ターミナル全文、画面キャプチャを添付するか選べます。
 
-Gemini API キーは公開 Lab 側へ渡しません。Gemini との通信は Web サービス側だけで行い、Lab はコマンド実行だけを担当します。
+**質問文を入力せず、ターミナル記録だけを送ることもできます。** AIは実行済みのコマンドと出力を読み取り、現在の状況を日本語で説明します。追加の確認が必要な場合は、調査を続けます。
 
-## システム構成
+- コマンドは実行前に分類され、読み取り系は自動実行、変更を伴う操作は承認待ち、禁止された操作は実行しない仕組みです。
+- 実行結果を確認しながら、1回の依頼で最大15ステップまで続けます。
+- 同じコマンドを連続提案した場合は停止します。
+- 既定の依頼回数上限は1セッション10回です。残り回数は画面に表示されます。
 
-TerminalBox は 2 つの Cloud Run サービスに分離されています。
+既定モデルはコード上で`gemini-3.7-flash`に設定されています。モデル、ステップ数、回数制限は設定値であり、実際の利用可否はデプロイ先の設定に依存します。Geminiとの通信とAPIキーの管理はWeb側が担当します。
 
-```text
-Browser
-   |
-   v
-+-----------------------------+
-| terminalbox                 |
-| Public Web Service          |
-|                             |
-| React UI                    |
-| Basic Authentication       |
-| Session Management          |
-| AI Agent / Gemini API       |
-| Approval State              |
-| Lab Proxy                   |
-+-----------------------------+
-              |
-              | Google-signed ID token
-              v
-+-----------------------------+
-| terminalbox-lab             |
-| Private Lab Service         |
-|                             |
-| Kali Terminal               |
-| Kali Desktop / noVNC        |
-| Target 1〜5                 |
-| Security Tool Target        |
-| Linux Lab                   |
-| Agent Command Executor      |
-+-----------------------------+
-```
+## 利用者ごとの環境とRESET
 
-ブラウザは `terminalbox-lab` へ直接接続せず、必ず公開 Web サービス `terminalbox` を経由します。
+演習の状態は、個人のログインIDではなく、ブラウザに発行する**セッションID**で管理します。サービス入口のアクセス認証と、演習状態の管理は別の仕組みです。
 
-`terminalbox-lab` は Cloud Run の内部 ingress と認証必須設定を使用し、Web Runtime Service Account だけが `roles/run.invoker` で呼び出せる構成です。
+ホームディレクトリ、ログ、演習の状態、進捗、ターミナル、デスクトップ、AIの承認状態などをセッションごとに管理します。既定の同時セッション上限は20で、最終アクセスから30分で期限切れとなる設計です。
 
-## セッション分離
+RESETは現在のセッションを初期化します。他の利用者の演習状態を初期化する操作ではありません。演習は一時的な環境のため、必要な記録は手元に残してください。
 
-TerminalBox はログイン ID ごとではなく、ブラウザへ発行した **Session ID** を単位として Lab の状態を分離します。
+## システムの仕組み
 
-セッションごとに、次の情報を個別に管理します。
+Google Cloud Runのサービスを、画面やAIを担当する**Web**と、演習を実行する**Lab**に分けています。
 
-- ホームディレクトリ
-- ランタイムディレクトリ
-- ログ
-- Target / Challenge の状態
-- 学習進捗
-- Terminal プロセス
-- Kali Desktop / noVNC
-- Linux Lab の状態
-- AI Agent の承認状態
+| サービス | 役割 |
+| --- | --- |
+| `terminalbox`（公開Web） | ブラウザ向け画面、アクセス認証、セッション管理、Gemini通信、Labへの中継 |
+| `terminalbox-lab`（非公開Lab） | Kali、Terminal、Desktop、問題1〜5、ツール用Target、疑似Linux Lab、コマンド実行 |
 
-既定では最大 20 セッション、最終アクセスから 30 分で期限切れとなる設計です。
+ブラウザはWebサービスに接続し、演習の通信はWebがLabへ中継します。LabはCloud Runの内部向け接続設定と認証を使用し、Web用サービスアカウントに呼び出し権限を付与します。
 
-`RESET` を実行すると、現在の Session ID に属する Terminal、Desktop、Target、Challenge、AI Agent の状態だけを初期化します。他の利用者のセッションには影響しません。
+### 外部通信と秘密情報
 
-## ネットワーク分離
+- Labから一般インターネットへのIPv4通信は、VPCのファイアウォールで拒否する構成です。
+- 演習サイトはLab内部のループバックアドレスで動作します。
+- WebはCloud NAT経由でGemini APIに接続します。
+- Gemini APIキーと入口のアクセス用パスワードはLabへ渡しません。
+- WebとLabの内部API認証には、専用の内部トークンを使います。このトークンは両サービスへSecret Managerから渡します。
+- Lab用サービスアカウントには、インフラ準備スクリプトでプロジェクト単位のIAMロールを付与しません。
 
-TerminalBox では、演習用 Kali / Lab から一般のインターネットへ自由にアクセスできないようにしています。
+セッションごとに状態を分けますが、Labの実行基盤は共有しています。利用者ごとに独立した仮想マシンを作る構成ではありません。ネットワークや権限の設定が実際に有効かは、デプロイ後に確認します。
 
-- Web と Lab は Direct VPC egress を使用
-- Web サービスは Cloud NAT 経由で Gemini API へアクセス
-- Lab サービスには `terminalbox-lab-deny-egress` ネットワークタグを付与
-- Firewall で Lab から `0.0.0.0/0` への IPv4 egress を拒否
-- 演習用 Target は Lab コンテナ内の loopback アドレスで動作
-- Lab Runtime Service Account には project-level IAM role を付与しない
-- Gemini API Key、TerminalBox のアクセス用パスワードは Lab へ渡さない
+## 開発者・運営者向け情報
 
-このため、TerminalBox の演習は TerminalBox 内に用意された Target を対象とすることを前提としています。
+### 主な技術
 
-## 技術構成
+| 分野 | 使用技術 |
+| --- | --- |
+| 画面 | React、TypeScript、Vite、xterm.js |
+| API・中継 | Node.js、Express、WebSocket |
+| 演習環境 | Kali Linux、noVNC、演習用Webサーバー、疑似Linux Lab |
+| AI | Gemini API |
+| 実行・ビルド | Google Cloud Run、Cloud Build、Artifact Registry |
+| 秘密情報・通信 | Secret Manager、VPC、Cloud NAT、Firewall |
 
-主な構成は次のとおりです。
+### リポジトリの主なファイル
 
-- Google Cloud Run
-- Google Cloud Build
-- Artifact Registry
-- Secret Manager
-- VPC / Cloud NAT / Firewall
-- React 19
-- TypeScript
-- Vite
-- xterm.js
-- Node.js / Express
-- WebSocket
-- Kali Linux
-- noVNC
-- Gemini API
+| パス | 内容 |
+| --- | --- |
+| `web/` | 画面と学習教材 |
+| `backend/` | API、セッション管理、AI Agent、通信の中継 |
+| `target/` | 問題1〜5のWeb演習サイト |
+| `challenge-target/` | セキュリティツール用の演習サーバー |
+| `kali/` | Kaliの起動・デスクトップ・ツール用の設定 |
+| `challenges/` | 演習データ |
+| `config/` | AIへの指示文 |
+| `cloud/` | Cloud Run用の起動・ネットワーク構築スクリプト |
+| `cloudbuild.yaml` | WebとLabのビルド・デプロイ設定 |
+| `Dockerfile.web.cloud` / `Dockerfile.lab.cloud` | 各サービスのコンテナ定義 |
+| `docs/` | 構成の補足資料 |
 
-## リポジトリ構成
-
-```text
-TerminalBox/
-├─ cloudbuild.yaml
-├─ Dockerfile.web.cloud
-├─ Dockerfile.lab.cloud
-├─ cloud/
-│  ├─ start-web.sh
-│  ├─ start-lab.sh
-│  ├─ nginx-web.conf
-│  ├─ nginx-lab.conf
-│  └─ setup-infrastructure.ps1
-├─ web/                  # React / TypeScript UI
-├─ backend/              # Web API、Session、AI Agent、Proxy
-├─ kali/                 # Kali Desktop / Lab 用スクリプト・アセット
-├─ target/               # Web 演習 Target
-├─ challenge-target/     # セキュリティツール用 Target
-├─ challenges/           # 演習データ
-├─ config/               # AI / Agent system prompt
-└─ docs/                 # Cloud Run 構成資料
-```
+現在の運用対象はCloud Run版です。ローカルDocker ComposeやローカルLLMで起動する手順は提供していません。
 
 ## Google Cloud へのデプロイ
 
-### 1. Project と Region を指定
+### 1. プロジェクトとリージョンを指定
+
+Google Cloudの課金が有効なプロジェクト、Google Cloud CLI（`gcloud`）、PowerShellを用意し、必要なリソースを作成できるアカウントで認証してください。以下はリポジトリのルートで実行します。
 
 PowerShell では次のように指定します。
 
@@ -217,7 +194,7 @@ $env:GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 $env:TERMINALBOX_REGION="asia-northeast1"
 ```
 
-### 2. Secret を作成
+### 2. APIキーとアクセス用パスワードを登録
 
 Gemini API Key と TerminalBox のアクセス用パスワードを Secret Manager に登録します。
 
@@ -255,12 +232,13 @@ Remove-Variable plainAccessPassword, credential, accessPassword
 - Cloud Router / Cloud NAT
 - Secret Manager の IAM
 
-### 4. Cloud Build でデプロイ
+### 4. Cloud Build で公開
 
 ```powershell
 gcloud builds submit `
   --project=$env:GOOGLE_CLOUD_PROJECT `
-  --config=cloudbuild.yaml
+  --config=cloudbuild.yaml `
+  --substitutions="_REGION=$env:TERMINALBOX_REGION"
 ```
 
 `cloudbuild.yaml` は Web と Lab の 2 イメージを build / push し、その後 2 つの Cloud Run サービスをデプロイします。
@@ -272,42 +250,37 @@ gcloud builds submit `
 
 ## デプロイ後の確認
 
-デプロイ後は、ローカル Docker ではなく実際の Cloud Run 環境を確認してください。
+Cloud Runへ反映した後、実際のサービスで以下を確認してください。
 
-- `terminalbox` が公開 Web として起動する
-- Basic 認証後に `/terminalbox/` が表示される
-- `terminalbox-lab` は外部から直接アクセスできない
-- Terminal / Target / Kali Desktop / AI が ONLINE になる
-- Target 1〜5 を切り替えられる
-- セキュリティツール用 `labtarget` が利用できる
-- Linux Lab の問題6〜9がセッションごとに動作する
-- Lab Terminal から一般インターネットへの接続が失敗する
-- Gemini API Key が Lab 環境変数に存在しない
-- RESET が現在のセッションだけを初期化する
+- アクセス認証後に`/terminalbox/`が表示される。
+- 学習タブが「チュートリアル、ターゲット、脆弱性、セキュリティツール」の順で表示される。
+- Terminal、Target、Desktop、AI Agentが利用できる。
+- 問題1〜5、問題6〜9、ツール教材を切り替えられる。
+- ターミナル記録だけをAIへ送って、説明を受け取れる。
+- Labへ外部から直接アクセスできず、Labから一般インターネットへの接続も拒否される。
+- 別ブラウザなどで2つのセッションを開き、演習状態とFlagが分かれている。
+- RESETが現在のセッションだけに作用する。
 
-Lab 内部の疎通確認例:
+LabのTerminalでの疎通確認例です。演習先へはセッションIDを付けてアクセスします。
 
 ```bash
-curl -fsS http://target:3000/api/status
-curl -fsS http://target2:3000/api/status
-curl -fsS http://target3:3000/api/status
-curl -fsS http://target4:3000/api/status
-curl -fsS http://target5:3000/api/status
-curl -fsS http://labtarget:3100/api/status
+for host in target target2 target3 target4 target5; do
+  curl -fsS -H "X-TerminalBox-Session: $TERMINALBOX_SESSION_ID" "http://$host:3000/api/status"
+done
+curl -fsS -H "X-TerminalBox-Session: $TERMINALBOX_SESSION_ID" http://labtarget:3100/api/status
 curl --connect-timeout 5 https://example.com/
-env | grep -E 'GEMINI|TERMINALBOX_PASSWORD'
 ```
 
-Target / `labtarget` は成功し、外部 URL への接続は失敗し、最後の環境変数確認では何も表示されないことを想定しています。
+演習先への接続は成功し、外部サイトへの接続は失敗することを確認します。秘密情報の確認では、値を画面やログへ出さず、設定の有無だけを調べてください。
 
-## 重要な注意
+## 利用上の注意
 
-TerminalBox は **学習用に用意された隔離環境を対象とするセキュリティ教材**です。
+教材のコマンドやツールは、TerminalBoxが提供する演習先、または明示的な許可を受けた環境で使ってください。
 
-コマンド例やセキュリティツールは、TerminalBox が提供する Target、または自分が明示的に許可を受けた環境だけで使用してください。第三者の Web サイト、サーバー、ネットワークに対する無断の検査・攻撃を目的としたものではありません。
+AIへ添付したターミナル記録や画面はGeminiへ送信されます。実際の業務情報、個人情報、パスワードやAPIキーを演習や添付に含めないでください。
 
 ## 補足資料
 
-Cloud Run の Web / Lab 分離については、次のドキュメントも参照してください。
+- [Cloud RunのWeb / Lab構成資料](docs/cloud-run-web-lab.md)
 
-- [`docs/cloud-run-web-lab.md`](docs/cloud-run-web-lab.md)
+機能の実装は`web/src/App.tsx`、`web/src/ChallengePanel.tsx`、`web/src/AgentPanel.tsx`、`backend/src/`、`cloudbuild.yaml`などで確認できます。このREADMEは現在のリポジトリ内のコードと設定に基づく説明です。稼働中サービスの状態を保証するものではありません。
