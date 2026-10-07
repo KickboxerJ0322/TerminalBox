@@ -17,8 +17,8 @@ export function MockSitePanel({history,onPreview,onInsertCommand}:Props){
  <label>URL<input type="url" value={url} onChange={e=>setUrl(e.target.value)} required maxLength={2048}/></label>
  <label>難易度<select value={difficulty} onChange={e=>setDifficulty(e.target.value)}>{['初級','中級','上級'].map(d=><option key={d}>{d}</option>)}</select></label>
  <fieldset><legend>生成するテーマ</legend>{Object.entries(labels).map(([key,label])=><label key={key}><input type="checkbox" checked={themes.includes(key)} onChange={e=>setThemes(v=>e.target.checked?[...v,key]:v.filter(t=>t!==key))}/>{label}</label>)}</fieldset>
- <button disabled={!!busy||!themes.length}>模擬サイトを生成</button></form>
- <p>※ 入力したWebサイト自体への攻撃・脆弱性診断は行いません。</p><p>公開HTMLの構成を参考に架空のEC教材を作成します。内部機能や弱点は教材用です。転送・IPv6のみのサイトや取得制限のあるサイトは解析できません。生成は1セッション3回までです。</p>
+ <button className="mock-primary" disabled={!!busy||!themes.length}>模擬サイトを生成</button></form>
+ <p>※ 入力したWebサイト自体への攻撃・脆弱性診断は行いません。</p><p>公開HTMLの構成を参考に架空のEC教材を作成します。内部機能や弱点は教材用です。公開IPv4があるサイトに対応し、安全性を確認しながら最大3回の転送をたどります。IPv6のみのサイトや取得制限のあるサイトは解析できません。生成は1セッション3回までです。</p>
  {busy&&<p role="status">{busy}…</p>}{error&&<p role="alert">{error}</p>}
  {site&&<><h3>③ MISSION：{site.definition.name}</h3><p>選択した全テーマを達成し、脆弱版の /api/flag でFlagを取得してください。{clear?' CLEAR':''}</p><ul>{site.themes.map(t=><li key={t}>{site.solved.includes(t)?'✓':'□'} {labels[t]}{site.difficulty==='初級'&&<p>{tasks[t]}</p>}</li>)}</ul>
  <h3>④ Kaliで調査</h3><p>教材用のstudentとして疑似ログイン済みです。Burpは使いません。認証は実サービスへのログインではありません。</p><code>{address}</code><p><button onClick={()=>onInsertCommand(`curl -s -H "X-TerminalBox-Session: $TERMINALBOX_SESSION_ID" ${address}`)}>接続コマンドをTerminalへ</button></p><p>全リクエストに上記のセッションヘッダーを付けてください。</p>
