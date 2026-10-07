@@ -14,7 +14,8 @@ test('private controls and browser/Kali runtime share session state without expo
  try{
   assert.equal((await fetch(base+'/internal/mock-site',{method:'POST',headers:{'content-type':'application/json'},body:'{"action":"status"}'})).status,403);
   assert.equal((await fetch(kali+'/vulnerable/api/orders/1002')).status,404);
-  assert.equal((await fetch(kali+'/vulnerable/api/orders/1002',{headers:{'x-terminalbox-session':'a'}})).status,200);
+  const key=await fetch(kali+'/vulnerable/backup/config.json',{headers:{'x-terminalbox-session':'a'}}).then(r=>r.json());
+  assert.equal((await fetch(kali+'/vulnerable/api/admin/banner',{method:'POST',headers:{'x-terminalbox-session':'a','content-type':'application/json'},body:JSON.stringify({adminKey:key.adminKey,title:'Changed'})})).status,200);
   const control=await fetch(base+'/internal/mock-site',{method:'POST',headers:{'content-type':'application/json','x-terminalbox-session':'a','x-terminalbox-internal-token':'secret'},body:'{"action":"check","answer":"'+a.mockSite.flag+'"}'}).then(r=>r.json());assert.equal(control.correct,true);
   assert.equal((await fetch(kali+'/vulnerable/api/flag',{headers:{'x-terminalbox-session':'b'}})).status,403);
   const previousFlag=a.mockSite.flag;

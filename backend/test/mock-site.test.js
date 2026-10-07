@@ -3,21 +3,24 @@ import assert from 'node:assert/strict';
 import { THEMES,createMockSite,mockResponse,compareMockSite,validateDefinition,mockSummary } from '../src/mock-site.js';
 import {publicIPv4,fetchPublicPage} from '../src/mock-site-fetch.js';
 const site=()=>createMockSite({name:'Test',products:[{name:'Book',price:1200}]},THEMES,'初級',{});
-test('all missions required; secure comparisons cannot unlock flag',()=>{
- const s=site();const other=site();assert.equal(mockResponse(s,'vulnerable','/api/flag',new URLSearchParams()).status,403);
- const result=compareMockSite(s);assert.ok(result.every(c=>c.blocked));assert.equal(s.solved.size,0);
- mockResponse(s,'vulnerable','/api/search',new URLSearchParams({q:"' OR 1=1 --"}));
- mockResponse(s,'vulnerable','/api/orders/1002',new URLSearchParams());
- mockResponse(s,'vulnerable','/api/admin',new URLSearchParams({token:Buffer.from('{"role":"admin"}').toString('base64url')}));
- mockResponse(s,'vulnerable','/api/checkout',new URLSearchParams(),{price:1},'POST');
- assert.equal(mockResponse(s,'vulnerable','/api/flag',new URLSearchParams()).json.flag,s.flag);
- assert.equal(mockResponse(s,'secure','/api/flag',new URLSearchParams()).status,403);
- assert.equal(other.solved.size,0);assert.notEqual(other.flag,s.flag);assert.ok(!JSON.stringify(mockSummary(s)).includes(s.flag));
+test('backup key and admin change unlock flag; comparisons do not change progress or display',()=>{
+ const s=site();const other=site();const q=new URLSearchParams();
+ assert.equal(mockResponse(s,'vulnerable','/api/flag',q).status,403);
+ const original=s.definition.name;assert.ok(compareMockSite(s).every(c=>c.blocked));assert.equal(s.solved.size,0);assert.equal(s.definition.name,original);
+ const key=mockResponse(s,'vulnerable','/backup/config.json',q).json.adminKey;
+ assert.equal(mockResponse(s,'vulnerable','/api/admin/banner',q,{adminKey:key,title:'Updated'},'POST').status,200);
+ assert.equal(mockResponse(s,'vulnerable','/api/flag',q).json.flag,s.flag);
+ assert.match(mockResponse(s,'vulnerable','/',q).html,/Updated/);
+ assert.ok(!mockResponse(s,'secure','/',q).html.includes('<h1>Updated</h1>'));
+ assert.equal(mockResponse(s,'secure','/backup/config.json',q).status,404);
+ assert.equal(mockResponse(s,'secure','/api/admin/banner',q,{adminKey:key,title:'Updated'},'POST').status,403);
+ assert.notEqual(other.adminKey,key);assert.notEqual(other.flag,s.flag);
+ assert.ok(!JSON.stringify({...mockSummary(s),checks:[]}).includes(key));
 });
-test('disabled themes never expose simulated weakness',()=>{
- const s=createMockSite({},['auth'],'初級',{});
- assert.equal(mockResponse(s,'vulnerable','/api/orders/1002',new URLSearchParams()).status,403);
- assert.equal(mockResponse(s,'vulnerable','/api/checkout',new URLSearchParams(),{price:1},'POST').json.paid,1000);
+test('missing or other-session admin keys cannot modify the site',()=>{
+ const s=site();const other=site();const q=new URLSearchParams();
+ for(const adminKey of ['',other.adminKey])assert.equal(mockResponse(s,'vulnerable','/api/admin/banner',q,{adminKey,title:'Changed'},'POST').status,403);
+ assert.equal(s.solved.size,0);
 });
 test('AI text escaped and styles validated',()=>{
  const d=validateDefinition({name:'<script>alert(1)</script>',color:'red; background:url(https://evil)',products:[{name:'<img onerror=alert(1)>',price:-1}]});
