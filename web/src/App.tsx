@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
+import { MockSitePanel } from './MockSitePanel';
 import { AgentPanel } from './AgentPanel';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { ChallengePanel } from './ChallengePanel';
@@ -25,7 +26,7 @@ interface PasteRequest {
 type WebTargetId = 1 | 2 | 3 | 4 | 5;
 type LinuxTargetId = 6 | 7 | 8 | 9;
 type VulnerabilityTargetId = WebTargetId | LinuxTargetId;
-type LearningTab = 'tutorial' | 'targets' | 'tools' | 'vulnerabilities';
+type LearningTab = 'tutorial' | 'targets' | 'tools' | 'vulnerabilities' | 'mock';
 type TargetPanelId = VulnerabilityTargetId | 'tools';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
@@ -143,6 +144,7 @@ export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionError, setSessionError] = useState('');
+  const [mockPreview, setMockPreview] = useState<{mode:'vulnerable'|'secure';id:string}|null>(null);
   const [learningTab, setLearningTab] = useState<LearningTab>('tutorial');
   const [infoOpen, setInfoOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -234,7 +236,7 @@ export default function App() {
       candidate.index > latest.index ? candidate : latest
     ));
 
-    if (latestTarget.index >= 0) {
+    if (learningTab !== 'mock' && latestTarget.index >= 0) {
       setTargetPanelId(latestTarget.id);
       if (typeof latestTarget.id === 'number') {
         setChallengeTargetId(latestTarget.id);
@@ -247,7 +249,7 @@ export default function App() {
       setTargetRefreshSignal((value) => value + 1);
     }
     targetEventCountRef.current = eventCount;
-  }, [history]);
+  }, [history, learningTab]);
 
   const queueTerminalPaste = useCallback((text: string) => {
     setPasteRequest({ id: Date.now(), text });
@@ -292,6 +294,7 @@ export default function App() {
     window.localStorage.removeItem(CHALLENGE_STORAGE_KEY);
     window.localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
     window.localStorage.removeItem(GEMINI_MODEL_STORAGE_KEY);
+    setMockPreview(null);
     setHistory('');
     setFullTerminalHistory('');
     setPasteRequest(null);
@@ -450,12 +453,12 @@ export default function App() {
               onPointerDown={(event) => beginResize('leftRows', event)}
               onKeyDown={(event) => resizeWithKeyboard('leftRows', event)}
             />
-            <TargetPanel
+            {learningTab === 'mock' ? <section className="panel target-panel"><div className="panel-heading"><h2>模擬サイト表示</h2></div>{mockPreview ? <iframe key={`${mockPreview.id}-${mockPreview.mode}`} className="target-frame" src={`/simulation-site/${mockPreview.mode}/`} title="模擬サイト" sandbox="allow-forms" /> : <p>右側で模擬サイトを生成してください。</p>}</section> : <TargetPanel
               key={`target-${resetSignal}`}
               refreshSignal={targetRefreshSignal}
               targetId={targetPanelId}
               onTargetChange={selectTargetPanelTarget}
-            />
+            />}
           </div>
           <div
             className="pane-resizer pane-resizer-vertical"
@@ -516,7 +519,9 @@ export default function App() {
               >
                 セキュリティツール
               </button>
+              <button id="mock-site-tab" type="button" role="tab" aria-controls="mock-site-panel" aria-selected={learningTab === 'mock'} className={learningTab === 'mock' ? 'active' : ''} onClick={() => {setLearningTab('mock');setTargetPanelId(1);}}>模擬サイト</button>
             </div>
+            {learningTab === 'mock' && sessionReady && <MockSitePanel key={`mock-${resetSignal}`} history={fullTerminalHistory} onPreview={(mode,id)=>setMockPreview({mode,id})} onInsertCommand={queueTerminalPaste} />}
             {learningTab === 'tutorial' && (
               <TutorialPanel onInsertCommand={queueTerminalPaste} resetSignal={resetSignal} />
             )}

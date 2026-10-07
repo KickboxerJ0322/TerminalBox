@@ -10,6 +10,7 @@ const LAB_HTTP_PREFIXES = [
   '/target-site-4',
   '/target-site-5',
   '/tool-target',
+  '/simulation-site',
   '/kali-gui',
 ];
 

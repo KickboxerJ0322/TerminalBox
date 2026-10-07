@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-printf '\n127.0.0.2 target\n127.0.0.3 target2\n127.0.0.4 target3\n127.0.0.5 target4\n127.0.0.6 target5\n127.0.0.7 labtarget\n' >> /etc/hosts
+printf '\n127.0.0.2 target\n127.0.0.3 target2\n127.0.0.4 target3\n127.0.0.5 target4\n127.0.0.6 target5\n127.0.0.7 labtarget\n127.0.0.8 mocksite\n' >> /etc/hosts
 
 pids=""
 start_process() {

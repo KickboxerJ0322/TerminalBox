@@ -77,7 +77,7 @@ test('learning tabs put targets before security tools', async () => {
   assert.ok(source.indexOf('id="vulnerabilities-tab"') < source.indexOf('id="tools-tab"'));
   assert.doesNotMatch(source, /id="operations-tab"/);
   assert.doesNotMatch(source, /id="web-attacks-tab"/);
-  assert.match(styles, /\.learning-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(4,/);
+  assert.match(styles, /\.learning-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(5,/);
 });
 
 test('AI Agent is online-only without local tabs', async () => {

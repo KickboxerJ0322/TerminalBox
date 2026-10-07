@@ -1,0 +1,30 @@
+import { useEffect, useState } from 'react';
+const labels: Record<string,string> = {input:'入力値処理',auth:'認証・セッション',authorization:'認可',web:'Web攻撃'};
+const tasks: Record<string,string> = {input:'商品検索 /api/search?q= の入力が検索条件に影響するか確認してください。',auth:' /api/login の模擬トークンと /api/admin?token= の権限検証を調べてください。',authorization:'自分の注文 /api/orders/1001 を確認し、別の注文IDへのアクセスを調べてください。',web:'POST /api/checkout の price と実際の請求額を確認してください。'};
+interface Site { id:string; definition:{name:string}; themes:string[]; difficulty:string; solved:string[]; checks:Check[]; }
+interface Check {theme:string;vulnerable:unknown;secure:unknown;blocked:boolean}
+interface Props {history:string;onPreview:(mode:'vulnerable'|'secure',id:string)=>void;onInsertCommand:(text:string)=>void}
+export function MockSitePanel({history,onPreview,onInsertCommand}:Props){
+ const [url,setUrl]=useState('https://example.com/');const [difficulty,setDifficulty]=useState('初級');const [themes,setThemes]=useState(Object.keys(labels));const [site,setSite]=useState<Site|null>(null);const [busy,setBusy]=useState('');const [error,setError]=useState('');const [answer,setAnswer]=useState('');const [clear,setClear]=useState(false);const [text,setText]=useState('');const [checks,setChecks]=useState<Check[]>([]);const [mode,setMode]=useState<'vulnerable'|'secure'>('vulnerable');
+ const call=async(action:string,body:unknown)=>{const r=await fetch('/api/mock-site/'+action,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const b=await r.json();if(!r.ok)throw new Error(b.error??'処理に失敗しました');return b;};
+ useEffect(()=>{let active=true;void fetch('/api/mock-site').then(r=>r.json()).then(b=>{if(active&&b.site){setSite(b.site);setChecks(b.site.checks);onPreview('vulnerable',b.site.id);}}).catch(()=>{});return()=>{active=false;};},[]);
+ useEffect(()=>{if(!site)return;const timer=window.setInterval(()=>{void fetch('/api/mock-site').then(r=>r.json()).then(b=>{if(b.site)setSite(b.site);}).catch(()=>{});},5000);return()=>window.clearInterval(timer);},[site?.id]);
+ const run=async(name:string,fn:()=>Promise<void>)=>{setBusy(name);setError('');try{await fn();}catch(e){setError(e instanceof Error?e.message:'処理に失敗しました');}finally{setBusy('');}};
+ const address=`http://mocksite:3200/${mode}/`;
+ return <section className="panel mock-site-panel" id="mock-site-panel" role="tabpanel" aria-labelledby="mock-site-tab"><div className="panel-heading"><h2>模擬サイト</h2></div><div className="mock-site-content">
+ <p>実在するWebサイトを参考に、セキュリティ学習用の模擬サイトをAIが生成します。</p>
+ <form onSubmit={e=>{e.preventDefault();void run('① URL解析 → ② AI生成',async()=>{const b=await call('generate',{url,difficulty,themes});setSite(b.site);setChecks([]);setClear(false);setText('');setMode('vulnerable');onPreview('vulnerable',b.site.id);});}}>
+ <label>URL<input type="url" value={url} onChange={e=>setUrl(e.target.value)} required maxLength={2048}/></label>
+ <label>難易度<select value={difficulty} onChange={e=>setDifficulty(e.target.value)}>{['初級','中級','上級'].map(d=><option key={d}>{d}</option>)}</select></label>
+ <fieldset><legend>生成するテーマ</legend>{Object.entries(labels).map(([key,label])=><label key={key}><input type="checkbox" checked={themes.includes(key)} onChange={e=>setThemes(v=>e.target.checked?[...v,key]:v.filter(t=>t!==key))}/>{label}</label>)}</fieldset>
+ <button disabled={!!busy||!themes.length}>模擬サイトを生成</button></form>
+ <p>※ 入力したWebサイト自体への攻撃・脆弱性診断は行いません。</p><p>公開HTMLの構成を参考に架空のEC教材を作成します。内部機能や弱点は教材用です。転送・IPv6のみのサイトや取得制限のあるサイトは解析できません。生成は1セッション3回までです。</p>
+ {busy&&<p role="status">{busy}…</p>}{error&&<p role="alert">{error}</p>}
+ {site&&<><h3>③ MISSION：{site.definition.name}</h3><p>選択した全テーマを達成し、脆弱版の /api/flag でFlagを取得してください。{clear?' CLEAR':''}</p><ul>{site.themes.map(t=><li key={t}>{site.solved.includes(t)?'✓':'□'} {labels[t]}{site.difficulty==='初級'&&<p>{tasks[t]}</p>}</li>)}</ul>
+ <h3>④ Kaliで調査</h3><p>教材用のstudentとして疑似ログイン済みです。Burpは使いません。認証は実サービスへのログインではありません。</p><code>{address}</code><p><button onClick={()=>onInsertCommand(`curl -s -H "X-TerminalBox-Session: $TERMINALBOX_SESSION_ID" ${address}`)}>接続コマンドをTerminalへ</button></p><p>全リクエストに上記のセッションヘッダーを付けてください。</p>
+ {site.difficulty!=='上級'&&<p>検索入力、注文の所有者、トークンのrole、購入金額のサーバー側検証を観察しましょう。</p>}
+ <h3>⑤ Flag取得</h3><button onClick={()=>onInsertCommand(`curl -s -H "X-TerminalBox-Session: $TERMINALBOX_SESSION_ID" http://mocksite:3200/vulnerable/api/flag`)}>Flag取得コマンドをTerminalへ</button><form onSubmit={e=>{e.preventDefault();void run('Flag判定',async()=>{const b=await call('check',{answer});setClear(b.correct);if(!b.correct)throw new Error('Flagが不正、またはMISSIONが未達成です。');});}}><input aria-label="Flag回答" value={answer} onChange={e=>setAnswer(e.target.value)} maxLength={200}/><button disabled={!!busy}>回答</button></form>
+ <h3>⑥ AI解説</h3><button disabled={!!busy} onClick={()=>void run('AI解説',async()=>setText((await call('explain',{history})).text))}>ターミナル記録を添えて解説（最大5回）</button><p className="mock-explanation">{text}</p>
+ <h3>⑦ Secure版と比較</h3>{(['vulnerable','secure'] as const).map(m=><button key={m} onClick={()=>{setMode(m);onPreview(m,site.id);}}>{m==='secure'?'Secure版':'脆弱版'}を表示</button>)}<button disabled={!!busy} onClick={()=>void run('同じ入力で比較',async()=>setChecks((await call('compare',{})).checks))}>同じ検証入力で比較</button><p>比較は演習エンジンの同じ処理に入力し、達成状態を変更せずに実施します。Secureは選択した演習への対策版であり、あらゆる安全性を保証するものではありません。</p>{checks.map(c=><article key={c.theme}><strong>{labels[c.theme]}：{c.blocked?'防御確認':'要確認'}</strong><pre>脆弱版：{JSON.stringify(c.vulnerable,null,2)}{'\n'}Secure版：{JSON.stringify(c.secure,null,2)}</pre></article>)}</>}
+ </div></section>;
+}

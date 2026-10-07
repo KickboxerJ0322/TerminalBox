@@ -1,3 +1,4 @@
+import { installMockRoutes } from './mock-site-routes.js';
 import http from 'node:http';
 import express from 'express';
 import helmet from 'helmet';
@@ -44,7 +45,7 @@ if (isWebService) {
 }
 if (!isWebService) {
   app.use((request, response, next) => {
-    if (!isLabHttpPath(request.path) || request.path === '/api/lab/reset') {
+    if (!isLabHttpPath(request.path) || request.path === '/api/lab/reset' || request.path.startsWith('/simulation-site')) {
       next();
       return;
     }
@@ -319,6 +320,8 @@ async function sendGeminiChat(response, context, conversationHistory, options, s
   response.end();
 }
 
+installMockRoutes(app, { config, isWebService, isLabService, labProxy, sessionManager, terminalBoxSession, internalApiSession });
+
 app.get('/api/health', (_request, response) => {
   response.json({
     status: 'ok',
@@ -375,10 +378,14 @@ app.post('/api/lab/reset', async (request, response) => {
   }
   try {
     const session = await terminalBoxSession(request, response, { allowHeader: isLabService });
+    session.mockEpoch = (session.mockEpoch ?? 0) + 1;
+    session.mockGenerating = false;
     if (desktopManager) await desktopManager.stop(session);
     const result = isWebService
       ? await labProxy.requestJson('/api/lab/reset', { reset: true }, session.sessionId)
       : await sessionManager.reset(session.sessionId).then(() => resetLab(config, session));
+    session.mockGenerationCount = 0;
+    session.mockExplainCount = 0;
     approvalStore.clearSession(session.sessionId);
     response.json(result);
   } catch (error) {
