@@ -453,12 +453,15 @@ export default function App() {
               onPointerDown={(event) => beginResize('leftRows', event)}
               onKeyDown={(event) => resizeWithKeyboard('leftRows', event)}
             />
-            {learningTab === 'mock' ? <section className="panel target-panel"><div className="panel-heading"><h2>模擬サイト表示</h2></div>{mockPreview ? <iframe key={`${mockPreview.id}-${mockPreview.mode}`} className="target-frame" src={`/simulation-site/${mockPreview.mode}/`} title="模擬サイト" sandbox="allow-forms" /> : <p>右側で模擬サイトを生成してください。</p>}</section> : <TargetPanel
+            <TargetPanel
+              mockSelected={learningTab === 'mock'}
+              mockPreview={mockPreview}
+              onMockSelect={()=>{setLearningTab('mock');setTargetPanelId(1);}}
               key={`target-${resetSignal}`}
               refreshSignal={targetRefreshSignal}
               targetId={targetPanelId}
               onTargetChange={selectTargetPanelTarget}
-            />}
+            />
           </div>
           <div
             className="pane-resizer pane-resizer-vertical"

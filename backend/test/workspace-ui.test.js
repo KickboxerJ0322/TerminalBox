@@ -131,7 +131,7 @@ test('tool and vulnerability tabs open their matching panels', async () => {
   assert.doesNotMatch(panel, /\(\['Web', 'Linux \/ OS'\] as const\)/);
   assert.match(panel, /\/api\/challenges\/progress/);
   assert.match(panel, /completionId/);
-  assert.match(styles, /\.target-site-tabs[^\n]+grid-template-columns: repeat\(10,/);
+  assert.match(styles, /\.target-site-tabs[^\n]+grid-template-columns: repeat\(11,/);
   assert.match(styles, /\.vulnerability-target-tabs/);
   assert.match(app, /現在のセッションのTerminal、Desktop、Target、Challenge、AI Agent状態/);
 

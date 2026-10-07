@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { mockHints } from './mock-site-hints.js';
 import { renderMockPage } from './mock-site-view.js';
 export const THEMES = ['input', 'auth', 'authorization', 'web'];
 export function validateDefinition(value) {
@@ -12,7 +13,7 @@ export function createMockSite(definition, themes, difficulty, source) {
   return { id:randomBytes(8).toString('hex'), definition:validateDefinition(definition), themes, difficulty, source, solved:new Set(), flag:`TBX{mock_${randomBytes(12).toString('hex')}}`, checks:[] };
 }
 export function mockSummary(site) {
-  return site ? { id:site.id, definition:site.definition,themes:site.themes,difficulty:site.difficulty,source:site.source,missions:mockMissions(site),solved:[...site.solved],checks:site.checks } : null;
+  return site ? { id:site.id, definition:site.definition,themes:site.themes,difficulty:site.difficulty,source:site.source,missions:mockMissions(site),hints:mockHints(site),solved:[...site.solved],checks:site.checks } : null;
 }
 export function mockResponse(site, mode, path, query, body = {}, method = 'GET') {
   const secure = mode === 'secure';

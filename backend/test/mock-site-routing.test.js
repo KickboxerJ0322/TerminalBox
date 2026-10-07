@@ -17,6 +17,9 @@ test('private controls and browser/Kali runtime share session state without expo
   assert.equal((await fetch(kali+'/vulnerable/api/orders/1002',{headers:{'x-terminalbox-session':'a'}})).status,200);
   const control=await fetch(base+'/internal/mock-site',{method:'POST',headers:{'content-type':'application/json','x-terminalbox-session':'a','x-terminalbox-internal-token':'secret'},body:'{"action":"check","answer":"'+a.mockSite.flag+'"}'}).then(r=>r.json());assert.equal(control.correct,true);
   assert.equal((await fetch(kali+'/vulnerable/api/flag',{headers:{'x-terminalbox-session':'b'}})).status,403);
+  const previousFlag=a.mockSite.flag;
+  const restored=await fetch(base+'/internal/mock-site',{method:'POST',headers:{'content-type':'application/json','x-terminalbox-session':'a','x-terminalbox-internal-token':'secret'},body:'{"action":"reset"}'}).then(r=>r.json());
+  assert.equal(restored.site.solved.length,0);assert.notEqual(a.mockSite.flag,previousFlag);assert.equal(b.mockSite.solved.size,0);
   const page=await fetch(base+'/simulation-site/secure/',{headers:{'x-terminalbox-session':'a'}});assert.equal(page.status,200);assert.match(page.headers.get('content-security-policy'),/default-src 'none'/);
  }finally{await Promise.all([new Promise(r=>web.close(r)),new Promise(r=>runtime.close(r))]);}
 });
