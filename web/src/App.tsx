@@ -524,7 +524,7 @@ export default function App() {
               </button>
               <button id="mock-site-tab" type="button" role="tab" aria-controls="mock-site-panel" aria-selected={learningTab === 'mock'} className={learningTab === 'mock' ? 'active' : ''} onClick={() => {setLearningTab('mock');setTargetPanelId(1);}}>模擬サイト</button>
             </div>
-            {learningTab === 'mock' && sessionReady && <MockSitePanel key={`mock-${resetSignal}`} history={fullTerminalHistory} onPreview={(mode,id)=>setMockPreview({mode,id})} onInsertCommand={queueTerminalPaste} />}
+            {learningTab === 'mock' && sessionReady && <MockSitePanel key={`mock-${resetSignal}`} onPreview={(mode,id)=>setMockPreview({mode,id})} onInsertCommand={queueTerminalPaste} />}
             {learningTab === 'tutorial' && (
               <TutorialPanel onInsertCommand={queueTerminalPaste} resetSignal={resetSignal} />
             )}

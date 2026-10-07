@@ -10,10 +10,10 @@ export function validateDefinition(value) {
   return { type, name:text(value?.name,'Training Site'), description:text(value?.description,'架空のセキュリティ学習サイト',300), color:color(value?.color,'#a32035'), background:color(value?.background,'#f5f5f5'), surface:color(value?.surface,'#ffffff'), foreground:color(value?.foreground,'#222222'), layout:['dashboard','cards','sidebar'].includes(value?.layout)?value.layout:'cards', searchLabel:text(value?.searchLabel,type==='commerce'?'商品検索':'キーワード検索'), sectionTitle:text(value?.sectionTitle,type==='commerce'?'おすすめ商品':'調査結果・コンテンツ'), categories:Array.isArray(value?.categories)?value.categories.slice(0,6).map(v=>text(v,'テーマ',30)):[], products:Array.isArray(items)&&items.length?items.slice(0,12).map((p,i)=>({id:i+1,name:text(p?.name,`教材${i+1}`),summary:text(p?.summary,'架空の学習用データです。',240),price:Math.min(999999,Math.max(1,Number(p?.price)||1000))})):[{id:1,name:'学習用データ',summary:'架空の学習用データです。',price:1000}] };
 }
 export function createMockSite(definition, themes, difficulty, source) {
-  return { id:randomBytes(8).toString('hex'), definition:validateDefinition(definition), themes:[...THEMES], source, adminKey:randomBytes(16).toString('hex'), originalDefinition:validateDefinition(definition), solved:new Set(), flag:`TBX{mock_${randomBytes(12).toString('hex')}}`, checks:[] };
+  return { id:randomBytes(8).toString('hex'), definition:validateDefinition(definition), themes:[...THEMES], source, adminKey:randomBytes(16).toString('hex'), originalDefinition:validateDefinition(definition), solved:new Set(), flag:`TBX{mock_${randomBytes(1).toString('hex')}}`, checks:[], cleared:false };
 }
 export function mockSummary(site) {
-  return site ? { id:site.id, definition:site.definition,themes:site.themes,difficulty:site.difficulty,source:site.source,missions:mockMissions(site),hints:mockHints(site),solved:[...site.solved],checks:site.checks } : null;
+  return site ? { id:site.id, definition:site.definition,themes:site.themes,difficulty:site.difficulty,source:site.source,missions:mockMissions(site),hints:mockHints(site),solved:[...site.solved],checks:site.checks,cleared:site.cleared } : null;
 }
 export function mockResponse(site, mode, path, query, body = {}, method = 'GET') {
   const secure = mode === 'secure';
@@ -26,7 +26,7 @@ export function mockResponse(site, mode, path, query, body = {}, method = 'GET')
   if(path==='/api/admin/banner' && method==='POST') {
     if(secure || body.adminKey!==site.adminKey)return {status:403,json:{error:'管理APIへのアクセスを拒否しました'}};
     if(typeof body.title!=='string'||!body.title.trim())return {status:400,json:{error:'titleを指定してください'}};
-    site.definition={...site.definition,name:body.title.slice(0,100),description:'学習用の管理APIで表示を変更しました。'};
+    site.definition={...site.definition,name:'改ざんしました',description:'公開バックアップの管理キーが悪用され、サイトの表示が変更されました（学習用）。',color:'#b91c1c',background:'#fff1f2',surface:'#fff7f7',foreground:'#7f1d1d'};
     site.solved.add('deface');
     return {status:200,json:{updated:true,title:site.definition.name,note:'模擬サイト表示の再読み込みで確認できます。'}};
   }

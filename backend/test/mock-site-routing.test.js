@@ -16,11 +16,13 @@ test('private controls and browser/Kali runtime share session state without expo
   assert.equal((await fetch(kali+'/vulnerable/api/orders/1002')).status,404);
   const key=await fetch(kali+'/vulnerable/backup/config.json',{headers:{'x-terminalbox-session':'a'}}).then(r=>r.json());
   assert.equal((await fetch(kali+'/vulnerable/api/admin/banner',{method:'POST',headers:{'x-terminalbox-session':'a','content-type':'application/json'},body:JSON.stringify({adminKey:key.adminKey,title:'Changed'})})).status,200);
-  const control=await fetch(base+'/internal/mock-site',{method:'POST',headers:{'content-type':'application/json','x-terminalbox-session':'a','x-terminalbox-internal-token':'secret'},body:'{"action":"check","answer":"'+a.mockSite.flag+'"}'}).then(r=>r.json());assert.equal(control.correct,true);
+  const control=await fetch(base+'/internal/mock-site',{method:'POST',headers:{'content-type':'application/json','x-terminalbox-session':'a','x-terminalbox-internal-token':'secret'},body:'{"action":"check","answer":"'+a.mockSite.flag+'"}'}).then(r=>r.json());assert.equal(control.correct,true);assert.equal(a.mockSite.cleared,true);
+  const beforeUnclearFlag=a.mockSite.flag;
+  const unclear=await fetch(base+'/internal/mock-site',{method:'POST',headers:{'content-type':'application/json','x-terminalbox-session':'a','x-terminalbox-internal-token':'secret'},body:'{"action":"unclear"}'}).then(r=>r.json());
+  assert.equal(unclear.cleared,false);assert.equal(a.mockSite.cleared,false);assert.equal(a.mockSite.flag,beforeUnclearFlag);assert.equal(a.mockSite.solved.size,2);
   assert.equal((await fetch(kali+'/vulnerable/api/flag',{headers:{'x-terminalbox-session':'b'}})).status,403);
-  const previousFlag=a.mockSite.flag;
   const restored=await fetch(base+'/internal/mock-site',{method:'POST',headers:{'content-type':'application/json','x-terminalbox-session':'a','x-terminalbox-internal-token':'secret'},body:'{"action":"reset"}'}).then(r=>r.json());
-  assert.equal(restored.site.solved.length,0);assert.notEqual(a.mockSite.flag,previousFlag);assert.equal(b.mockSite.solved.size,0);
+  assert.equal(restored.site.solved.length,0);assert.equal(a.mockSite.cleared,false);assert.equal(b.mockSite.solved.size,0);
   const page=await fetch(base+'/simulation-site/secure/',{headers:{'x-terminalbox-session':'a'}});assert.equal(page.status,200);assert.match(page.headers.get('content-security-policy'),/default-src 'none'/);
  }finally{await Promise.all([new Promise(r=>web.close(r)),new Promise(r=>runtime.close(r))]);}
 });

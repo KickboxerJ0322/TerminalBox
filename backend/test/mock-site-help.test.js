@@ -15,10 +15,11 @@ test('copy-only hint commands work end to end for commerce and research',async()
     try {
       let output='';
       for(const hint of mockSummary(site).hints)for(const step of hint.steps) {
+        if(!step.command)continue;
         const command=step.command.replaceAll('http://mocksite:3200',`http://127.0.0.1:${server.address().port}`);
         output=(await execute('bash',['-c',command],{env:{...process.env,TERMINALBOX_SESSION_ID:'hint-test'}})).stdout;
       }
-      assert.ok(output.includes(site.flag));assert.equal(site.definition.name,'学習用に表示を変更しました');
+      assert.ok(output.includes(site.flag));assert.equal(site.definition.name,'改ざんしました');
     } finally {await new Promise(r=>server.close(r));}
   }
 });

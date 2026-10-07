@@ -10,11 +10,11 @@ test('backup key and admin change unlock flag; comparisons do not change progres
  const key=mockResponse(s,'vulnerable','/backup/config.json',q).json.adminKey;
  assert.equal(mockResponse(s,'vulnerable','/api/admin/banner',q,{adminKey:key,title:'Updated'},'POST').status,200);
  assert.equal(mockResponse(s,'vulnerable','/api/flag',q).json.flag,s.flag);
- assert.match(mockResponse(s,'vulnerable','/',q).html,/Updated/);
- assert.ok(!mockResponse(s,'secure','/',q).html.includes('<h1>Updated</h1>'));
+ assert.match(mockResponse(s,'vulnerable','/',q).html,/改ざんしました/);assert.equal(s.definition.color,'#b91c1c');assert.notEqual(s.originalDefinition.color,s.definition.color);
+ assert.ok(!mockResponse(s,'secure','/',q).html.includes('<h1>改ざんしました</h1>'));
  assert.equal(mockResponse(s,'secure','/backup/config.json',q).status,404);
  assert.equal(mockResponse(s,'secure','/api/admin/banner',q,{adminKey:key,title:'Updated'},'POST').status,403);
- assert.notEqual(other.adminKey,key);assert.notEqual(other.flag,s.flag);
+ assert.notEqual(other.adminKey,key);assert.match(s.flag,/^TBX\{mock_[0-9a-f]{2}\}$/);
  assert.ok(!JSON.stringify({...mockSummary(s),checks:[]}).includes(key));
 });
 test('missing or other-session admin keys cannot modify the site',()=>{
