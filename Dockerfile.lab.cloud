@@ -13,7 +13,7 @@ RUN apt-get update \
       burpsuite gobuster hashcat hydra john kali-menu metasploit-framework mousepad netcat-openbsd nginx nikto nmap \
       nodejs novnc procps python3 sqlmap thunar tshark tigervnc-standalone-server wireshark wmctrl wordlists \
       util-linux wget websockify xdg-utils xfce4-panel xfce4-session xfce4-terminal xfdesktop4 xfwm4 \
-      fcitx5 fcitx5-mozc firefox-esr fonts-noto-cjk im-config locales kali-wallpapers-2026 tigervnc-tools \
+      fcitx5 fcitx5-anthy firefox-esr fonts-noto-cjk im-config locales kali-wallpapers-2026 tigervnc-tools \
     && sed -i 's/^# *ja_JP.UTF-8 UTF-8/ja_JP.UTF-8 UTF-8/' /etc/locale.gen \
     && locale-gen ja_JP.UTF-8 \
     && useradd --create-home --shell /bin/bash --uid 1000 student \

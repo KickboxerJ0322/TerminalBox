@@ -22,14 +22,14 @@ cat > "$fcitx_config_dir/profile" <<'EOF'
 [Groups/0]
 Name=Default
 Default Layout=us
-DefaultIM=mozc
+DefaultIM=anthy
 
 [Groups/0/Items/0]
 Name=keyboard-us
 Layout=
 
 [Groups/0/Items/1]
-Name=mozc
+Name=anthy
 Layout=
 
 [GroupOrder]
@@ -50,13 +50,13 @@ exec dbus-launch --exit-with-session sh -c '
     while [ "$attempt" -lt 30 ]; do
       if fcitx5-remote >/dev/null 2>&1; then
         fcitx5-remote -o >> "$TBX_SESSION_LOG_DIR/fcitx5-remote.log" 2>&1 || true
-        fcitx5-remote -s mozc >> "$TBX_SESSION_LOG_DIR/fcitx5-remote.log" 2>&1 || true
+        fcitx5-remote -s anthy >> "$TBX_SESSION_LOG_DIR/fcitx5-remote.log" 2>&1 || true
         exit 0
       fi
       attempt=$((attempt + 1))
       sleep 1
     done
-    echo "Could not switch fcitx5 to mozc" >&2
+    echo "Could not switch fcitx5 to anthy" >&2
   ) &
   (
     attempt=0
