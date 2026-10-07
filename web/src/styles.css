@@ -378,3 +378,8 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 .mock-site-content pre { white-space:pre-wrap; }
 .mock-explanation { white-space:pre-wrap; }
 @media (max-width:640px) { .mock-site-content { padding:15px; } .mock-site-content h3 { font-size:19px; } }
+
+.mock-site-content input[type=file] { display:block; width:100%; margin-top:4px; font:inherit; color:var(--muted); }
+.mock-image-preview { padding:10px; border:1px solid var(--border-soft); border-radius:4px; }
+.mock-image-preview img { display:block; max-width:100%; max-height:180px; object-fit:contain; }
+.mock-image-preview p { overflow-wrap:anywhere; }

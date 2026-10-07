@@ -44,7 +44,7 @@ curl -fsS http://target2:3000/api/status
 curl -fsS http://target3:3000/api/status
 curl -fsS http://labtarget:3100/api/status
 curl --connect-timeout 5 https://example.com/
-env | grep -E 'GEMINI|TERMINALBOX_PASSWORD'
+env | grep -E 'GEMINI'
 ```
 
 The four target calls must succeed. The external call must fail, and the environment search must print nothing.

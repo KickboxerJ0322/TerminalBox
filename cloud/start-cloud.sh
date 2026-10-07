@@ -1,10 +1,7 @@
 #!/bin/sh
 set -eu
 
-: "${TERMINALBOX_PASSWORD:?TERMINALBOX_PASSWORD must be supplied by Secret Manager}"
 
-htpasswd -bc /tmp/terminalbox.htpasswd terminalbox "$TERMINALBOX_PASSWORD" >/dev/null
-chmod 0644 /tmp/terminalbox.htpasswd
 
 # Preserve the Lab target hostnames inside Cloud Run's shared network namespace.
 printf '\n127.0.0.2 target\n127.0.0.3 target2\n127.0.0.4 target3\n127.0.0.5 target4\n127.0.0.6 target5\n127.0.0.7 labtarget\n' >> /etc/hosts
