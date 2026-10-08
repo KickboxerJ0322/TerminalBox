@@ -61,3 +61,31 @@ test('anonymous sessions isolate home, DISPLAY, noVNC, and cleanup scope', async
     await rm(rootDirectory, { recursive: true, force: true });
   }
 });
+
+test('concurrent creation shares one session and preserves installed mock state', async () => {
+  const rootDirectory = await mkdtemp(path.join(tmpdir(), 'terminalbox-race-test-'));
+  try {
+    const manager = new SessionManager({rootDirectory,maxSessions:1});
+    const requests=Array.from({length:12},()=>manager.getOrCreate('same-session'));
+    const sessions=await Promise.all(requests);
+    assert.ok(sessions.every(s=>s===sessions[0]));
+    assert.equal(manager.displayNumbers.size,1);
+    sessions[0].mockSite={id:'generated'};
+    assert.equal((await manager.getOrCreate('same-session')).mockSite.id,'generated');
+    assert.equal(manager.creatingSessions.size,0);
+  } finally { await rm(rootDirectory,{recursive:true,force:true}); }
+});
+
+test('pending sessions count toward capacity and failed creation releases reservations', async () => {
+  const rootDirectory = await mkdtemp(path.join(tmpdir(), 'terminalbox-capacity-test-'));
+  try {
+    const manager=new SessionManager({rootDirectory,maxSessions:1});
+    const first=manager.getOrCreate('first');
+    await assert.rejects(manager.getOrCreate('second'),/max_active_sessions/);
+    await first;
+    const broken=new SessionManager({rootDirectory:'/dev/null/impossible',maxSessions:1});
+    await assert.rejects(broken.getOrCreate('retry'));
+    assert.equal(broken.creatingSessions.size,0);assert.equal(broken.displayNumbers.size,0);
+    await assert.rejects(broken.getOrCreate('retry'),e=>e.message!=='max_active_sessions');
+  } finally { await rm(rootDirectory,{recursive:true,force:true}); }
+});

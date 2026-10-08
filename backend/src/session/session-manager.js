@@ -90,6 +90,7 @@ export class SessionManager {
     this.ttlMs = ttlMs;
     this.now = now;
     this.sessions = new Map();
+    this.creatingSessions = new Map();
     this.displayNumbers = new Set();
   }
 
@@ -97,12 +98,20 @@ export class SessionManager {
     if (sessionId && this.sessions.has(sessionId)) {
       return this.touch(sessionId);
     }
-    if (this.sessions.size >= this.maxSessions) {
+    const id = sessionId ?? randomUUID();
+    if (this.creatingSessions.has(id)) return this.creatingSessions.get(id);
+    if (this.sessions.size + this.creatingSessions.size >= this.maxSessions) {
       const error = new Error('max_active_sessions');
       error.status = 503;
       throw error;
     }
-    const id = sessionId ?? randomUUID();
+    const pending = this.createSession(id);
+    this.creatingSessions.set(id, pending);
+    try { return await pending; }
+    finally { this.creatingSessions.delete(id); }
+  }
+
+  async createSession(id) {
     const displayNumber = this.allocateDisplayNumber();
     const baseDirectory = path.join(this.rootDirectory, id);
     const createdAt = this.now();
@@ -128,7 +137,8 @@ export class SessionManager {
       desktopProcess: null,
       desktopStartPromise: null,
     };
-    await prepareSessionDirectories(session);
+    try { await prepareSessionDirectories(session); }
+    catch (error) { this.displayNumbers.delete(displayNumber); throw error; }
     this.sessions.set(id, session);
     return session;
   }

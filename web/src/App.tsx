@@ -138,6 +138,15 @@ function ResetDialog({
     </div>
   );
 }
+let pendingSessionRequest: Promise<Response> | null = null;
+function initializeSession() {
+  if (!pendingSessionRequest) {
+    pendingSessionRequest = fetch('/api/session', { method: 'POST', credentials: 'include', cache: 'no-store' })
+      .finally(() => { pendingSessionRequest = null; });
+  }
+  return pendingSessionRequest;
+}
+
 export default function App() {
   const [history, setHistory] = useState('');
   const [fullTerminalHistory, setFullTerminalHistory] = useState('');
@@ -168,7 +177,7 @@ export default function App() {
 
   const loadStatus = useCallback(async () => {
     try {
-      await fetch('/api/session', { method: 'POST', credentials: 'include', cache: 'no-store' });
+      await initializeSession();
       const response = await fetch('/api/status', { cache: 'no-store' });
       if (!response.ok) throw new Error(`Status request failed: ${response.status}`);
       const nextStatus: Status = await response.json();
@@ -182,7 +191,7 @@ export default function App() {
     let active = true;
     const load = async () => {
       try {
-        const sessionResponse = await fetch('/api/session', { method: 'POST', credentials: 'include', cache: 'no-store' });
+        const sessionResponse = await initializeSession();
         if (!sessionResponse.ok) throw new Error(`Session request failed: ${sessionResponse.status}`);
         if (active) {
           setSessionReady(true);
@@ -433,14 +442,14 @@ export default function App() {
       <main className="workspace-main">
         <div className="workspace-grid four-pane-workspace" ref={workspaceRef} style={workspaceStyle}>
           <div className="workspace-column workspace-column-left" ref={leftColumnRef} style={leftColumnStyle}>
-            <KaliWorkspacePanel
+            {sessionReady ? <KaliWorkspacePanel
               key={`terminal-${resetSignal}`}
               onHistoryChange={updateHistory}
               onFullHistoryChange={updateFullHistory}
               pasteRequest={pasteRequest}
               terminalMode={terminalMode}
               linuxLabTargetId={linuxLabTargetId}
-            />
+            /> : <section className="panel"><p role="status">セッションを準備しています…</p></section>}
             <div
               className="pane-resizer pane-resizer-horizontal"
               role="separator"
@@ -453,7 +462,7 @@ export default function App() {
               onPointerDown={(event) => beginResize('leftRows', event)}
               onKeyDown={(event) => resizeWithKeyboard('leftRows', event)}
             />
-            <TargetPanel
+            {sessionReady ? <TargetPanel
               mockSelected={learningTab === 'mock'}
               mockPreview={mockPreview}
               onMockSelect={()=>{setLearningTab('mock');setTargetPanelId(1);}}
@@ -461,7 +470,7 @@ export default function App() {
               refreshSignal={targetRefreshSignal}
               targetId={targetPanelId}
               onTargetChange={selectTargetPanelTarget}
-            />
+            /> : <section className="panel"><p role="status">セッションを準備しています…</p></section>}
           </div>
           <div
             className="pane-resizer pane-resizer-vertical"
