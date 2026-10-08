@@ -25,15 +25,21 @@ export async function fetchPublicPage(input, { resolve = lookup, get = https.get
         return;
       }
       if (response.statusCode !== 200 || !/^text\/html\b/i.test(response.headers['content-type'] ?? '') || !['identity', undefined].includes(response.headers['content-encoding'])) { response.destroy(); reject(new Error('HTMLを取得できません。転送先のURLを直接指定してください。')); return; }
-      let size = 0; const chunks = [];
-      response.on('data', chunk => { size += chunk.length; if (size > 512000) { response.destroy(new Error('ページが容量上限を超えました。')); } else chunks.push(chunk); });
-      response.on('error', reject); response.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      let size = 0; let complete = false; const chunks = [];
+      const finish = () => { if (complete) return; complete = true; resolve(Buffer.concat(chunks).toString('utf8')); };
+      response.on('data', chunk => {
+        if (complete) return;
+        const remaining = 512000 - size;
+        chunks.push(chunk.subarray(0, remaining)); size += Math.min(chunk.length, remaining);
+        if (size >= 512000) { finish(); response.destroy(); request.destroy(); }
+      });
+      response.on('error', error => { if (!complete) reject(error); }); response.on('end', finish);
     });
     const timer = setTimeout(() => request.destroy(new Error('URL取得がタイムアウトしました。')), 10000);
     request.on('error', reject); request.on('close', () => clearTimeout(timer));
   });
   if (typeof html !== 'string') return fetchPublicPage(html.redirect, { resolve, get }, redirects + 1);
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.slice(0,200) ?? '';
-  const text = html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '').replace(/<[^>]*>/g, ' ').replace(/\s+/g,' ').slice(0,12000);
+  const text = html.replace(/<(script|style)\b[^>]*>[\s\S]*?(?:<\/\1>|$)/gi, '').replace(/<[^>]*>/g, ' ').replace(/\s+/g,' ').slice(0,12000);
   return { url: url.href, title, text };
 }

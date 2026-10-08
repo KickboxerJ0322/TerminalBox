@@ -51,6 +51,30 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelec
     if (refreshSignal > 0) refresh();
   }, [refresh, refreshSignal]);
 
+  // Refresh only when the rendered site changes, including changes made in Kali.
+  useEffect(() => {
+    if (!mockSelected || !mockPreview) return;
+    let active = true;
+    let previous: string | undefined;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const response = await fetch('/api/mock-site', { cache: 'no-store' });
+        if (response.ok) {
+          const { site } = await response.json();
+          if (active && site) {
+            const signature = JSON.stringify([site.id, site.definition]);
+            if (previous !== undefined && previous !== signature) refresh();
+            previous = signature;
+          }
+        }
+      } catch { /* Retry after a temporary connection failure. */ }
+      if (active) timer = setTimeout(poll, 750);
+    };
+    void poll();
+    return () => { active = false; clearTimeout(timer); };
+  }, [mockSelected, mockPreview?.id, refresh]);
+
   const resetTarget = async () => {
     setResetting(true);
     try {
@@ -94,7 +118,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelec
         <button type="button" onClick={refresh} aria-label="ターゲットサイトを再読み込み" title="再読み込み">↻</button>
       </div>
       {resetError&&<p role="alert">{resetError}</p>}
-      {mockSelected&&!mockPreview ? <p>学習パネルの模擬サイトタブで生成してください。</p> : target.kind === 'linux-lab' ? (
+      {mockSelected&&!mockPreview ? <div className="target-frame linux-lab-frame"><p>学習パネルの模擬サイトタブで生成してください。</p></div> : target.kind === 'linux-lab' ? (
         <div className="target-frame linux-lab-frame">
           <span>LINUX LAB</span>
           <h3>{target.label}</h3>

@@ -22,7 +22,7 @@ function transport(pages, calls) {
       response.headers = { 'content-type': 'text/html', ...page.headers };
       response.destroy = () => {};
       callback(response);
-      if (response.statusCode === 200) { response.emit('data', Buffer.from('<title>Shop</title><p>Products</p>')); response.emit('end'); }
+      if (response.statusCode === 200) { response.emit('data', Buffer.from(page.html ?? '<title>Shop</title><p>Products</p>')); response.emit('end'); }
       request.emit('close');
     });
     return request;
@@ -58,4 +58,12 @@ test('redirect loops stop after three redirects', async () => {
   const calls = [];
   await assert.rejects(fetchPublicPage('https://shop.example/', { resolve: dual, get: transport({ 'shop.example': { status: 302, headers: { location: '/' } } }, calls) }), /転送回数/);
   assert.equal(calls.length, 4);
+});
+
+test('oversized HTML uses a bounded prefix and drops an unfinished script', async () => {
+  const html = '<title>Research</title><p>Research service</p><script>' + 'x'.repeat(600000);
+  const result = await fetchPublicPage('https://shop.example/', { resolve: dual, get: transport({ 'shop.example': { html } }, []) });
+  assert.equal(result.title, 'Research');
+  assert.equal(result.text.trim(), 'Research Research service');
+  assert.ok(result.text.length <= 12000);
 });
