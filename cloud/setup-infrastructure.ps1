@@ -19,7 +19,6 @@ if ($LabServiceAccount -notin $ServiceAccounts) {
 }
 
 gcloud secrets add-iam-policy-binding GEMINI_API_KEY --member="serviceAccount:$WebServiceAccount" --role=roles/secretmanager.secretAccessor | Out-Null
-gcloud secrets add-iam-policy-binding terminalbox-access-password --member="serviceAccount:$WebServiceAccount" --role=roles/secretmanager.secretAccessor | Out-Null
 
 $Secrets = @(gcloud secrets list --format='value(name)')
 if ('terminalbox-internal-api-token' -notin $Secrets) {

@@ -37,6 +37,7 @@ PCでは、次の4つの領域を同時に使えます。境界線をドラッ�
 | ターゲット | 問題1〜5で、Webサイトの秘密情報管理、認可、入力値処理、認証と防御を学習 |
 | 脆弱性 | 問題6〜9で、Linuxの権限や設定ミスによる影響を疑似環境で学習 |
 | セキュリティツール | 10種類のツールを、専用の演習環境で実際に使用 |
+| 模擬サイト | URLと任意のスクショからAIが教材を生成。管理キーの取得、表示の改ざん、Flag回答、対策版との比較を体験 |
 
 ### Kaliワークスペースのタブ
 
@@ -53,7 +54,7 @@ GUIツールは共通のKali Desktop上で起動します。起動直後は表�
 
 ## 学習の進め方
 
-1. 運営者から案内されたURLを開き、必要なアクセス認証を行います。
+1. 運営者から案内されたURLを開きます。入口でのID・パスワード入力は不要です。
 2. 初めて使う場合は「チュートリアル」でコマンド操作を練習します。
 3. 「ターゲット」で問題を選び、右上の手順を読みます。
 4. 左上のTerminalでコマンドを実行し、左下のサイトや実行結果の変化を確認します。
@@ -109,19 +110,19 @@ GUIツールは共通のKali Desktop上で起動します。起動直後は表�
 
 ## 模擬サイト
 
-「模擬サイト」タブでは、URLと任意のスクショを参考に、AIが架空の学習用Webサイトを生成します。サイトの用途・配色・配置を参考にしながら、演習は問題1と同じ「公開バックアップから管理キーを取得し、管理APIで表示を変更する」内容に統一しています。難易度・テーマの選択は不要です。
+「模擬サイト」タブでは、URLと任意のスクショを参考に、AIが架空の学習用Webサイトを生成します。元サイトの見た目や機能を完全に再現するものではありません。サイトの用途・配色・配置を参考にしながら、演習は問題1と同じ「公開バックアップから管理キーを取得し、管理APIで表示を変更する」内容に統一しています。難易度・テーマの選択は不要です。
 
-生成後は、表示される4つのコマンドを上から順にコピーしてKaliのTerminalへ貼り付け、Enterを押してください。コマンドの編集や管理キーの書き写しは不要です。
+生成後は「ヒントを表示」を押してください。ヒントは初期状態では非表示で、同じボタンから隠せます。ヒント内の4つのコマンドを上から順にコピーしてKaliのTerminalへ貼り付け、Enterを押してください。コマンドの編集や管理キーの書き写しは不要です。
 
 1. robots.txtで公開ファイルの手がかりを見る。
 2. バックアップから管理APIと管理キーを取得する（内容は自動でファイルに保存）。
-3. 管理キーを自動で読み取り、管理APIでサイトの「改ざんしました」と赤系の表示に変更する。表示画面を再読み込みして確認する。
+3. 管理キーを自動で読み取り、管理APIでサイトの「改ざんしました」と赤系の表示に変更する。表示画面は変更を検知して自動更新される（通常1秒程度）。
 4. Flagを取得し、返されたTBX{…}を回答欄へ貼り付ける。
 
-「コピー」はクリップボードへコピー、「Terminalへ」は貼り付けです。実行にはEnterを押します。正しいFlagを回答すると「クリア」と表示され、「クリア解除」で取り消せます。成功理由と対策は手順内のヒントに記載しています。Secure版と比較できます。Secure版はバックアップを公開せず、演習用の管理キーによる変更を拒否します。
+「コピー」はクリップボードへコピー、「Terminalへ」は貼り付けです。実行にはEnterを押します。正しいFlagを回答すると「クリア」と表示され、「クリア解除」で取り消せます。成功理由と対策は手順内のヒントに記載しています。個別のAI解説はありません。Secure版と比較できます。Secure版はバックアップを公開せず、演習用の管理キーによる変更を拒否します。
 
 - 元サイトへの攻撃・診断は行いません。取得するのは公開HTMLだけで、外部スクリプトや画像は取得しません。教材のバックアップ・キー・弱点は学習用に作成したものです。
-- 公開IPv4のHTTPS（443番）に対応します。IPv6併存は対応、内部・予約済みIPv4を含むサイトとIPv6のみのサイトは拒否します。転送先も毎回確認し、最大3回までたどります。各取得は10秒・512KBまでです。
+- 公開IPv4のHTTPS（443番）に対応します。IPv6併存は対応、内部・予約済みIPv4を含むサイトとIPv6のみのサイトは拒否します。転送先も毎回確認し、最大3回までたどります。各取得は10秒まで、取り込むHTMLは512,000バイト（約500KB）までです。上限に達したら接続を終了し、取得済みの部分を参考に生成します。ページ後半の内容や、JavaScriptで後から表示される情報は含まれないことがあります。
 - PNG・JPEG・WebPのスクショを任意で添付できます（元画像10MB以下）。画像を長辺1600px以下のJPEGへ縮小してAIに送ります。URL取得に失敗した場合は画像から生成できます。
 - Kaliの接続先は `http://mocksite:3200/vulnerable/`、対策版は `http://mocksite:3200/secure/` です。手順のコマンドにはセッションヘッダーを含めています。
 - 表示画面の「模擬」ボタンで切り替えられます。戻る・再読み込み・HP復元・表示中URLを利用できます。HP復元は生成時の見た目に戻し、演習状態とFlagを初期化します。
@@ -142,11 +143,11 @@ Geminiを使い、質問への回答やコマンド実行を支援します。�
 
 ## 利用者ごとの環境とRESET
 
-演習の状態は、個人のログインIDではなく、ブラウザに発行する**セッションID**で管理します。サービス入口のアクセス認証と、演習状態の管理は別の仕組みです。
+演習の状態は、個人のログインIDではなく、ブラウザに発行する**セッションID**で管理します。Web入口は匿名で利用でき、Labとの内部通信には専用の認証を使います。
 
 ホームディレクトリ、ログ、演習の状態、進捗、ターミナル、デスクトップ、AIの承認状態などをセッションごとに管理します。既定の同時セッション上限は20で、最終アクセスから30分で期限切れとなる設計です。
 
-RESETは現在のセッションを初期化します。他の利用者の演習状態を初期化する操作ではありません。演習は一時的な環境のため、必要な記録は手元に残してください。
+RESETは現在のセッションを初期化します。他の利用者の演習状態を初期化する操作ではありません。演習は一時的な環境です。サービスの再起動・再デプロイ、セッション期限切れ、ブラウザのCookie削除などで状態が失われる場合があるため、必要な記録は手元に残してください。
 
 ## システムの仕組み
 
@@ -154,8 +155,8 @@ Google Cloud Runのサービスを、画面やAIを担当する**Web**と、演�
 
 | サービス | 役割 |
 | --- | --- |
-| `terminalbox`（公開Web） | ブラウザ向け画面、アクセス認証、セッション管理、Gemini通信、Labへの中継 |
-| `terminalbox-lab`（非公開Lab） | Kali、Terminal、Desktop、問題1〜5、ツール用Target、疑似Linux Lab、コマンド実行 |
+| `terminalbox`（公開Web） | ブラウザ向け画面、匿名セッション管理、URL解析・画像送信、Gemini通信、Labへの中継 |
+| `terminalbox-lab`（非公開Lab） | Kali、Terminal、Desktop、問題1〜5、ツール用Target、疑似Linux Lab、模擬サイトの演習処理、コマンド実行 |
 
 ブラウザはWebサービスに接続し、演習の通信はWebがLabへ中継します。LabはCloud Runの内部向け接続設定と認証を使用し、Web用サービスアカウントに呼び出し権限を付与します。
 
@@ -163,8 +164,8 @@ Google Cloud Runのサービスを、画面やAIを担当する**Web**と、演�
 
 - Labから一般インターネットへのIPv4通信は、VPCのファイアウォールで拒否する構成です。
 - 演習サイトはLab内部のループバックアドレスで動作します。
-- WebはCloud NAT経由でGemini APIに接続します。
-- Gemini APIキーと入口のアクセス用パスワードはLabへ渡しません。
+- WebはCloud NAT経由でGemini APIと模擬サイト生成用の公開HTTPSサイトへ接続します。URLの接続先はWeb側で検証します。
+- Gemini APIキーはLabへ渡しません。入口のアクセス用パスワードは使用しません。
 - WebとLabの内部API認証には、専用の内部トークンを使います。このトークンは両サービスへSecret Managerから渡します。
 - Lab用サービスアカウントには、インフラ準備スクリプトでプロジェクト単位のIAMロールを付与しません。
 
@@ -214,9 +215,9 @@ $env:GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
 $env:TERMINALBOX_REGION="asia-northeast1"
 ```
 
-### 2. APIキーとアクセス用パスワードを登録
+### 2. Gemini APIキーを登録
 
-Gemini API Key と TerminalBox のアクセス用パスワードを Secret Manager に登録します。
+Gemini APIキーをSecret Managerに登録します。入口用のID・パスワードは不要です。
 
 ```powershell
 gcloud secrets create GEMINI_API_KEY --replication-policy=automatic
@@ -226,12 +227,6 @@ $plainGeminiKey = $credential.GetNetworkCredential().Password
 $plainGeminiKey | gcloud secrets versions add GEMINI_API_KEY --data-file=-
 Remove-Variable plainGeminiKey, credential, geminiKey
 
-gcloud secrets create terminalbox-access-password --replication-policy=automatic
-$accessPassword = Read-Host 'TerminalBox password' -AsSecureString
-$credential = [PSCredential]::new('unused', $accessPassword)
-$plainAccessPassword = $credential.GetNetworkCredential().Password
-$plainAccessPassword | gcloud secrets versions add terminalbox-access-password --data-file=-
-Remove-Variable plainAccessPassword, credential, accessPassword
 ```
 
 すでに Secret が存在する場合は `gcloud secrets create` を省略し、新しい version だけを追加します。
@@ -272,10 +267,11 @@ gcloud builds submit `
 
 Cloud Runへ反映した後、実際のサービスで以下を確認してください。
 
-- アクセス認証後に`/terminalbox/`が表示される。
-- 学習タブが「チュートリアル、ターゲット、脆弱性、セキュリティツール」の順で表示される。
+- ID・パスワードの入力なしで`/terminalbox/`が表示される。
+- 学習タブが「チュートリアル、ターゲット、脆弱性、セキュリティツール、模擬サイト」の順で表示される。
 - Terminal、Target、Desktop、AI Agentが利用できる。
 - 問題1〜5、問題6〜9、ツール教材を切り替えられる。
+- 模擬サイトを生成し、ヒントの表示切替、Terminalからの操作、改ざん表示の自動更新、Flag回答とクリア解除、Secure版との比較、HP復元ができる。
 - ターミナル記録だけをAIへ送って、説明を受け取れる。
 - Labへ外部から直接アクセスできず、Labから一般インターネットへの接続も拒否される。
 - 別ブラウザなどで2つのセッションを開き、演習状態とFlagが分かれている。
@@ -304,5 +300,3 @@ AIへ添付したターミナル記録や画面はGeminiへ送信されます。
 - [Cloud RunのWeb / Lab構成資料](docs/cloud-run-web-lab.md)
 
 機能の実装は`web/src/App.tsx`、`web/src/ChallengePanel.tsx`、`web/src/AgentPanel.tsx`、`backend/src/`、`cloudbuild.yaml`などで確認できます。このREADMEは現在のリポジトリ内のコードと設定に基づく説明です。稼働中サービスの状態を保証するものではありません。
-
-TerminalBoxのWeb入口ではID・パスワードは不要です。匿名セッションで利用します。Lab内部の認証とセッション分離は維持しています。

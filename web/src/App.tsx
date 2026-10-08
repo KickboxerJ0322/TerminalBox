@@ -68,28 +68,44 @@ function InfoDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="info-content">
           <p className="info-lead">
-            TerminalBoxは、Kali Linux・演習用Target・学習教材・AI Agentをブラウザ上にまとめたサイバーセキュリティ学習環境です。環境構築に時間を取られず、実際に手を動かしながら攻撃の原因と防御を学べます。
+            TerminalBoxは、Kali Linux・演習用Target・学習教材・AI Agentをブラウザ上にまとめたサイバーセキュリティ学習環境です。自分のPCへのツールのインストールや、入口でのID・パスワード入力は不要です。コマンドを実行しながら、弱点の原因と対策を学べます。
           </p>
           <div className="info-grid">
-            <article><span>01</span><h3>Kaliワークスペース</h3><p>Kali TerminalとnoVNCによるKali Desktopを、同じセッションの作業領域で利用できます。PCでは4ペインの境界をドラッグして広さを調整できます。</p></article>
+            <article><span>01</span><h3>Kaliワークスペース</h3><p>Kali Linuxは調査用ツールを集めたLinuxです。Terminalでは文字で命令を入力し、Kali Desktopではデスクトップを操作します。PCは4つの領域の境界をドラッグして調整でき、スマホは縦にスクロールして利用します。</p></article>
             <article><span>02</span><h3>Webセキュリティ演習</h3><p>秘密情報管理、認可、入力値処理、セッション・認証、Defense in Depthを、ATTACK → UNDERSTAND → DEFENDの順で学びます。</p></article>
             <article><span>03</span><h3>Linux脆弱性演習</h3><p>Copy Fail、File Permission、SUID、sudo設定ミスを安全な疑似Linux Labで体験し、権限境界と対策を学びます。</p></article>
             <article><span>04</span><h3>セキュリティツール</h3><p>Burp Suite、Wireshark、Gobuster、Nikto、sqlmap、John the Ripper、Hashcat、Netcat、Hydra、Metasploitを用意しています。</p></article>
             <article><span>05</span><h3>AI Agent</h3><p>Geminiが実行結果を確認しながら、最大15ステップまで調査を支援します。読み取り操作は自動実行し、変更操作は実行前に承認を求めます。</p></article>
-            <article><span>06</span><h3>Flagと学習進捗</h3><p>演習で取得したFlagを回答するとCLEARになります。Target、Challenge、進捗は匿名セッションごとに分けて管理されます。</p></article>
+            <article><span>06</span><h3>Flagと学習進捗</h3><p>Flagは演習の成功を確認する短い文字列です。取得して回答するとクリアを確認できます。模擬サイトでは「クリア解除」で取り消せます。状態と進捗は匿名セッションごとに管理します。</p></article>
             <article><span>07</span><h3>安全なネットワーク</h3><p>ブラウザは公開Webを経由して非公開Labへ接続します。Labから一般のインターネットへの通信は制限され、用意されたTargetだけを演習対象とします。</p></article>
-            <article><span>08</span><h3>セッション分離とRESET</h3><p>ホーム、Terminal、Kali Desktop、GUIツール、ログ、演習状態をセッション単位で分離します。RESETは現在のセッションだけを初期化します。</p></article>
+            <article><span>08</span><h3>セッション分離とRESET</h3><p>ホーム、Terminal、Kali Desktop、GUIツール、ログ、模擬サイトをセッション単位で管理します。RESETは現在のセッションだけを初期化します。環境は一時的で、サービスの再起動などで失われるため、必要な記録は手元に残してください。</p></article>
+            <article><span>09</span><h3>AIで模擬サイトを生成</h3><p>URLと任意のスクショを参考に、架空の学習用サイトを生成します。実在サイトへの攻撃・診断は行いません。元サイトの見た目や機能を完全に再現するものではなく、難易度・テーマの選択は不要です。</p></article>
           </div>
           <section className="info-flow" aria-labelledby="info-flow-title">
             <span className="eyebrow">LEARNING FLOW</span>
             <h3 id="info-flow-title">基本的な進め方</h3>
             <ol>
-              <li>学習パネルでTutorialと演習手順を確認する</li>
+              <li>「チュートリアル」で基本操作を練習し、「ターゲット」「脆弱性」「セキュリティツール」から演習を選ぶ</li>
               <li>Terminal・Target・Kali Desktopで調査する</li>
               <li>必要に応じてAI Agentへ質問し、提案された操作を確認する</li>
               <li>Flagを取得して回答し、解説と防御策まで確認する</li>
             </ol>
           </section>
+          <section className="info-flow" aria-labelledby="info-mock-title">
+            <span className="eyebrow">MOCK SITE</span>
+            <h3 id="info-mock-title">模擬サイトの進め方</h3>
+            <ol>
+              <li>学習パネルの「模擬サイト」でURLを入力する。見た目を参考にしたいスクショは任意で添付する。</li>
+              <li>「模擬サイトを生成」を押す。表示枠の「模擬」ボタンで生成したサイトを表示できる。</li>
+              <li>「ヒントを表示」を押す。ヒントは初期状態では非表示で、ボタンで切り替えられる。</li>
+              <li>4つのコマンドを順番にコピーしてTerminalへ貼り付け、Enterで実行する。公開バックアップから管理キーを取得し、管理APIで表示を変更する。</li>
+              <li>サイトが赤系の「改ざんしました」に自動更新されたら、Flagを取得して回答する。正解すると「クリア」が表示される。</li>
+              <li>ヒントで成功理由と対策を読み、Secure版で同じ操作が防がれることを比較する。</li>
+            </ol>
+            <p>表示枠には「戻る」「再読み込み」「HPを復元」と表示中のURLがあります。HPを復元すると、生成時の見た目に戻り、演習状態とFlagも初期化されます。</p>
+            <p>URLは公開IPv4のHTTPSサイトに対応し、大きなページは先頭約500KBを参考にします。URLを取得できなくても、スクショを添付していれば画像から生成できます。スクショはPNG・JPEG・WebP、元画像10MB以下に対応します。生成は1セッション3回までで、失敗も回数に含みます。</p>
+          </section>
+          <p className="info-note">AI Agentは既定で1セッション10回まで利用できます。質問文なしでターミナル記録だけを送ることもできます。添付した記録・画面や生成用スクショはGeminiへ送信されるため、個人情報や実際のパスワードを含めないでください。</p>
           <p className="info-note">WiresharkはCloud環境の制約に合わせ、配布されたPCAPを使うオフライン解析です。演習はTerminalBox内に用意されたTargetだけを対象にしてください。</p>
         </div>
       </section>
