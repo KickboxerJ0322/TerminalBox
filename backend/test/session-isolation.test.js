@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import { promisify } from 'node:util';
+import { readFile } from 'node:fs/promises';
 import net from 'node:net';
 import test from 'node:test';
 
@@ -313,6 +315,40 @@ test('Session A Web Attacks comments are not visible to Session B and invalid he
     const invalidHeader = await fetch(`${baseUrl}/web-attacks/comments`, { headers: { 'x-terminalbox-session': '../bad' } }).then((response) => response.text());
     assert.match(invalidHeader, /TBX Market operator/);
     assert.doesNotMatch(invalidHeader, /A secret comment/);
+  } finally {
+    await stopProcess(child);
+  }
+});
+
+
+test('Target 1 copied UI commands discover the training key and unlock the session flag', async () => {
+  const port = await freePort();
+  const child = spawn(process.execPath, ['target/src/server.js'], {
+    cwd: new URL('../..', import.meta.url),
+    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), TARGET_PROFILE: '1' },
+    stdio: 'ignore',
+  });
+  try {
+    const baseUrl = `http://127.0.0.1:${port}`;
+    await waitForStatus(`${baseUrl}/api/status`, child);
+    const source = await readFile(new URL('../../web/src/ChallengePanel.tsx', import.meta.url), 'utf8');
+    const commands = [];
+    for (const line of source.split('\n')) {
+      const match = line.trim().match(/^commands: (\[.*\]),$/);
+      if (match && (line.includes('export TRAINING_ADMIN_KEY=') || line.includes('http://target:3000/api/admin/'))) commands.push(...JSON.parse(match[1]));
+    }
+    const selected = commands.filter(command => command.startsWith('export TRAINING_ADMIN_KEY=') || command.includes('http://target:3000/api/admin/'));
+    assert.equal(selected.length, 3);
+    assert.equal(selected.some(command => command.includes('training-admin-2026')), false);
+    const script = selected.map(command => command.replaceAll('http://target:3000', baseUrl)).join('\n');
+    await promisify(execFile)('bash', ['-e', '-c', script], {
+      env: { ...process.env, TERMINALBOX_SESSION_ID: SESSION_A }, timeout: 5000,
+    });
+    const flag = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_A } });
+    assert.equal(flag.status, 200);
+    assert.match((await flag.json()).flag, /^TBX\{target1_/);
+    const other = await fetch(`${baseUrl}/api/flag`, { headers: { 'x-terminalbox-session': SESSION_B } });
+    assert.equal(other.status, 403);
   } finally {
     await stopProcess(child);
   }
