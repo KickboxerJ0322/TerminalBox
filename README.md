@@ -54,7 +54,7 @@ GUIツールは共通のKali Desktop上で起動します。起動直後は表�
 
 ## 学習の進め方
 
-1. 運営者から案内されたURLを開きます。入口でのID・パスワード入力は不要です。
+1. 運営者から案内されたURLを開きます。入口で案内されたユーザー名とパスワードを入力します。
 2. 初めて使う場合は「チュートリアル」でコマンド操作を練習します。
 3. 「ターゲット」で問題を選び、右上の手順を読みます。
 4. 左上のTerminalでコマンドを実行し、左下のサイトや実行結果の変化を確認します。
@@ -143,7 +143,7 @@ Geminiを使い、質問への回答やコマンド実行を支援します。�
 
 ## 利用者ごとの環境とRESET
 
-演習の状態は、個人のログインIDではなく、ブラウザに発行する**セッションID**で管理します。Web入口は匿名で利用でき、Labとの内部通信には専用の認証を使います。
+演習の状態は、個人のログインIDではなく、ブラウザに発行する**セッションID**で管理します。Web入口ではBasic認証を使い、Labとの内部通信には専用の認証を使います。
 
 ホームディレクトリ、ログ、演習の状態、進捗、ターミナル、デスクトップ、AIの承認状態などをセッションごとに管理します。既定の同時セッション上限は20で、最終アクセスから30分で期限切れとなる設計です。
 
@@ -165,7 +165,7 @@ Google Cloud Runのサービスを、画面やAIを担当する**Web**と、演�
 - Labから一般インターネットへのIPv4通信は、VPCのファイアウォールで拒否する構成です。
 - 演習サイトはLab内部のループバックアドレスで動作します。
 - WebはCloud NAT経由でGemini APIと模擬サイト生成用の公開HTTPSサイトへ接続します。URLの接続先はWeb側で検証します。
-- Gemini APIキーはLabへ渡しません。入口のアクセス用パスワードは使用しません。
+- Gemini APIキーはLabへ渡しません。Web入口の認証にはSecret Managerに登録したパスワードハッシュを使います。
 - WebとLabの内部API認証には、専用の内部トークンを使います。このトークンは両サービスへSecret Managerから渡します。
 - Lab用サービスアカウントには、インフラ準備スクリプトでプロジェクト単位のIAMロールを付与しません。
 
@@ -217,7 +217,7 @@ $env:TERMINALBOX_REGION="asia-northeast1"
 
 ### 2. Gemini APIキーを登録
 
-Gemini APIキーをSecret Managerに登録します。入口用のID・パスワードは不要です。
+Gemini APIキーをSecret Managerに登録します。
 
 ```powershell
 gcloud secrets create GEMINI_API_KEY --replication-policy=automatic
@@ -247,7 +247,30 @@ Remove-Variable plainGeminiKey, credential, geminiKey
 - Cloud Router / Cloud NAT
 - Secret Manager の IAM
 
-### 4. Cloud Build で公開
+### 4. 入口のBasic認証を準備
+
+Cloud Shellで `htpasswd` を使い、パスワードを対話入力で設定します。未導入の場合は `sudo apt-get update && sudo apt-get install -y apache2-utils` を実行してください。
+
+```bash
+(
+  set -e
+  project="YOUR_PROJECT_ID"
+  umask 077
+  auth_file="$(mktemp)"
+  trap 'rm -f "$auth_file"' EXIT
+
+  htpasswd -cB "$auth_file" tbx-user
+  gcloud secrets create terminalbox-basic-auth --project="$project" \
+    --replication-policy=automatic --data-file="$auth_file"
+  gcloud secrets add-iam-policy-binding terminalbox-basic-auth --project="$project" \
+    --member="serviceAccount:terminalbox-web-runtime@$project.iam.gserviceaccount.com" \
+    --role=roles/secretmanager.secretAccessor
+)
+```
+
+既にSecretがある場合は `gcloud secrets versions add terminalbox-basic-auth --project="$project" --data-file="$auth_file"` で新しいバージョンを登録し、`cloudbuild.yaml` のマウント指定をそのバージョン番号に更新します。利用者にはHTTPSのURLを案内してください。
+
+### 5. Cloud Build で公開
 
 ```powershell
 gcloud builds submit `
@@ -267,7 +290,7 @@ gcloud builds submit `
 
 Cloud Runへ反映した後、実際のサービスで以下を確認してください。
 
-- ID・パスワードの入力なしで`/terminalbox/`が表示される。
+- 未認証で `/terminalbox/` を開くとBasic認証を求められ、正しい認証情報で画面が表示される。未認証の `/api/health` と `/ws/terminal` は `401` を返す。
 - 学習タブが「チュートリアル、ターゲット、脆弱性、セキュリティツール、模擬サイト」の順で表示される。
 - Terminal、Target、Desktop、AI Agentが利用できる。
 - 問題1〜5、問題6〜9、ツール教材を切り替えられる。
