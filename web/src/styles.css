@@ -80,7 +80,8 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 
 .side-workspace { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .workspace-tabs { flex: 0 0 auto; min-height: 31px; padding: 3px; border: 1px solid var(--border); background: #090d0b; border-radius: 5px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
-.learning-workspace > .workspace-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.learning-workspace > .workspace-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; }
+.learning-workspace > .workspace-tabs button { flex: 1 0 auto; white-space: nowrap; overflow-wrap: normal; word-break: normal; min-width: max-content; padding-inline: 5px; }
 .kali-workspace-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .workspace-tabs button { min-height: 23px; border: 1px solid transparent; border-radius: 3px; color: var(--muted); background: transparent; font-size: 9px; line-height: 1.2; cursor: pointer; overflow-wrap: anywhere; word-break: keep-all; }
 .kali-workspace-tabs button { display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -108,8 +109,8 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 .vulnerability-category > span { display: block; margin: 0 0 5px; color: var(--accent); font-family: 'Cascadia Code', Consolas, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0; }
 .vulnerability-category .challenge-target-tabs { padding: 0; border: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); background: transparent; }
 
-.target-site-tabs { flex: 0 0 auto; min-height: 36px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-template-columns: repeat(11, minmax(56px, 1fr)); gap: 5px; overflow-x: auto; overflow-y: hidden;}
-.target-site-tabs button { min-height: 27px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0d1210; font-size: 9px; cursor: pointer; }
+.target-site-tabs { flex: 0 0 auto; min-height: 36px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: #0a0f0d; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(42px, 1fr); grid-template-rows: auto; gap: 5px; overflow-x: auto; overflow-y: hidden;}
+.target-site-tabs button { white-space: nowrap; min-width: 0; padding-inline: 4px; min-height: 27px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: #0d1210; font-size: 9px; cursor: pointer; }
 .target-site-tabs button:hover { color: var(--text); border-color: var(--accent-dim); }
 .target-site-tabs button.active { color: #07100b; border-color: var(--accent); background: var(--accent); font-weight: 700; }
 
@@ -140,7 +141,7 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 .mini-action:disabled { opacity: .4; cursor: not-allowed; }
 .online-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-family: 'Yu Gothic UI', sans-serif; font-size: 12px; line-height: 1.6; }
 .managed-ai-settings strong { padding: 10px 11px; border: 1px solid var(--border); border-radius: 3px; color: var(--accent); background: #080c0a; font-size: 11px; }
-.messages { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.messages { flex: 1; min-height: 0; overflow-y: auto; padding: 12px;  }
 .message { margin-bottom: 16px; font-family: 'Yu Gothic UI', sans-serif; font-size: 12px; line-height: 1.75; white-space: pre-wrap; }
 .message-role { display: block; margin-bottom: 5px; color: var(--muted); font-family: 'Cascadia Code', Consolas, monospace; font-size: 8px; letter-spacing: .15em; }
 .message > div { padding: 11px 13px; border: 1px solid var(--border-soft); background: #101714; border-radius: 0 4px 4px 4px; overflow-wrap: anywhere; word-break: break-word; }
@@ -392,9 +393,22 @@ main { width: min(1760px, calc(100% - 24px)); margin: 0 auto; flex: 1; min-heigh
 
 
 /* PHP learning follows the existing lesson and Target layout. */
-.php-mode-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border, #234037); }
-.php-mode-actions .active { outline:1px solid #67d9aa; }
-#php-panel .lesson-list button span { min-width:6.5rem; font-size:10px; }
+.php-mode-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--border); }
+.php-mode-actions button { min-height:27px; padding:5px 8px; border:1px solid var(--border); border-radius:3px; color:var(--muted); background:#0d1210; font:inherit; font-size:9px; cursor:pointer; white-space:nowrap; }
+.php-mode-actions button:hover:not(:disabled) { color:var(--text); border-color:var(--accent-dim); background:#111815; }
+.php-mode-actions button.active { color:#07100b; border-color:var(--accent); background:var(--accent); font-weight:700; }
+.php-mode-actions button:disabled { opacity:.4; cursor:not-allowed; }
+.php-mode-actions > span { color:var(--muted); font-size:9px; }
+#php-panel .lesson-list { min-width:0; overflow-x:hidden; }
+#php-panel .lesson-list button { flex:0 0 auto; min-width:0; flex-direction:column; align-items:flex-start; gap:5px; overflow-wrap:anywhere; }
+#php-panel .lesson-list button > span { font-size:9px; }
+#php-panel .lesson-list button.completed > span { flex:none; width:17px; height:17px; min-width:0; }
+.php-command-guide { margin:10px 0; border:1px solid var(--border); border-radius:4px; padding:10px; font-size:11px; line-height:1.7; }
+.php-command-guide summary { color:var(--accent); cursor:pointer; }
+.php-command-guide dl { display:grid; grid-template-columns:minmax(0, 1fr); gap:4px; margin-bottom:0; }
+.php-command-guide dt { color:var(--text); overflow-wrap:anywhere; }
+.php-command-guide dd { margin:0 0 6px; color:var(--muted); }
+.php-command-result { color:var(--muted); font-size:10px; line-height:1.7; overflow-wrap:anywhere; }
 #php-panel .command-stack > div { min-width:0; }
 #php-panel .command-stack > div > button { width:100%; text-align:left; }
 #php-panel .command-stack code { white-space:pre-wrap; overflow-wrap:anywhere; }

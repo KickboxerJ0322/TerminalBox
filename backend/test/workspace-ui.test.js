@@ -77,7 +77,8 @@ test('learning tabs put targets before security tools', async () => {
   assert.ok(source.indexOf('id="vulnerabilities-tab"') < source.indexOf('id="tools-tab"'));
   assert.doesNotMatch(source, /id="operations-tab"/);
   assert.doesNotMatch(source, /id="web-attacks-tab"/);
-  assert.match(styles, /\.learning-workspace > \.workspace-tabs \{ grid-template-columns: repeat\(5,/);
+  assert.ok(source.indexOf('id="mock-site-tab"') < source.indexOf('id="php-tab"'));
+  assert.match(styles, /\.learning-workspace > \.workspace-tabs \{ display: flex; flex-wrap: nowrap; overflow-x: auto;/);
 });
 
 test('AI Agent is online-only without local tabs', async () => {
@@ -131,7 +132,8 @@ test('tool and vulnerability tabs open their matching panels', async () => {
   assert.doesNotMatch(panel, /\(\['Web', 'Linux \/ OS'\] as const\)/);
   assert.match(panel, /\/api\/challenges\/progress/);
   assert.match(panel, /completionId/);
-  assert.match(styles, /\.target-site-tabs[^\n]+grid-template-columns: repeat\(11,/);
+  assert.ok(target.indexOf('>模擬</button>') < target.indexOf('>PHP</button>'));
+  assert.match(styles, /\.target-site-tabs[^\n]+grid-auto-flow: column;[^\n]+grid-template-rows: auto;/);
   assert.match(styles, /\.vulnerability-target-tabs/);
   assert.match(app, /現在のセッションのTerminal、Desktop、Target、Challenge、AI Agent状態/);
 

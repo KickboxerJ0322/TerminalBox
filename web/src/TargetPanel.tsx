@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { installScrollbarTheme } from './scrollbar-theme';
 
 interface Props {
   refreshSignal: number;
@@ -49,7 +50,18 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelec
   const [currentAddress,setCurrentAddress]=useState(target.address as string);
   const [resetError,setResetError]=useState('');
   useEffect(()=>setCurrentAddress(target.address),[target.address,mockPreview?.id]);
-  const trackAddress=()=>{try{const location=frameRef.current?.contentWindow?.location;if(mockSelected&&location?.pathname.startsWith('/simulation-site/'))setCurrentAddress('http://mocksite:3200/'+location.pathname.slice('/simulation-site/'.length)+location.search);}catch{}};
+  const trackAddress = () => {
+    try {
+      const document = frameRef.current?.contentDocument;
+      if (document) installScrollbarTheme(document);
+      const location = frameRef.current?.contentWindow?.location;
+      if (phpSelected && location?.pathname.startsWith('/php-site/')) {
+        setCurrentAddress('http://phptarget:3300/' + location.pathname.slice('/php-site/'.length) + location.search);
+      } else if (mockSelected && location?.pathname.startsWith('/simulation-site/')) {
+        setCurrentAddress('http://mocksite:3200/' + location.pathname.slice('/simulation-site/'.length) + location.search);
+      }
+    } catch { /* Another origin cannot be styled or inspected. */ }
+  };
 
   useEffect(() => {
     if (refreshSignal > 0) refresh();
