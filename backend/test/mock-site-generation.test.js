@@ -23,8 +23,11 @@ test('AI layout and palette cannot inject code or network requests', () => {
   const html=mockResponse(site,'secure','/',new URLSearchParams()).html;
   assert.doesNotMatch(html,/<script>|<img|onclick|background:url/);
 });
-test('public web startup no longer depends on Basic credentials; Lab remains private', async () => {
-  for(const path of ['cloud/nginx-web.conf','cloud/nginx.conf','cloud/start-web.sh','cloud/start-cloud.sh']) {
+test('public Web uses Basic authentication while Lab remains private', async () => {
+  const web=await readFile(new URL('../../cloud/nginx-web.conf',import.meta.url),'utf8');
+  assert.match(web,/auth_basic "TerminalBox"/);assert.match(web,/auth_basic_user_file/);
+  assert.match(web,/simulation-site\|php-site\|kali-gui/);
+  for(const path of ['cloud/nginx.conf','cloud/start-web.sh','cloud/start-cloud.sh']) {
     const text=await readFile(new URL('../../'+path,import.meta.url),'utf8');assert.doesNotMatch(text,/auth_basic|htpasswd|TERMINALBOX_PASSWORD/);
   }
   const build=await readFile(new URL('../../cloudbuild.yaml',import.meta.url),'utf8');assert.match(build,/--no-allow-unauthenticated/);assert.match(build,/INTERNAL_API_TOKEN/);assert.doesNotMatch(build,/TERMINALBOX_PASSWORD/);

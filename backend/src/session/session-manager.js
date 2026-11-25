@@ -166,6 +166,7 @@ export class SessionManager {
     const session = this.get(sessionId);
     if (!session) return null;
     session.mockSite = null;
+    session.phpLab = null;
     await stopTrackedToolProcesses(session);
     for (const child of session.terminalProcesses) {
       child.kill?.('SIGHUP');
@@ -199,6 +200,7 @@ export class SessionManager {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
     session.mockSite = null;
+    session.phpLab = null;
     await stopTrackedToolProcesses(session);
     for (const child of session.terminalProcesses) {
       child.kill?.('SIGHUP');
