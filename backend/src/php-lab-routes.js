@@ -1,12 +1,65 @@
 import http from 'node:http';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { isValidSessionId } from './session/session-cookie.js';
 import { checkPhpAnswer, createPhpState, phpState, phpSummary, recordPhpResult, runPhpLesson } from './php-lab.js';
 
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+const digest = value => createHash('sha256').update(String(value)).digest();
+const same = (a, b) => timingSafeEqual(digest(a), digest(b));
+const COOKIE_TTL = 15 * 60 * 1000;
 
-function page(mode, result) {
-  const safe = mode === 'secure';
-  return `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>PHP研修レポート</title><style>body{font:15px sans-serif;background:#101820;color:#e7f2ed;padding:24px;line-height:1.7}input,button{padding:10px;border-radius:5px}input{width:min(90%,480px)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#172b2c;padding:16px}a{color:#7de0bb}</style><h1>PHP研修レポート</h1><p>架空の会社の顧客管理・レポート集計サイトです。公開用サマリーを表示します。業務用の顧客CSVはサーバー内に保管し、直接ダウンロードするURLは設けていません。</p><p>${safe ? 'Secure版：業務上の入力値だけを受け付けます。' : '脆弱性学習版：入力と操作の境界を学ぶ教材です。'}</p><p>実際のPHP・OSコマンドを使いますが、実行は教材専用の4操作だけに限定しています。管理者権限や任意シェルの取得は行いません。</p><form method="get" action="report"><label>レポート種別 <input name="topic" value="summary" maxlength="200"></label><button>レポート表示</button></form><p>通常入力は summary。個別データは公開レポートに含めません。</p><p><a href="../vulnerable/">学習版</a> / <a href="../secure/">Secure版</a></p>${result ? `<h2>処理結果</h2><p>${escape(result.runtime ?? '')}</p><pre>${escape(result.output ?? result.error ?? '')}${result.flag ? '\n' + escape(result.flag) : ''}</pre>` : ''}<p>登場する氏名・メール・電話番号はすべて架空の教材データです。</p></html>`;
+function document(body, title = '顧客管理') {
+  return `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><style>
+    :root{color-scheme:dark;font-family:system-ui,sans-serif;color:#e7f2ed;background:#0d151b}
+    *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:rgba(137,172,156,.4) transparent}
+    *:hover{scrollbar-color:rgba(157,198,178,.65) transparent}
+    ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
+    ::-webkit-scrollbar-thumb{border:2px solid transparent;border-radius:999px;background:rgba(137,172,156,.4);background-clip:padding-box}
+    ::-webkit-scrollbar-thumb:hover{background-color:rgba(157,198,178,.65)}::-webkit-scrollbar-button{display:none}
+    body{margin:0;line-height:1.7}main{width:min(880px,100%);margin:auto;padding:24px}
+    .login{min-height:100dvh;display:grid;place-items:center;padding:24px}.login form{width:min(320px,100%);display:grid;gap:18px}
+    label{display:grid;gap:6px;font-size:13px;color:#a2b7ac}input{width:100%;padding:11px 12px;color:#e7f2ed;background:#111f25;border:1px solid #2b453b;border-radius:6px;font:inherit}
+    button{padding:10px 16px;color:#07140d;background:#62f6a6;border:1px solid #3b9b68;border-radius:6px;font:inherit;cursor:pointer}
+    input:focus-visible,button:focus-visible{outline:2px solid #62f6a6;outline-offset:3px}button:hover{filter:brightness(1.08)}
+    .error{margin:0;color:#ffadb6;font-size:13px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:22px}
+    .table-wrap{overflow:auto;border:1px solid #294139;border-radius:8px}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid #20332b}th{background:#15271f}small{color:#9eb5a8}pre{white-space:pre-wrap;overflow-wrap:anywhere}
+  </style>${body}</html>`;
+}
+
+function loginPage(mode, error = '') {
+  return document(`<div class="login"><form method="post" action="login" aria-label="顧客管理ログイン"><label>ID<input name="id" autocomplete="username" required maxlength="80"></label><label>パスワード<input name="password" type="password" autocomplete="current-password" required maxlength="200"></label><button type="submit">ログイン</button>${error ? `<p class="error" role="alert">${escape(error)}</p>` : ''}</form></div>`, '顧客管理ログイン');
+}
+
+function customerPage(csv) {
+  const lines = csv.trim().split(/\r?\n/);
+  if (lines.shift() !== 'customer_id,name,birth_date,email') throw new Error('顧客データの形式が不正です。');
+  const rows = lines.map(line => line.split(',')).map(row => `<tr><td>${escape(row[1])}</td><td>${escape(row[2])}</td><td>${escape(row[3])}</td></tr>`).join('');
+  return document(`<main><header><h1>顧客情報一覧</h1><form method="post" action="logout"><button type="submit">ログアウト</button></form></header><p><small>phpstudentでログイン中。この一覧はすべて架空の教材データです。</small></p><div class="table-wrap"><table><thead><tr><th>氏名</th><th>生年月日</th><th>メールアドレス</th></tr></thead><tbody>${rows}</tbody></table></div></main>`);
+}
+
+function cookieValue(req, name) {
+  const entries = String(req.headers.cookie ?? '').split(';');
+  const match = entries.find(entry => entry.trim().startsWith(name + '='));
+  return match ? match.trim().slice(name.length + 1) : '';
+}
+
+function authenticated(req, state, mode) {
+  const auth = state.auth[mode];
+  const value = cookieValue(req, 'tbx_php_auth_' + mode);
+  return Boolean(auth && auth.expiresAt > Date.now() && value && same(value, auth.token));
+}
+
+async function formBody(req) {
+  if (req.body && typeof req.body === 'object') {
+    if (JSON.stringify(req.body).length > 4096) throw new Error('入力が長すぎます。');
+    return req.body;
+  }
+  let text = '';
+  for await (const chunk of req) {
+    text += chunk;
+    if (text.length > 4096) throw new Error('入力が長すぎます。');
+  }
+  return Object.fromEntries(new URLSearchParams(text));
 }
 
 export function installPhpRoutes(app, { isWebService, isLabService, labProxy, sessionManager, terminalBoxSession, internalApiSession, execute = runPhpLesson, runtimePort = 3300, runtimeHost = '127.0.0.9' }) {
@@ -38,27 +91,62 @@ export function installPhpRoutes(app, { isWebService, isLabService, labProxy, se
     });
   }
 
-  const serve = async (req, res, session, path) => {
+  const serve = async (req, res, session, path, prefix = '') => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'self'; base-uri 'none'");
     const send = (status, body, html = false) => { res.statusCode = status; res.setHeader('Content-Type', html ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8'); res.end(html ? body : JSON.stringify(body)); };
+    const redirect = path => { res.statusCode = 303; res.setHeader('Location', path); res.end(); };
     if (!session) return send(401, { error: '有効なTerminalBoxセッションが必要です。' });
     const url = new URL(path, 'http://php.local');
-    const match = url.pathname.match(/^\/(vulnerable|secure)\/(report|api\/report)?$/);
+    const match = url.pathname.match(/^\/(vulnerable|secure)\/(login|logout|customers|api\/customers|report|api\/report)?$/);
     if (!match) return send(404, { error: 'Not found' });
-    if (req.method !== 'GET') return send(405, { error: 'GETを使ってください。' });
-    const [, mode, endpoint] = match;
-    if (!endpoint) return send(200, page(mode), true);
+    const [, mode, endpoint = ''] = match;
+    const base = `${prefix}/${mode}/`;
+    const state = phpState(session);
+    const loggedIn = authenticated(req, state, mode);
+    const cookie = (token, age) => {
+      const https = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https';
+      const existing = res.getHeader('Set-Cookie');
+      const cookies = existing ? (Array.isArray(existing) ? existing : [String(existing)]) : [];
+      res.setHeader('Set-Cookie', [...cookies, `tbx_php_auth_${mode}=${token}; Path=${base}; HttpOnly; SameSite=Strict; Max-Age=${age}${https ? '; Secure' : ''}`]);
+    };
+    if (endpoint === 'login' && req.method === 'POST') {
+      const body = await formBody(req);
+      if (session.phpLab !== state) return send(409, { error: '演習がRESETされました。' });
+      const now = Date.now();
+      state.loginAttempts = state.loginAttempts.filter(time => now - time < 30_000);
+      if (state.loginAttempts.length >= 5) return send(429, loginPage(mode, '少し待ってから再試行してください。'), true);
+      state.loginAttempts.push(now);
+      if (typeof body.id !== 'string' || typeof body.password !== 'string' || body.id.length > 80 || body.password.length > 200 || body.id !== 'phpstudent' || !same(body.password, state.loginPassword)) return send(401, loginPage(mode, 'IDまたはパスワードが違います。'), true);
+      state.loginAttempts = [];
+      const token = randomBytes(32).toString('base64url');
+      state.auth[mode] = { token, expiresAt: now + COOKIE_TTL };
+      cookie(token, COOKIE_TTL / 1000);
+      return redirect(base + 'customers');
+    }
+    if (endpoint === 'logout' && req.method === 'POST') {
+      delete state.auth[mode]; cookie('', 0); return redirect(base);
+    }
+    if (req.method !== 'GET') return send(405, { error: 'この操作方法は使えません。' });
+    if (!endpoint || endpoint === 'login') return loggedIn ? redirect(base + 'customers') : send(200, loginPage(mode), true);
+    const customers = endpoint === 'customers' || endpoint === 'api/customers';
+    if (customers && !loggedIn) return send(401, endpoint === 'customers' ? loginPage(mode, '顧客情報の閲覧にはログインが必要です。') : { error: 'ログインが必要です。' }, endpoint === 'customers');
     const topic = url.searchParams.get('topic') ?? '';
     if (topic.length > 200 || /[\r\n\0]/.test(topic)) return send(400, { error: '入力は改行なし200文字以内です。' });
     if (active >= 2 || busySessions.has(session.sessionId)) return send(429, { error: 'PHP教材は実行中です。少し待って再試行してください。' });
     active += 1; busySessions.add(session.sessionId);
-    const state = phpState(session);
     try {
-      const result = recordPhpResult(session, state, mode, topic, await execute(mode, topic));
-      if (!result) return send(409, { error: '演習がRESETされました。やり直してください。' });
-      return send(result.status, endpoint === 'report' ? page(mode, result) : result, endpoint === 'report');
+      const raw = await execute(mode, topic, customers ? 'customers' : 'report');
+      if (session.phpLab !== state) return send(409, { error: '演習がRESETされました。やり直してください。' });
+      if (customers) {
+        // A normal authenticated read never grants a Flag or attack progress.
+        if (!authenticated(req, state, mode)) return send(401, { error: 'ログインの有効期限が切れました。' });
+        if (raw.status !== 200) throw new Error('顧客データを読み取れません。');
+        return endpoint === 'customers' ? send(200, customerPage(raw.output), true) : send(200, { output: raw.output });
+      }
+      const result = recordPhpResult(session, state, mode, topic, raw, !loggedIn);
+      return endpoint === 'report' ? send(result.status, document(`<main><pre>${escape(result.output)}${result.flag ? '\n' + escape(result.flag) : ''}</pre></main>`), true) : send(result.status, result);
     } catch (error) {
       console.error(`PHP lesson failed: ${error.message}`);
       return send(503, { error: 'PHP教材を実行できません。LabのPHPインストールと専用ユーザー設定を確認してください。' });
@@ -66,7 +154,7 @@ export function installPhpRoutes(app, { isWebService, isLabService, labProxy, se
   };
   if (isLabService) {
     app.use('/php-site', async (req, res) => {
-      try { const session = await terminalBoxSession(req, res, { allowHeader: true }); await serve(req, res, session, req.url); }
+      try { const session = await terminalBoxSession(req, res, { allowHeader: true }); await serve(req, res, session, req.url, '/php-site'); }
       catch { res.status(400).json({ error: 'リクエストが不正です。' }); }
     });
     const server = http.createServer(async (req, res) => {

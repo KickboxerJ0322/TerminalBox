@@ -8,7 +8,7 @@ const LESSON_PATH = fileURLToPath(new URL('../../php-target/lesson.php', import.
 export const PHP_CHOICES = { understand: 'web-user', defend: 'business-input' };
 
 export function createPhpState() {
-  return { epoch: randomBytes(16).toString('hex'), flag: `TBX{php_${randomBytes(1).toString('hex')}}`, identityObserved: false, dataRead: false, secureBlocked: false, completed: [] };
+  return { epoch: randomBytes(16).toString('hex'), flag: `TBX{php_${randomBytes(1).toString('hex')}}`, identityObserved: false, dataRead: false, secureBlocked: false, completed: [], loginPassword: randomBytes(9).toString('base64url'), auth: {}, loginAttempts: [] };
 }
 
 export function phpState(session) {
@@ -17,7 +17,7 @@ export function phpState(session) {
 
 export function phpSummary(session) {
   const state = phpState(session);
-  return { epoch: state.epoch, identityObserved: state.identityObserved, dataRead: state.dataRead, secureBlocked: state.secureBlocked, completed: [...state.completed], cleared: ['attack', 'understand', 'defend'].every(id => state.completed.includes(id)) };
+  return { epoch: state.epoch, identityObserved: state.identityObserved, dataRead: state.dataRead, secureBlocked: state.secureBlocked, completed: [...state.completed], cleared: ['attack', 'understand', 'defend'].every(id => state.completed.includes(id)), login: { id: 'phpstudent', password: state.loginPassword } };
 }
 
 export function checkPhpAnswer(session, stage, answer) {
@@ -31,7 +31,7 @@ export function checkPhpAnswer(session, stage, answer) {
   return { correct: Boolean(correct), ...phpSummary(session) };
 }
 
-export async function runPhpLesson(mode, topic) {
+export async function runPhpLesson(mode, topic, action = 'report') {
   // Drop supplementary groups and prohibit privilege gain before starting PHP.
   // No inherited API keys, internal token, or session environment is passed.
   const child = execFileAsync('/usr/bin/setpriv', [
@@ -42,20 +42,20 @@ export async function runPhpLesson(mode, topic) {
     LESSON_PATH,
   ], { timeout: 3000, maxBuffer: 16_384, env: { PATH: '/usr/bin:/bin', LANG: 'C.UTF-8' }, cwd: '/' });
   child.child.stdin.on('error', () => { /* execFile reports startup/exit failures. */ });
-  child.child.stdin.end(JSON.stringify({ mode, topic }));
+  child.child.stdin.end(JSON.stringify({ mode, topic, action }));
   const { stdout } = await child;
   const result = JSON.parse(stdout);
   if (![200, 400, 500].includes(result.status) || typeof result.output !== 'string' || !/^PHP \d/.test(result.runtime ?? '')) throw new Error('PHP教材の実行結果が不正です。');
   return result;
 }
 
-export function recordPhpResult(session, state, mode, topic, result) {
+export function recordPhpResult(session, state, mode, topic, result, unauthenticated = true) {
   // A response that arrives after RESET must not restore the old progress.
   if (session.phpLab !== state) return null;
-  if (mode === 'vulnerable' && result.status === 200) {
+  if (unauthenticated && mode === 'vulnerable' && result.status === 200) {
     state.identityObserved ||= result.identityObserved === true;
     state.dataRead ||= result.dataRead === true;
   }
-  if (mode === 'secure' && topic === 'summary; cat data/customers.csv' && result.blocked === true) state.secureBlocked = true;
-  return { ...result, ...(mode === 'vulnerable' && result.dataRead && state.identityObserved ? { flag: state.flag } : {}) };
+  if (unauthenticated && mode === 'secure' && topic === 'summary; cat data/customers.csv' && result.blocked === true) state.secureBlocked = true;
+  return { ...result, ...(unauthenticated && mode === 'vulnerable' && result.dataRead && state.identityObserved ? { flag: state.flag } : {}) };
 }
