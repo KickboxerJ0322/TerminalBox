@@ -1,14 +1,14 @@
 import http from 'node:http';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { isValidSessionId } from './session/session-cookie.js';
-import { checkPhpAnswer, createPhpState, phpState, phpSummary, recordPhpResult, runPhpLesson } from './php-lab.js';
+import { checkPhpAnswer, createPhpState, phpState, phpSummary, simulatePhpMemory, runPhpLesson, PHP_SIMULATION_NOTICE } from './php-lab.js';
 
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const digest = value => createHash('sha256').update(String(value)).digest();
 const same = (a, b) => timingSafeEqual(digest(a), digest(b));
 const COOKIE_TTL = 15 * 60 * 1000;
 
-function document(body, title = '顧客管理') {
+function document(body, title = '顧客情報管理サイト') {
   return `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><style>
     :root{color-scheme:dark;font-family:system-ui,sans-serif;color:#e7f2ed;background:#0d151b}
     *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:rgba(137,172,156,.4) transparent}
@@ -17,17 +17,17 @@ function document(body, title = '顧客管理') {
     ::-webkit-scrollbar-thumb{border:2px solid transparent;border-radius:999px;background:rgba(137,172,156,.4);background-clip:padding-box}
     ::-webkit-scrollbar-thumb:hover{background-color:rgba(157,198,178,.65)}::-webkit-scrollbar-button{display:none}
     body{margin:0;line-height:1.7}main{width:min(880px,100%);margin:auto;padding:24px}
-    .login{min-height:100dvh;display:grid;place-items:center;padding:24px}.login form{width:min(320px,100%);display:grid;gap:18px}
+    .site-intro{width:min(880px,100%);margin:auto;padding:20px 24px 0}.simulation-notice{font-size:12px;color:#a7c1b2;border-left:3px solid #3b9b68;padding:8px 12px;background:#12241c}.login{min-height:300px;display:grid;place-items:center;padding:24px}.login form{width:min(320px,100%);display:grid;gap:18px}
     label{display:grid;gap:6px;font-size:13px;color:#a2b7ac}input{width:100%;padding:11px 12px;color:#e7f2ed;background:#111f25;border:1px solid #2b453b;border-radius:6px;font:inherit}
     button{padding:10px 16px;color:#07140d;background:#62f6a6;border:1px solid #3b9b68;border-radius:6px;font:inherit;cursor:pointer}
     input:focus-visible,button:focus-visible{outline:2px solid #62f6a6;outline-offset:3px}button:hover{filter:brightness(1.08)}
     .error{margin:0;color:#ffadb6;font-size:13px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:22px}
     .table-wrap{overflow:auto;border:1px solid #294139;border-radius:8px}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid #20332b}th{background:#15271f}small{color:#9eb5a8}pre{white-space:pre-wrap;overflow-wrap:anywhere}
-  </style>${body}</html>`;
+  </style><body><section class="site-intro"><h1>顧客情報管理サイト</h1><p class="simulation-notice">${escape(PHP_SIMULATION_NOTICE)}</p></section>${body}</body></html>`;
 }
 
 function loginPage(mode, error = '') {
-  return document(`<div class="login"><form method="post" action="login" aria-label="顧客管理ログイン"><label>ID<input name="id" autocomplete="username" required maxlength="80"></label><label>パスワード<input name="password" type="password" autocomplete="current-password" required maxlength="200"></label><button type="submit">ログイン</button>${error ? `<p class="error" role="alert">${escape(error)}</p>` : ''}</form></div>`, '顧客管理ログイン');
+  return document(`<div class="login"><form method="post" action="login" aria-label="顧客管理ログイン"><label>ID<input name="id" autocomplete="username" required maxlength="80"></label><label>パスワード<input name="password" type="password" autocomplete="current-password" required maxlength="200"></label><button type="submit">ログイン</button>${error ? `<p class="error" role="alert">${escape(error)}</p>` : ''}</form></div>`, '顧客情報管理サイト｜ログイン');
 }
 
 function customerPage(csv) {
@@ -58,6 +58,11 @@ async function formBody(req) {
   for await (const chunk of req) {
     text += chunk;
     if (text.length > 4096) throw new Error('入力が長すぎます。');
+  }
+  if (String(req.headers['content-type'] ?? '').includes('application/json')) {
+    const body = JSON.parse(text);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('入力が不正です。');
+    return body;
   }
   return Object.fromEntries(new URLSearchParams(text));
 }
@@ -99,7 +104,7 @@ export function installPhpRoutes(app, { isWebService, isLabService, labProxy, se
     const redirect = path => { res.statusCode = 303; res.setHeader('Location', path); res.end(); };
     if (!session) return send(401, { error: '有効なTerminalBoxセッションが必要です。' });
     const url = new URL(path, 'http://php.local');
-    const match = url.pathname.match(/^\/(vulnerable|secure)\/(login|logout|customers|api\/customers|report|api\/report)?$/);
+    const match = url.pathname.match(/^\/(vulnerable|secure)\/(login|logout|customers|api\/customers|api\/memory-demo)?$/);
     if (!match) return send(404, { error: 'Not found' });
     const [, mode, endpoint = ''] = match;
     const base = `${prefix}/${mode}/`;
@@ -128,29 +133,36 @@ export function installPhpRoutes(app, { isWebService, isLabService, labProxy, se
     if (endpoint === 'logout' && req.method === 'POST') {
       delete state.auth[mode]; cookie('', 0); return redirect(base);
     }
-    if (req.method !== 'GET') return send(405, { error: 'この操作方法は使えません。' });
+    const simulation = endpoint === 'api/memory-demo';
+    if (simulation ? req.method !== 'POST' : req.method !== 'GET') return send(405, { error: 'この操作方法は使えません。' });
     if (!endpoint || endpoint === 'login') return loggedIn ? redirect(base + 'customers') : send(200, loginPage(mode), true);
+    if (simulation && loggedIn) return send(409, { simulation: true, notice: PHP_SIMULATION_NOTICE, error: '模擬演習のリクエストにはログインCookieを付けずに送信してください。' });
     const customers = endpoint === 'customers' || endpoint === 'api/customers';
     if (customers && !loggedIn) return send(401, endpoint === 'customers' ? loginPage(mode, '顧客情報の閲覧にはログインが必要です。') : { error: 'ログインが必要です。' }, endpoint === 'customers');
-    const topic = url.searchParams.get('topic') ?? '';
-    if (topic.length > 200 || /[\r\n\0]/.test(topic)) return send(400, { error: '入力は改行なし200文字以内です。' });
+    let body;
+    if (simulation) {
+      body = await formBody(req);
+      if (Object.keys(body).some(key => key !== 'step')) return send(400, { simulation: true, error: '教材ではstepだけを指定してください。', notice: PHP_SIMULATION_NOTICE });
+      if (session.phpLab !== state) return send(409, { error: '演習が初期化されました。' });
+    }
     if (active >= 2 || busySessions.has(session.sessionId)) return send(429, { error: 'PHP教材は実行中です。少し待って再試行してください。' });
     active += 1; busySessions.add(session.sessionId);
     try {
-      const raw = await execute(mode, topic, customers ? 'customers' : 'report');
-      if (session.phpLab !== state) return send(409, { error: '演習がRESETされました。やり直してください。' });
-      if (customers) {
-        // A normal authenticated read never grants a Flag or attack progress.
-        if (!authenticated(req, state, mode)) return send(401, { error: 'ログインの有効期限が切れました。' });
-        if (raw.status !== 200) throw new Error('顧客データを読み取れません。');
-        return endpoint === 'customers' ? send(200, customerPage(raw.output), true) : send(200, { output: raw.output });
+      if (simulation) {
+        const result = await simulatePhpMemory(session, mode, body.step, execute);
+        return send(result.status, result);
       }
-      const result = recordPhpResult(session, state, mode, topic, raw, !loggedIn);
-      return endpoint === 'report' ? send(result.status, document(`<main><pre>${escape(result.output)}${result.flag ? '\n' + escape(result.flag) : ''}</pre></main>`), true) : send(result.status, result);
+      const raw = await execute();
+      if (session.phpLab !== state) return send(409, { error: '演習がRESETされました。やり直してください。' });
+      if (!authenticated(req, state, mode)) return send(401, { error: 'ログインの有効期限が切れました。' });
+      if (raw.status !== 200 || typeof raw.output !== 'string' || !raw.output.startsWith('customer_id,name,birth_date,email')) throw new Error('顧客データを読み取れません。');
+      state.normalViewed = true;
+      return endpoint === 'customers' ? send(200, customerPage(raw.output), true) : send(200, { output: raw.output });
     } catch (error) {
       console.error(`PHP lesson failed: ${error.message}`);
       return send(503, { error: 'PHP教材を実行できません。LabのPHPインストールと専用ユーザー設定を確認してください。' });
     } finally { active -= 1; busySessions.delete(session.sessionId); }
+
   };
   if (isLabService) {
     app.use('/php-site', async (req, res) => {
