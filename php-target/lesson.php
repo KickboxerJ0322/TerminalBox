@@ -6,6 +6,7 @@ declare(strict_types=1);
 $request = json_decode(stream_get_contents(STDIN, 4096), true, 8, JSON_THROW_ON_ERROR);
 $mode = $request['mode'] ?? '';
 $topic = $request['topic'] ?? '';
+$action = $request['action'] ?? 'report';
 if (!is_string($topic) || strlen($topic) > 200 || !in_array($mode, ['vulnerable', 'secure'], true)) {
     echo json_encode(['status' => 400, 'error' => '入力が不正です。']);
     exit;
@@ -19,7 +20,14 @@ $commands = [
     'cat data/customers.csv' => ['/bin/cat', __DIR__ . '/data/customers.csv'],
 ];
 
-if ($mode === 'secure') {
+if ($action === 'customers') {
+    // Only the Node server's authenticated customer route can select this action.
+    // It reads the identical fixture through the same phpstudent process identity.
+    $result['output'] = file_get_contents(__DIR__ . '/data/customers.csv');
+} elseif ($action !== 'report') {
+    $result['status'] = 400;
+    $result['output'] = '不明な処理です。';
+} elseif ($mode === 'secure') {
     // The protected implementation accepts a business value, not a command.
     if ($topic !== 'summary') {
         $result['status'] = 400;

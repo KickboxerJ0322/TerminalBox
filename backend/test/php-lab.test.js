@@ -86,3 +86,61 @@ test('PHP public proxy, private controls, dedicated user and tab order are wired
   assert.match(nginx, /location = \/internal\/php-lab/);
   assert.match(session, /session\.phpLab = null/);
 });
+
+test('PHP login and reset protect normal customer data; only the bounded unauthenticated lesson bypasses it', async t => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  const other = '22222222-2222-4222-8222-222222222222';
+  const sessions = new Map([[id, { sessionId: id }], [other, { sessionId: other }]]);
+  const csv = await readFile(new URL('../../php-target/data/customers.csv', import.meta.url), 'utf8');
+  const calls = [];
+  const execute = async (mode, topic, action) => {
+    calls.push({ mode, topic, action });
+    if (action === 'customers') return { status: 200, runtime: 'PHP 8.4', output: csv };
+    return { status: mode === 'secure' ? 400 : 200, runtime: 'PHP 8.4', output: mode === 'secure' ? 'blocked' : topic.includes('cat data/customers.csv') ? csv : 'phpstudent', identityObserved: mode === 'vulnerable' && topic === 'summary; whoami', dataRead: mode === 'vulnerable' && topic === 'summary; cat data/customers.csv', blocked: mode === 'secure' };
+  };
+  const app = express(); app.use(express.json());
+  const runtime = installPhpRoutes(app, { isWebService: false, isLabService: true, execute, runtimeHost: '127.0.0.1', runtimePort: 0,
+    sessionManager: { get: key => sessions.get(key), touch: async () => {} }, terminalBoxSession: async (req, res) => { res.setHeader('Set-Cookie', 'tbx_session=existing; Path=/; HttpOnly'); return sessions.get(req.headers['x-terminalbox-session']); }, internalApiSession: async () => sessions.get(id) });
+  const server = app.listen(0, '127.0.0.1');
+  t.after(() => Promise.all([new Promise(resolve => server.close(resolve)), new Promise(resolve => runtime.close(resolve))]));
+  await Promise.all([new Promise(resolve => server.once('listening', resolve)), new Promise(resolve => runtime.once('listening', resolve))]);
+  const base = `http://127.0.0.1:${server.address().port}/php-site`;
+  const kali = `http://127.0.0.1:${runtime.address().port}`;
+  const headers = { 'x-terminalbox-session': id };
+  const get = (path, extra = {}) => fetch(base + path, { headers: { ...headers, ...extra }, redirect: 'manual' });
+  const post = (path, body, extra = {}) => fetch(base + path, { method: 'POST', headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded', ...extra }, body: new URLSearchParams(body), redirect: 'manual' });
+  const home = await (await get('/vulnerable/')).text();
+  assert.equal((home.match(/<input /g) ?? []).length, 2); assert.match(home, /type="password"/);
+  assert.doesNotMatch(home, /レポート種別|name="topic"|demo001|<h1/); assert.match(home, /scrollbar-color:rgba/);
+  for (const mode of ['vulnerable', 'secure']) {
+    assert.equal((await get(`/${mode}/api/customers`)).status, 401);
+    const page = await get(`/${mode}/customers`); assert.equal(page.status, 401); assert.doesNotMatch(await page.text(), /demo001|1990-04-15/);
+  }
+  assert.equal(calls.length, 0);
+  assert.equal((await post('/vulnerable/login', { id: 'phpstudent', password: 'wrong' })).status, 401);
+  const credentials = phpSummary(sessions.get(id)).login;
+  const login = await post('/vulnerable/login', credentials, { 'x-forwarded-proto': 'https' });
+  assert.equal(login.status, 303); assert.equal(login.headers.get('location'), '/php-site/vulnerable/customers');
+  assert.ok(login.headers.getSetCookie().some(value => value.startsWith('tbx_session=existing;')));
+  const setCookie = login.headers.getSetCookie().find(value => value.startsWith('tbx_php_auth_')); assert.match(setCookie, /Path=\/php-site\/vulnerable\//); assert.match(setCookie, /HttpOnly; SameSite=Strict/); assert.match(setCookie, /; Secure/);
+  const cookie = setCookie.split(';')[0];
+  const list = await get('/vulnerable/customers', { cookie }); assert.equal(list.status, 200);
+  const html = await list.text(); assert.match(html, /氏名/); assert.match(html, /生年月日/); assert.match(html, /メールアドレス/); assert.match(html, /1990-04-15/); assert.match(html, /demo001@example.invalid/); assert.doesNotMatch(html, /TBX\{/);
+  assert.equal(phpSummary(sessions.get(id)).dataRead, false);
+  assert.equal((await get('/vulnerable/api/customers', { cookie: 'tbx_php_auth_vulnerable=forged' })).status, 401);
+  assert.equal((await get('/vulnerable/api/customers', { cookie, 'x-terminalbox-session': other })).status, 401);
+  assert.equal((await get('/secure/api/customers', { cookie: cookie.replace('auth_vulnerable', 'auth_secure') })).status, 401);
+  const secureLogin = await post('/secure/login', credentials); const secureCookie = secureLogin.headers.getSetCookie().find(value => value.startsWith('tbx_php_auth_')).split(';')[0];
+  assert.equal((await get('/secure/api/customers', { cookie: secureCookie })).status, 200);
+  const directLogin = await fetch(kali + '/vulnerable/login', { method: 'POST', headers, body: new URLSearchParams(credentials), redirect: 'manual' }); assert.match(directLogin.headers.get('set-cookie'), /Path=\/vulnerable\//);
+  await get('/vulnerable/api/report?' + new URLSearchParams({ topic: 'summary; whoami' }));
+  const payload = await (await get('/vulnerable/api/report?' + new URLSearchParams({ topic: 'summary; cat data/customers.csv' }))).json();
+  assert.equal(payload.output, csv); assert.match(payload.flag, /^TBX\{php_/);
+  const blocked = await get('/secure/api/report?' + new URLSearchParams({ topic: 'summary; cat data/customers.csv', action: 'customers' }));
+  assert.equal(blocked.status, 400); assert.doesNotMatch(JSON.stringify(await blocked.json()), /demo001|1990-04-15|TBX\{/); assert.equal(calls.at(-1).action, 'report');
+  sessions.get(id).phpLab.auth.secure.expiresAt = Date.now() - 1;
+  assert.equal((await get('/secure/api/customers', { cookie: secureCookie })).status, 401);
+  await post('/secure/logout', {}, { cookie: secureCookie }); assert.equal((await get('/secure/api/customers', { cookie: secureCookie })).status, 401);
+  sessions.get(id).phpLab = createPhpState();
+  assert.equal((await get('/vulnerable/api/customers', { cookie })).status, 401); assert.equal((await post('/vulnerable/login', credentials)).status, 401);
+});

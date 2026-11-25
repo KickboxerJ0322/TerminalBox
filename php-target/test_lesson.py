@@ -7,10 +7,10 @@ import unittest
 
 
 class PhpLessonTest(unittest.TestCase):
-    def run_lesson(self, topic, mode="vulnerable"):
+    def run_lesson(self, topic, mode="vulnerable", action="report"):
         completed = subprocess.run(
             [os.environ.get("PHP_TEST_BINARY", "/usr/bin/php"), "-n", str(Path(__file__).with_name("lesson.php"))],
-            input=json.dumps({"mode": mode, "topic": topic}),
+            input=json.dumps({"mode": mode, "topic": topic, "action": action}),
             text=True, capture_output=True, check=True, timeout=3,
         )
         return json.loads(completed.stdout)
@@ -31,6 +31,19 @@ class PhpLessonTest(unittest.TestCase):
         self.assertTrue(data["dataRead"])
         self.assertIn("demo001@example.invalid", data["output"])
         self.assertNotIn("TBX{", data["output"])  # Flags belong to the backend session.
+
+    def test_authenticated_action_reads_the_same_customer_fixture(self):
+        leaked = self.run_lesson("summary; cat data/customers.csv")
+        for mode in ["vulnerable", "secure"]:
+            result = self.run_lesson("", mode, "customers")
+            self.assertEqual(result["status"], 200)
+            self.assertEqual(result["output"], leaked["output"])
+            self.assertIn("birth_date", result["output"])
+            self.assertIn("1990-04-15", result["output"])
+            self.assertFalse(result["dataRead"])
+            self.assertFalse(result["identityObserved"])
+        invalid = self.run_lesson("", "vulnerable", "invalid")
+        self.assertEqual(invalid["status"], 400)
 
     def test_secure_rejects_all_teaching_commands(self):
         for operation in ["whoami", "id", "ls data", "cat data/customers.csv"]:
