@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import '@xterm/xterm/css/xterm.css';
 import './styles.css';
 import App from './App';
+import { installScrollbarTheme } from './scrollbar-theme';
+
+installScrollbarTheme(document);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
