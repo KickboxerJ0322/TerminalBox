@@ -1,0 +1,3 @@
+customer_id,name,email,phone,note
+DEMO001,教材 太郎,demo001@example.invalid,000-0000-0001,すべて架空の学習用データです
+DEMO002,演習 花子,demo002@example.invalid,000-0000-0002,実在の顧客情報ではありません

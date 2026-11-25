@@ -6,6 +6,7 @@ import { ChallengePanel } from './ChallengePanel';
 import { CommandGuide } from './CommandGuide';
 import { KaliWorkspacePanel } from './KaliWorkspacePanel';
 import { TargetPanel } from './TargetPanel';
+import { PhpPanel, PhpMode } from './PhpPanel';
 import { TutorialPanel } from './TutorialPanel';
 
 interface Status {
@@ -26,7 +27,7 @@ interface PasteRequest {
 type WebTargetId = 1 | 2 | 3 | 4 | 5;
 type LinuxTargetId = 6 | 7 | 8 | 9;
 type VulnerabilityTargetId = WebTargetId | LinuxTargetId;
-type LearningTab = 'tutorial' | 'targets' | 'tools' | 'vulnerabilities' | 'mock';
+type LearningTab = 'tutorial' | 'targets' | 'tools' | 'vulnerabilities' | 'mock' | 'php';
 type TargetPanelId = VulnerabilityTargetId | 'tools';
 
 const TUTORIAL_STORAGE_KEY = 'terminalbox:tutorial-completed';
@@ -170,6 +171,8 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionError, setSessionError] = useState('');
   const [mockPreview, setMockPreview] = useState<{mode:'vulnerable'|'secure';id:string}|null>(null);
+  const [phpMode, setPhpMode] = useState<PhpMode>('vulnerable');
+  const [phpRefreshSignal, setPhpRefreshSignal] = useState(0);
   const [learningTab, setLearningTab] = useState<LearningTab>('tutorial');
   const [infoOpen, setInfoOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -261,7 +264,7 @@ export default function App() {
       candidate.index > latest.index ? candidate : latest
     ));
 
-    if (learningTab !== 'mock' && latestTarget.index >= 0) {
+    if (learningTab !== 'mock' && learningTab !== 'php' && latestTarget.index >= 0) {
       setTargetPanelId(latestTarget.id);
       if (typeof latestTarget.id === 'number') {
         setChallengeTargetId(latestTarget.id);
@@ -324,6 +327,8 @@ export default function App() {
     setFullTerminalHistory('');
     setPasteRequest(null);
     setLearningTab('tutorial');
+    setPhpMode('vulnerable');
+    setPhpRefreshSignal(value => value + 1);
     setChallengeTargetId(1);
     setVulnerabilityTargetId(1);
     setTargetPanelId(1);
@@ -479,11 +484,15 @@ export default function App() {
               onKeyDown={(event) => resizeWithKeyboard('leftRows', event)}
             />
             {sessionReady ? <TargetPanel
+              phpSelected={learningTab === 'php'}
+              phpMode={phpMode}
+              onPhpSelect={() => setLearningTab('php')}
+              onPhpReset={() => setPhpRefreshSignal(value => value + 1)}
               mockSelected={learningTab === 'mock'}
               mockPreview={mockPreview}
               onMockSelect={()=>{setLearningTab('mock');setTargetPanelId(1);}}
               key={`target-${resetSignal}`}
-              refreshSignal={targetRefreshSignal}
+              refreshSignal={targetRefreshSignal + phpRefreshSignal}
               targetId={targetPanelId}
               onTargetChange={selectTargetPanelTarget}
             /> : <section className="panel"><p role="status">セッションを準備しています…</p></section>}
@@ -548,7 +557,9 @@ export default function App() {
                 セキュリティツール
               </button>
               <button id="mock-site-tab" type="button" role="tab" aria-controls="mock-site-panel" aria-selected={learningTab === 'mock'} className={learningTab === 'mock' ? 'active' : ''} onClick={() => {setLearningTab('mock');setTargetPanelId(1);}}>模擬サイト</button>
+              <button id="php-tab" type="button" role="tab" aria-controls="php-panel" aria-selected={learningTab === 'php'} className={learningTab === 'php' ? 'active' : ''} onClick={() => setLearningTab('php')}>PHP</button>
             </div>
+            {learningTab === 'php' && sessionReady && <PhpPanel key={`php-${resetSignal}`} mode={phpMode} onModeChange={setPhpMode} refreshSignal={phpRefreshSignal} onReset={() => setPhpRefreshSignal(value => value + 1)} onInsertCommand={queueTerminalPaste} />}
             {learningTab === 'mock' && sessionReady && <MockSitePanel key={`mock-${resetSignal}`} onPreview={(mode,id)=>setMockPreview({mode,id})} onInsertCommand={queueTerminalPaste} />}
             {learningTab === 'tutorial' && (
               <TutorialPanel onInsertCommand={queueTerminalPaste} resetSignal={resetSignal} />

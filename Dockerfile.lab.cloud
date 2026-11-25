@@ -11,12 +11,14 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       adwaita-icon-theme bash ca-certificates curl dbus-x11 dnsutils git iproute2 iputils-ping \
       burpsuite gobuster hashcat hydra john kali-menu metasploit-framework mousepad netcat-openbsd nginx nikto nmap \
-      nodejs novnc procps python3 sqlmap thunar tshark tigervnc-standalone-server wireshark wmctrl wordlists \
+      nodejs novnc procps python3 php-cli sqlmap thunar tshark tigervnc-standalone-server wireshark wmctrl wordlists \
       util-linux wget websockify xdg-utils xfce4-panel xfce4-session xfce4-terminal xfdesktop4 xfwm4 \
       fcitx5 fcitx5-anthy firefox-esr fonts-noto-cjk im-config locales kali-wallpapers-2026 tigervnc-tools \
     && sed -i 's/^# *ja_JP.UTF-8 UTF-8/ja_JP.UTF-8 UTF-8/' /etc/locale.gen \
     && locale-gen ja_JP.UTF-8 \
     && useradd --create-home --shell /bin/bash --uid 1000 student \
+    && groupadd --gid 1001 phpstudent \
+    && useradd --no-create-home --shell /usr/sbin/nologin --uid 1001 --gid 1001 phpstudent \
     && chmod 0644 /etc/terminalbox.bashrc \
     && if [ ! -e /usr/share/novnc/index.html ]; then ln -s vnc.html /usr/share/novnc/index.html; fi \
     && rm -rf /var/lib/apt/lists/*
@@ -46,6 +48,12 @@ COPY backend/src ./backend/src
 COPY target ./target
 COPY challenge-target ./challenge-target
 COPY challenges ./challenges
+COPY php-target ./php-target
+RUN chown -R root:phpstudent /opt/terminalbox/php-target \
+    && find /opt/terminalbox/php-target -type d -exec chmod 0750 {} + \
+    && find /opt/terminalbox/php-target -type f -exec chmod 0640 {} + \
+    && PHP_EXPECTED_USER=phpstudent setpriv --reuid=1001 --regid=1001 --clear-groups --no-new-privs \
+       python3 /opt/terminalbox/php-target/test_lesson.py
 COPY cloud/nginx-lab.conf /etc/nginx/sites-enabled/default
 COPY cloud/start-lab.sh /usr/local/bin/start-terminalbox-lab
 RUN chmod 0755 /usr/local/bin/start-terminalbox-lab

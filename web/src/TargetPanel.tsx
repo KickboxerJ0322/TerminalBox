@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
   refreshSignal: number;
+  phpSelected?: boolean;
+  phpMode?: 'vulnerable' | 'secure';
+  onPhpSelect?: () => void;
+  onPhpReset?: () => void;
   mockSelected?:boolean;
   mockPreview?:{mode:'vulnerable'|'secure';id:string}|null;
   onMockSelect?:()=>void;
@@ -35,13 +39,13 @@ const targetTabs = [
   { id: 'tools', label: 'ツール' },
 ] as const;
 
-export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelected=false, mockPreview, onMockSelect }: Props) {
+export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelected=false, mockPreview, onMockSelect, phpSelected = false, phpMode = 'vulnerable', onPhpSelect, onPhpReset }: Props) {
   const [frameVersion, setFrameVersion] = useState(0);
   const [resetting, setResetting] = useState(false);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const refresh = useCallback(() => setFrameVersion((value) => value + 1), []);
   const goBack = useCallback(() => {try{frameRef.current?.contentWindow?.history.back();}catch{refresh();}}, [refresh]);
-  const target = mockSelected ? {kind:'iframe',address:`http://mocksite:3200/${mockPreview?.mode??'vulnerable'}/`,proxyPath:`/simulation-site/${mockPreview?.mode??'vulnerable'}/`,label:'模擬サイト表示',addressLabel:'Kali内部アドレス'} as const : targetDefinitions[targetId];
+  const target = phpSelected ? { kind: 'iframe', address: `http://phptarget:3300/${phpMode}/`, proxyPath: `/php-site/${phpMode}/`, label: 'PHP ターゲット', addressLabel: 'Kali内部アドレス' } as const : mockSelected ? {kind:'iframe',address:`http://mocksite:3200/${mockPreview?.mode??'vulnerable'}/`,proxyPath:`/simulation-site/${mockPreview?.mode??'vulnerable'}/`,label:'模擬サイト表示',addressLabel:'Kali内部アドレス'} as const : targetDefinitions[targetId];
   const [currentAddress,setCurrentAddress]=useState(target.address as string);
   const [resetError,setResetError]=useState('');
   useEffect(()=>setCurrentAddress(target.address),[target.address,mockPreview?.id]);
@@ -78,8 +82,9 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelec
   const resetTarget = async () => {
     setResetting(true);
     try {
-      const response = await fetch(mockSelected ? '/api/mock-site/reset' : target.kind === 'linux-lab' ? '/api/linux-lab/reset' : `${target.proxyPath}api/lab/reset`, { method: 'POST' });
+      const response = await fetch(phpSelected ? '/api/php-lab/reset' : mockSelected ? '/api/mock-site/reset' : target.kind === 'linux-lab' ? '/api/linux-lab/reset' : `${target.proxyPath}api/lab/reset`, { method: 'POST' });
       if(!response.ok)throw new Error('復元に失敗しました。');
+      if (phpSelected) onPhpReset?.();
       setResetError('');refresh();
     } catch(e){setResetError(e instanceof Error?e.message:'復元に失敗しました。');} finally {
       setResetting(false);
@@ -102,14 +107,15 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelec
             key={id}
             type="button"
             role="tab"
-            aria-selected={!mockSelected && targetId === id}
-            className={!mockSelected && targetId === id ? 'active' : ''}
+            aria-selected={!phpSelected && !mockSelected && targetId === id}
+            className={!phpSelected && !mockSelected && targetId === id ? 'active' : ''}
             onClick={() => onTargetChange(id)}
           >
             {label}
           </button>
         ))}
-        <button type="button" role="tab" aria-selected={mockSelected} className={mockSelected?'active':''} onClick={onMockSelect}>模擬</button>
+        <button type="button" role="tab" aria-selected={!phpSelected && mockSelected} className={!phpSelected && mockSelected?'active':''} onClick={onMockSelect}>模擬</button>
+        <button type="button" role="tab" aria-selected={phpSelected} className={phpSelected ? 'active' : ''} onClick={onPhpSelect}>PHP</button>
       </div>
       <div className="target-address-bar">
         <span aria-hidden="true">●</span>
@@ -118,7 +124,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelec
         <button type="button" onClick={refresh} aria-label="ターゲットサイトを再読み込み" title="再読み込み">↻</button>
       </div>
       {resetError&&<p role="alert">{resetError}</p>}
-      {mockSelected&&!mockPreview ? <div className="target-frame linux-lab-frame"><p>学習パネルの模擬サイトタブで生成してください。</p></div> : target.kind === 'linux-lab' ? (
+      {!phpSelected&&mockSelected&&!mockPreview ? <div className="target-frame linux-lab-frame"><p>学習パネルの模擬サイトタブで生成してください。</p></div> : target.kind === 'linux-lab' ? (
         <div className="target-frame linux-lab-frame">
           <span>LINUX LAB</span>
           <h3>{target.label}</h3>
@@ -126,7 +132,7 @@ export function TargetPanel({ refreshSignal, targetId, onTargetChange, mockSelec
           <p>上のTerminalが [LINUX LAB] student@linux-lab:~$ に切り替わります。root取得と /root/flag.txt はこのSession ID内の安全な演習用シミュレーションです。</p>
         </div>
       ) : (
-        <iframe ref={frameRef} key={`${mockSelected?mockPreview?.id:targetId}-${mockPreview?.mode}-${frameVersion}`} className="target-frame" src={target.proxyPath} onLoad={trackAddress} title={target.label} sandbox="allow-forms allow-same-origin" />
+        <iframe ref={frameRef} key={`${phpSelected ? `php-${phpMode}` : mockSelected?mockPreview?.id:targetId}-${mockPreview?.mode}-${frameVersion}`} className="target-frame" src={target.proxyPath} onLoad={trackAddress} title={target.label} sandbox="allow-forms allow-same-origin" />
       )}
     </section>
   );

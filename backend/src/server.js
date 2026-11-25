@@ -1,4 +1,5 @@
 import { installMockRoutes } from './mock-site-routes.js';
+import { installPhpRoutes } from './php-lab-routes.js';
 import http from 'node:http';
 import express from 'express';
 import helmet from 'helmet';
@@ -45,7 +46,7 @@ if (isWebService) {
 }
 if (!isWebService) {
   app.use((request, response, next) => {
-    if (!isLabHttpPath(request.path) || request.path === '/api/lab/reset' || request.path.startsWith('/simulation-site')) {
+    if (!isLabHttpPath(request.path) || request.path === '/api/lab/reset' || request.path.startsWith('/simulation-site') || request.path.startsWith('/php-site')) {
       next();
       return;
     }
@@ -321,6 +322,7 @@ async function sendGeminiChat(response, context, conversationHistory, options, s
 }
 
 installMockRoutes(app, { config, isWebService, isLabService, labProxy, sessionManager, terminalBoxSession, internalApiSession });
+installPhpRoutes(app, { isWebService, isLabService, labProxy, sessionManager, terminalBoxSession, internalApiSession });
 
 app.get('/api/health', (_request, response) => {
   response.json({
