@@ -28,7 +28,8 @@ export function phpState(session) {
 export function phpSummary(session) {
   const state = phpState(session);
   const memory = Object.fromEntries(Object.entries(state.memory).map(([mode, value]) => [mode, { phase: value.phase, slot: value.slot, staleReference: value.staleReference, events: [...value.events] }]));
-  return { epoch: state.epoch, simulation: true, cve: PHP_SIMULATION_CVE, notice: PHP_SIMULATION_NOTICE, normalViewed: state.normalViewed, dataRead: state.dataRead, secureBlocked: state.secureBlocked, completed: [...state.completed], cleared: ['attack', 'understand', 'defend'].every(id => state.completed.includes(id)), login: { id: 'phpstudent', password: state.loginPassword }, memory };
+  const completed = [...(state.normalViewed ? ['prepare'] : []), ...state.completed.filter(id => id !== 'prepare')];
+  return { epoch: state.epoch, simulation: true, cve: PHP_SIMULATION_CVE, notice: PHP_SIMULATION_NOTICE, normalViewed: state.normalViewed, dataRead: state.dataRead, secureBlocked: state.secureBlocked, completed, cleared: ['prepare', 'attack', 'understand', 'defend'].every(id => completed.includes(id)), login: { id: 'phpstudent', password: state.loginPassword }, memory };
 }
 
 export function checkPhpAnswer(session, stage, answer) {

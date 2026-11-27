@@ -27,7 +27,11 @@ test('prepared inspection leaks without prior login and the same protected inspe
   const safe = await simulatePhpMemory(session, 'secure', 'inspect', () => { throw new Error('protected inspection must not load customer data'); });
   assert.equal(safe.blocked, true); assert.equal(safe.memoryFragment, undefined); assert.equal(safe.flag, undefined);
   assert.doesNotMatch(JSON.stringify(safe), /demo001|1990-04-15|TBX\{/);
-  assert.equal(checkPhpAnswer(session, 'defend', 'update-php').cleared, true);
+  assert.equal(checkPhpAnswer(session, 'defend', 'update-php').cleared, false);
+  assert.equal(phpSummary(session).completed.length, 3);
+  phpState(session).normalViewed = true;
+  assert.equal(phpSummary(session).completed.length, 4);
+  assert.equal(phpSummary(session).cleared, true);
   const again = await simulatePhpMemory(session, 'vulnerable', 'inspect', load);
   assert.equal(again.events.length, leaked.events.length);
   assert.equal((await simulatePhpMemory(session, 'vulnerable', 'allocate', load)).status, 400);
@@ -76,7 +80,12 @@ test('optional login, direct no-cookie inspection, protected comparison and rese
   assert.match(await (await get('/secure/')).text(), /<h1>顧客情報管理サイト（修正後）<\/h1>/);
   assert.equal((await get('/vulnerable/api/report?topic=summary')).status, 404);
   assert.equal((await post('/vulnerable/api/memory-demo', { step: 'inspect' })).status, 200);
+  assert.deepEqual(phpSummary(sessions.get(id)).completed, []);
+  assert.equal((await post('/vulnerable/login', { id: 'phpstudent', password: 'wrong' })).status, 401);
+  assert.deepEqual(phpSummary(sessions.get(id)).completed, []);
   const login = await post('/vulnerable/login', phpSummary(sessions.get(id)).login, { 'x-forwarded-proto': 'https' });
+  assert.deepEqual(phpSummary(sessions.get(id)).completed, ['prepare']);
+  assert.equal(phpSummary(sessions.get(id)).cleared, false);
   assert.equal(login.status, 303); assert.equal(login.headers.get('location'), '/php-site/vulnerable/customers');
   assert.ok(login.headers.getSetCookie().some(value => value.startsWith('tbx_session=existing;')));
   const setCookie = login.headers.getSetCookie().find(value => value.startsWith('tbx_php_auth_'));
@@ -100,6 +109,10 @@ test('optional login, direct no-cookie inspection, protected comparison and rese
   for (const step of ['inspect']) { const response = await post('/secure/api/memory-demo', { step }); assert.equal(response.status, 200); const result = await response.json(); assert.equal(result.flag, undefined); assert.equal(result.memoryFragment, undefined); }
   assert.equal((await (await control('check', { stage: 'defend', answer: 'update-php' })).json()).cleared, true);
   assert.equal((await post('/secure/api/memory-demo', { step: 'inspect', command: 'id' })).status, 400);
+  assert.equal(phpSummary(sessions.get(id)).completed.length, 4);
+  await control('unclear');
+  assert.deepEqual(phpSummary(sessions.get(id)).completed, []);
+  assert.equal(phpSummary(sessions.get(id)).cleared, false);
   const before = phpSummary(sessions.get(id)).epoch;
   await control('reset'); assert.notEqual(phpSummary(sessions.get(id)).epoch, before);
   assert.equal(phpSummary(sessions.get(id)).normalViewed, false); assert.equal(phpSummary(sessions.get(other)).dataRead, false);

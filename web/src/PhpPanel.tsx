@@ -77,7 +77,7 @@ export function PhpPanel({ onInsertCommand, mode, onModeChange, refreshSignal, o
   const completed = stage === 'prepare' ? progress?.normalViewed : progress?.completed.includes(stage);
   const model = progress?.memory?.[selectedMode];
   return <section className="panel tutorial-panel challenge-panel" id="php-panel" role="tabpanel" aria-labelledby="php-tab">
-    <div className="panel-heading"><h2>PHP2Shell：メモリ漏えいの模擬演習</h2><span className="ai-badge">{progress?.completed.length ?? 0}/3 CLEAR</span></div>
+    <div className="panel-heading"><h2>PHP2Shell：メモリ漏えいの模擬演習</h2><span className="ai-badge">{progress?.completed.length ?? 0}/4 CLEAR</span></div>
     <div className="php-mode-actions"><button type="button" aria-pressed={mode === 'vulnerable'} className={mode === 'vulnerable' ? 'active' : ''} onClick={() => selectModel('vulnerable')}>修正前モデルを表示</button><button type="button" aria-pressed={mode === 'secure'} className={mode === 'secure' ? 'active' : ''} onClick={() => selectModel('secure')}>修正後モデルを表示</button><button type="button" disabled={busy} onClick={() => void call('reset')}>PHP演習を初期化</button><span role="status">{progress?.cleared ? '全問クリア' : '演習中'}</span></div>
     <div className="tutorial-body">
       <nav className="lesson-list" aria-label="PHP問題の一覧">{stages.map(item => {
@@ -91,7 +91,7 @@ export function PhpPanel({ onInsertCommand, mode, onModeChange, refreshSignal, o
         {stage === 'prepare' && <>
           <div className="lesson-card lesson-check"><span>最初に：通常のログインと比較する</span><ol><li>上の「修正前モデルを表示」を押します。</li><li>左下のTargetのログイン画面に、以下のID・パスワードを入力します。</li><li>顧客情報一覧の氏名・生年月日・メールアドレスを確認します。正規のログインで表示される情報を確認できます。</li><li>一覧画面の「ログアウト」を押して、ログイン画面へ戻ります。</li><li>ATTACKへ進み、教材用コマンドを実行します。このログインは正常時の表示を学ぶための比較であり、情報漏えいが起きる前提条件ではありません。</li></ol></div>
           <div className="php-command-guide"><dl><dt>ID</dt><dd><code>{progress?.login?.id ?? 'phpstudent'}</code></dd><dt>パスワード（この演習セッション専用）</dt><dd><code>{progress?.login?.password ?? '取得中…'}</code></dd></dl><p>これは教材サイト用の認証情報です。LinuxのOSパスワードではありません。正常にログインして一覧を見ただけではFlagは取得できません。</p></div>
-          <p role="status">{progress?.normalViewed ? '✓ 正規ログインでの一覧閲覧を確認しました。ログアウトしてATTACKへ進んでください。' : 'まず正規ログインで顧客一覧を確認し、その後ログアウトしてATTACKへ進みます。'}</p>
+          <p role="status">{progress?.normalViewed ? '✓ 正規ログインの成功を確認しました。ログアウトしてATTACKへ進んでください。' : 'まず正規ログインで顧客一覧を確認し、その後ログアウトしてATTACKへ進みます。'}</p>
           <button type="button" className="lesson-clear-button" onClick={() => { setStage('attack'); setHint(false); }}>ATTACKへ進む</button>
         </>}
         {stage === 'attack' && <div className="lesson-card lesson-check"><span>ATTACKの前提：①〜③は準備済み</span><p>最初から、リクエストAの異常終了・領域解放が起き、古い参照が残っている状態です。その参照先には、別の正規利用者の正常な処理で置かれた10件の架空顧客情報がある、と教材側で設定しています。</p><p>あなたは未ログインの攻撃者です。以下のコマンドを実行してください。</p><p>このHTTPリクエストは教材専用で、実際のCVE-2026-109618の攻撃形式ではありません。出力は既知の架空データであり、他利用者の実メモリは読みません。</p></div>}
@@ -109,7 +109,7 @@ export function PhpPanel({ onInsertCommand, mode, onModeChange, refreshSignal, o
         {feedback && <p role="status">{feedback}</p>}
         <button type="button" className="hint-toggle" aria-expanded={hint} aria-controls="php-hint" onClick={() => setHint(current => !current)}><span>HINT</span><strong>{hint ? 'ヒントを隠す' : 'ヒントを表示'}</strong></button>
         <div id="php-hint" hidden={!hint} className="lesson-card lesson-hint"><p>{stage === 'prepare' ? '最初に正規ログインして顧客一覧を確認し、ログアウトします。RESET後は新しいパスワードになります。ログイン履歴は情報漏えいの成立条件ではありません。' : stage === 'attack' ? 'step=inspectのコマンドを送ります。①〜③の状態は最初から教材が用意しています。応答のmemoryFragmentに10件の架空顧客情報、flagに回答用Flagが入ります。これは実際のPHP2Shellのリクエスト形式ではありません。' : stage === 'understand' ? '解放後使用では、古い参照を信じて再利用された場所を扱うことで、別のリクエストのデータが漏れることがあります。アプリの認証処理より下の層に問題があるため、認証だけでは十分ではありません。' : '入力欄を消したりパスワードを変えたりするだけでは、PHPエンジン内部の不具合は修正されません。修正済みPHPへの更新が中心です。'}</p></div>
-        <div className="lesson-card lesson-check"><span>CHECK</span><p>最初に正規ログインの表示を比較し、その後ATTACK・UNDERSTAND・DEFENDへ進みます。3設問に正解すると全問クリアです。修正後モデルへ同じコマンドを送り、顧客情報が返らないことを確かめてください。PHP初期化・HP復元・全体RESETは、進捗・Flag・ログイン状態を初期化し、両モデルを①〜③準備済みの状態へ戻します。</p></div>
+        <div className="lesson-card lesson-check"><span>CHECK</span><p>最初に正規ログインの表示を比較し、その後ATTACK・UNDERSTAND・DEFENDへ進みます。正規ログインの成功と3設問への正解で、4/4の全問クリアです。修正後モデルへ同じコマンドを送り、顧客情報が返らないことを確かめてください。PHP初期化・HP復元・全体RESETは、進捗・Flag・ログイン状態を初期化し、両モデルを①〜③準備済みの状態へ戻します。</p></div>
         <button type="button" className="lesson-clear-button" disabled={busy || !progress?.completed.length} onClick={() => void call('unclear')}>クリア解除</button>
         {error && <p role="alert">{error}</p>}
       </article>
