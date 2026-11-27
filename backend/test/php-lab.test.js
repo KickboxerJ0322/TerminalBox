@@ -70,7 +70,7 @@ test('optional login, direct no-cookie inspection, protected comparison and rese
   assert.equal((await fetch(base + '/internal/php-lab', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"status"}' })).status, 403);
   const home = await (await get('/vulnerable/')).text();
   assert.match(home, /<h1>顧客情報管理サイト<\/h1>/); assert.ok(home.includes(PHP_SIMULATION_NOTICE));
-  assert.equal((home.match(/<input /g) ?? []).length, 2); assert.match(home, /type="password"/); assert.match(home, /scrollbar-color:rgba/);
+  assert.equal((home.match(/<input /g) ?? []).length, 2); assert.match(home, /type="password"/); assert.match(home, /scrollbar-color:rgba/); assert.match(home, /class="php-page-scroll"/); assert.match(home, /height:100%;overflow:hidden!important/);
   assert.doesNotMatch(home, /name="topic"|demo001|1990-04-15/);
   assert.equal((await get('/vulnerable/api/customers')).status, 401);
   assert.match(await (await get('/secure/')).text(), /<h1>顧客情報管理サイト（修正後）<\/h1>/);
@@ -110,8 +110,10 @@ test('PHP page and learner panel identify a conceptual model and remove the old 
   assert.equal(isLabHttpPath('/php-site/secure/'), true); assert.equal(isLabHttpPath('/internal/php-lab'), false);
   const read = path => readFile(new URL('../../' + path, import.meta.url), 'utf8');
   const [panel, php, runner, app, session] = await Promise.all(['web/src/PhpPanel.tsx', 'php-target/lesson.php', 'backend/src/php-lab.js', 'web/src/App.tsx', 'backend/src/session/session-manager.js'].map(read));
-  assert.ok(panel.includes(PHP_SIMULATION_NOTICE)); assert.match(panel, /useState<Stage>\('attack'\)/);
-  assert.match(panel, /ログインや①〜③の操作は不要/); assert.match(panel, /CVE-2026-109618/); assert.match(panel, /api\/memory-demo/);
+  assert.ok(panel.includes(PHP_SIMULATION_NOTICE)); assert.match(panel, /useState<Stage>\('prepare'\)/);
+  assert.equal((panel.match(/あなたは未ログインの攻撃者です。以下のコマンドを実行してください。/g) ?? []).length, 2);
+  assert.match(panel, /<h2>PHP2Shell：メモリ漏えいの模擬演習<\/h2>/);
+  assert.doesNotMatch(panel, /見る（任意）|④ 古い参照による/); assert.match(panel, /CVE-2026-109618/); assert.match(panel, /api\/memory-demo/);
   assert.doesNotMatch(panel, /summary;|whoami|cat data/); assert.doesNotMatch(php, /proc_open\(/);
   assert.match(runner, /disable_functions=[^']*proc_open/); assert.match(runner, /--clear-groups.*--no-new-privs/);
   assert.ok(app.indexOf('id="php-tab"') > app.indexOf('id="mock-site-tab"')); assert.match(session, /session\.phpLab = null/);

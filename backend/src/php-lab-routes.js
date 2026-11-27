@@ -21,6 +21,13 @@ function document(body, mode = 'vulnerable', suffix = '') {
     /* Chromium native scrollbar-color can override the transparent pseudo-elements. */
     @supports selector(::-webkit-scrollbar){html,body,*{scrollbar-width:auto!important;scrollbar-color:auto!important}}
     html{background:#0d151b;color-scheme:dark}html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{background:transparent!important}
+    html,body{height:100%;overflow:hidden!important}
+    .php-page-scroll{height:100vh;height:100dvh;width:100%;overflow:auto;overscroll-behavior:contain;background:#0d151b;color-scheme:dark;scrollbar-width:thin!important;scrollbar-color:rgba(137,172,156,.4) transparent!important}
+    .php-page-scroll:hover{scrollbar-color:rgba(157,198,178,.65) transparent!important}
+    .php-page-scroll::-webkit-scrollbar{width:7px;height:7px;background:transparent}
+    .php-page-scroll::-webkit-scrollbar-track,.php-page-scroll::-webkit-scrollbar-corner{background:transparent}
+    .php-page-scroll::-webkit-scrollbar-thumb{background:rgba(137,172,156,.4);border:2px solid transparent;border-radius:999px;background-clip:padding-box}
+    .php-page-scroll:focus-visible{outline:1px solid #3b9b68;outline-offset:-1px}
     body{margin:0;line-height:1.7}main{width:min(880px,100%);margin:auto;padding:24px}
     .site-intro{width:min(880px,100%);margin:auto;padding:20px 24px 0}.simulation-notice{font-size:12px;color:#a7c1b2;border-left:3px solid #3b9b68;padding:8px 12px;background:#12241c}.login{min-height:300px;display:grid;place-items:center;padding:24px}.login form{width:min(320px,100%);display:grid;gap:18px}
     label{display:grid;gap:6px;font-size:13px;color:#a2b7ac}input{width:100%;padding:11px 12px;color:#e7f2ed;background:#111f25;border:1px solid #2b453b;border-radius:6px;font:inherit}
@@ -28,7 +35,7 @@ function document(body, mode = 'vulnerable', suffix = '') {
     input:focus-visible,button:focus-visible{outline:2px solid #62f6a6;outline-offset:3px}button:hover{filter:brightness(1.08)}
     .error{margin:0;color:#ffadb6;font-size:13px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:22px}
     .table-wrap{overflow:auto;border:1px solid #294139;border-radius:8px}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid #20332b}th{background:#15271f}small{color:#9eb5a8}pre{white-space:pre-wrap;overflow-wrap:anywhere}
-  </style><body><section class="site-intro"><h1>${siteTitle}</h1><p class="simulation-notice">${escape(PHP_SIMULATION_NOTICE)}</p></section>${body}</body></html>`;
+  </style><body><div class="php-page-scroll" role="region" aria-label="顧客情報管理サイト" tabindex="0"><section class="site-intro"><h1>${siteTitle}</h1><p class="simulation-notice">${escape(PHP_SIMULATION_NOTICE)}</p></section>${body}</div></body></html>`;
 }
 
 function loginPage(mode, error = '') {
