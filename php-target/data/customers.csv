@@ -1,3 +1,11 @@
 customer_id,name,birth_date,email
 DEMO001,教材 太郎,1990-04-15,demo001@example.invalid
 DEMO002,演習 花子,1988-09-23,demo002@example.invalid
+DEMO003,教材 次郎,1993-02-10,demo003@example.invalid
+DEMO004,演習 美咲,1995-07-08,demo004@example.invalid
+DEMO005,教材 三郎,1985-11-20,demo005@example.invalid
+DEMO006,演習 結衣,1998-03-12,demo006@example.invalid
+DEMO007,教材 健一,1991-06-25,demo007@example.invalid
+DEMO008,演習 葵,1996-12-04,demo008@example.invalid
+DEMO009,教材 直人,1987-08-16,demo009@example.invalid
+DEMO010,演習 彩,2000-01-30,demo010@example.invalid
