@@ -24,6 +24,8 @@ class PhpLessonTest(unittest.TestCase):
         self.assertRegex(result["runtime"], r"^PHP 8\.")
         self.assertEqual(result["output"], Path(__file__).with_name("data").joinpath("customers.csv").read_text())
         self.assertIn("1990-04-15", result["output"])
+        self.assertEqual(len(result["output"].strip().splitlines()) - 1, 10)
+        self.assertIn("demo010@example.invalid", result["output"])
         self.assertNotIn("TBX{", result["output"])
 
     def test_old_commands_and_arbitrary_actions_are_not_supported(self):

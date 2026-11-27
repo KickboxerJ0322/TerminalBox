@@ -8,14 +8,19 @@ const digest = value => createHash('sha256').update(String(value)).digest();
 const same = (a, b) => timingSafeEqual(digest(a), digest(b));
 const COOKIE_TTL = 15 * 60 * 1000;
 
-function document(body, title = '顧客情報管理サイト') {
+function document(body, mode = 'vulnerable', suffix = '') {
+  const siteTitle = mode === 'secure' ? '顧客情報管理サイト（修正後）' : '顧客情報管理サイト';
+  const title = siteTitle + suffix;
   return `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><style>
     :root{color-scheme:dark;font-family:system-ui,sans-serif;color:#e7f2ed;background:#0d151b}
     *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:rgba(137,172,156,.4) transparent}
     *:hover{scrollbar-color:rgba(157,198,178,.65) transparent}
-    ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
+    ::-webkit-scrollbar{width:7px;height:7px;background:transparent}::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
     ::-webkit-scrollbar-thumb{border:2px solid transparent;border-radius:999px;background:rgba(137,172,156,.4);background-clip:padding-box}
     ::-webkit-scrollbar-thumb:hover{background-color:rgba(157,198,178,.65)}::-webkit-scrollbar-button{display:none}
+    /* Chromium native scrollbar-color can override the transparent pseudo-elements. */
+    @supports selector(::-webkit-scrollbar){html,body,*{scrollbar-width:auto!important;scrollbar-color:auto!important}}
+    html{background:#0d151b;color-scheme:dark}html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{background:transparent!important}
     body{margin:0;line-height:1.7}main{width:min(880px,100%);margin:auto;padding:24px}
     .site-intro{width:min(880px,100%);margin:auto;padding:20px 24px 0}.simulation-notice{font-size:12px;color:#a7c1b2;border-left:3px solid #3b9b68;padding:8px 12px;background:#12241c}.login{min-height:300px;display:grid;place-items:center;padding:24px}.login form{width:min(320px,100%);display:grid;gap:18px}
     label{display:grid;gap:6px;font-size:13px;color:#a2b7ac}input{width:100%;padding:11px 12px;color:#e7f2ed;background:#111f25;border:1px solid #2b453b;border-radius:6px;font:inherit}
@@ -23,18 +28,18 @@ function document(body, title = '顧客情報管理サイト') {
     input:focus-visible,button:focus-visible{outline:2px solid #62f6a6;outline-offset:3px}button:hover{filter:brightness(1.08)}
     .error{margin:0;color:#ffadb6;font-size:13px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:22px}
     .table-wrap{overflow:auto;border:1px solid #294139;border-radius:8px}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{padding:12px 16px;text-align:left;border-bottom:1px solid #20332b}th{background:#15271f}small{color:#9eb5a8}pre{white-space:pre-wrap;overflow-wrap:anywhere}
-  </style><body><section class="site-intro"><h1>顧客情報管理サイト</h1><p class="simulation-notice">${escape(PHP_SIMULATION_NOTICE)}</p></section>${body}</body></html>`;
+  </style><body><section class="site-intro"><h1>${siteTitle}</h1><p class="simulation-notice">${escape(PHP_SIMULATION_NOTICE)}</p></section>${body}</body></html>`;
 }
 
 function loginPage(mode, error = '') {
-  return document(`<div class="login"><form method="post" action="login" aria-label="顧客管理ログイン"><label>ID<input name="id" autocomplete="username" required maxlength="80"></label><label>パスワード<input name="password" type="password" autocomplete="current-password" required maxlength="200"></label><button type="submit">ログイン</button>${error ? `<p class="error" role="alert">${escape(error)}</p>` : ''}</form></div>`, '顧客情報管理サイト｜ログイン');
+  return document(`<div class="login"><form method="post" action="login" aria-label="顧客管理ログイン"><label>ID<input name="id" autocomplete="username" required maxlength="80"></label><label>パスワード<input name="password" type="password" autocomplete="current-password" required maxlength="200"></label><button type="submit">ログイン</button>${error ? `<p class="error" role="alert">${escape(error)}</p>` : ''}</form></div>`, mode, '｜ログイン');
 }
 
-function customerPage(csv) {
+function customerPage(csv, mode) {
   const lines = csv.trim().split(/\r?\n/);
   if (lines.shift() !== 'customer_id,name,birth_date,email') throw new Error('顧客データの形式が不正です。');
   const rows = lines.map(line => line.split(',')).map(row => `<tr><td>${escape(row[1])}</td><td>${escape(row[2])}</td><td>${escape(row[3])}</td></tr>`).join('');
-  return document(`<main><header><h1>顧客情報一覧</h1><form method="post" action="logout"><button type="submit">ログアウト</button></form></header><p><small>phpstudentでログイン中。この一覧はすべて架空の教材データです。</small></p><div class="table-wrap"><table><thead><tr><th>氏名</th><th>生年月日</th><th>メールアドレス</th></tr></thead><tbody>${rows}</tbody></table></div></main>`);
+  return document(`<main><header><h1>顧客情報一覧</h1><form method="post" action="logout"><button type="submit">ログアウト</button></form></header><p><small>phpstudentでログイン中。この一覧はすべて架空の教材データです。</small></p><div class="table-wrap"><table><thead><tr><th>氏名</th><th>生年月日</th><th>メールアドレス</th></tr></thead><tbody>${rows}</tbody></table></div></main>`, mode);
 }
 
 function cookieValue(req, name) {
@@ -157,7 +162,7 @@ export function installPhpRoutes(app, { isWebService, isLabService, labProxy, se
       if (!authenticated(req, state, mode)) return send(401, { error: 'ログインの有効期限が切れました。' });
       if (raw.status !== 200 || typeof raw.output !== 'string' || !raw.output.startsWith('customer_id,name,birth_date,email')) throw new Error('顧客データを読み取れません。');
       state.normalViewed = true;
-      return endpoint === 'customers' ? send(200, customerPage(raw.output), true) : send(200, { output: raw.output });
+      return endpoint === 'customers' ? send(200, customerPage(raw.output, mode), true) : send(200, { output: raw.output });
     } catch (error) {
       console.error(`PHP lesson failed: ${error.message}`);
       return send(503, { error: 'PHP教材を実行できません。LabのPHPインストールと専用ユーザー設定を確認してください。' });

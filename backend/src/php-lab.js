@@ -7,28 +7,34 @@ const execFileAsync = promisify(execFile);
 const LESSON_PATH = fileURLToPath(new URL('../../php-target/lesson.php', import.meta.url));
 export const PHP_SIMULATION_NOTICE = 'PHP2Shellのメモリ情報漏えいを概念的に再現した模擬演習であり、実際の脆弱性や攻撃手順の再現ではない';
 export const PHP_CHOICES = { understand: 'stale-reference', defend: 'update-php' };
-const newMemory = () => ({ phase: 'idle', slot: 'SLOT-A（架空）', staleReference: false, payload: '', events: [] });
+export const PHP_SIMULATION_CVE = 'CVE-2026-109618';
+const newMemory = mode => ({ phase: 'reused', slot: 'SLOT-A（架空）', staleReference: mode === 'vulnerable', payload: '', events: [
+  '① リクエストAの領域確保は、教材側で準備済みです。',
+  '② 異常終了と領域解放も準備済みです。実際のOOMやクラッシュは起こしません。',
+  mode === 'vulnerable' ? '修正前モデル：解放済み領域への古い参照が残っています。' : '修正後モデル：古い参照は消去されています。',
+  '③ 別の正規利用者の処理が同じ場所を再利用し、架空の顧客情報を置いた状態を教材が準備しています。攻撃者の操作ではありません。',
+] });
 
 export function createPhpState() {
-  return { epoch: randomBytes(16).toString('hex'), flag: `TBX{php_${randomBytes(1).toString('hex')}}`, normalViewed: false, dataRead: false, secureBlocked: false, completed: [], loginPassword: randomBytes(9).toString('base64url'), auth: {}, loginAttempts: [], memory: { vulnerable: newMemory(), secure: newMemory() } };
+  return { epoch: randomBytes(16).toString('hex'), flag: `TBX{php_${randomBytes(1).toString('hex')}}`, readyModelVersion: 2, normalViewed: false, dataRead: false, secureBlocked: false, completed: [], loginPassword: randomBytes(9).toString('base64url'), auth: {}, loginAttempts: [], memory: { vulnerable: newMemory('vulnerable'), secure: newMemory('secure') } };
 }
 
 export function phpState(session) {
   // Reset obsolete command-dispatch lessons when a session survives a code reload.
-  if (!session.phpLab?.memory) session.phpLab = createPhpState();
+  if (session.phpLab?.readyModelVersion !== 2) session.phpLab = createPhpState();
   return session.phpLab;
 }
 
 export function phpSummary(session) {
   const state = phpState(session);
   const memory = Object.fromEntries(Object.entries(state.memory).map(([mode, value]) => [mode, { phase: value.phase, slot: value.slot, staleReference: value.staleReference, events: [...value.events] }]));
-  return { epoch: state.epoch, simulation: true, notice: PHP_SIMULATION_NOTICE, normalViewed: state.normalViewed, dataRead: state.dataRead, secureBlocked: state.secureBlocked, completed: [...state.completed], cleared: ['attack', 'understand', 'defend'].every(id => state.completed.includes(id)), login: { id: 'phpstudent', password: state.loginPassword }, memory };
+  return { epoch: state.epoch, simulation: true, cve: PHP_SIMULATION_CVE, notice: PHP_SIMULATION_NOTICE, normalViewed: state.normalViewed, dataRead: state.dataRead, secureBlocked: state.secureBlocked, completed: [...state.completed], cleared: ['attack', 'understand', 'defend'].every(id => state.completed.includes(id)), login: { id: 'phpstudent', password: state.loginPassword }, memory };
 }
 
 export function checkPhpAnswer(session, stage, answer) {
   const state = phpState(session);
   const correct = stage === 'attack'
-    ? state.normalViewed && state.dataRead && answer === state.flag
+    ? state.dataRead && answer === state.flag
     : stage === 'understand'
       ? state.completed.includes('attack') && answer === PHP_CHOICES.understand
       : stage === 'defend' && state.completed.includes('understand') && state.secureBlocked && answer === PHP_CHOICES.defend;
@@ -55,45 +61,33 @@ export async function runPhpLesson() {
 }
 
 export async function simulatePhpMemory(session, mode, step, loadCustomers = runPhpLesson) {
-  if (!['vulnerable', 'secure'].includes(mode) || !['allocate', 'abort', 'reuse', 'inspect'].includes(step)) {
-    return { status: 400, simulation: true, error: '教材用の4段階だけを指定してください。', notice: PHP_SIMULATION_NOTICE };
+  const info = { simulation: true, cve: PHP_SIMULATION_CVE, notice: PHP_SIMULATION_NOTICE };
+  if (!['vulnerable', 'secure'].includes(mode) || step !== 'inspect') {
+    return { status: 400, ...info, error: '①〜③は教材側で準備済みです。step=inspectだけを送信してください。' };
   }
   const state = phpState(session);
-  if (!state.normalViewed) return { status: 409, simulation: true, error: '先にTargetへID・パスワードでログインし、通常の顧客一覧を確認してください。', notice: PHP_SIMULATION_NOTICE };
-  if (step === 'allocate') state.memory[mode] = newMemory();
   const model = state.memory[mode];
-  const expected = { allocate: 'idle', abort: 'allocated', reuse: 'released', inspect: 'reused' };
-  if (model.phase !== expected[step]) return { status: 409, simulation: true, error: '確保 → 模擬異常終了・解放 → 再利用 → 参照確認の順で進めてください。', notice: PHP_SIMULATION_NOTICE };
   let memoryFragment;
   let flag;
   let blocked = false;
-  if (step === 'allocate') {
-    model.phase = 'allocated';
-    model.events.push('① リクエストA：架空のSLOT-Aを確保し、参照を登録。');
-  } else if (step === 'abort') {
-    model.phase = 'released';
-    model.staleReference = mode === 'vulnerable';
-    model.events.push('② リクエストAの異常終了を模擬し、SLOT-Aを解放。実際のメモリ不足やクラッシュは起こしません。');
-    model.events.push(mode === 'vulnerable' ? '修正前モデル：解放した場所への古い参照が残っています。' : '修正後モデル：古い参照も消去しました。');
-  } else if (step === 'reuse') {
-    const fixture = await loadCustomers();
-    if (session.phpLab !== state || state.memory[mode] !== model) return { status: 409, simulation: true, error: '演習が初期化されました。やり直してください。', notice: PHP_SIMULATION_NOTICE };
-    if (fixture.status !== 200 || typeof fixture.output !== 'string' || !fixture.output.startsWith('customer_id,name,birth_date,email')) throw new Error('教材データを読み取れません。');
-    model.payload = fixture.output;
-    model.phase = 'reused';
-    model.events.push('③ 別のリクエストBが同じ架空の場所を再利用した、という設定で共通の架空顧客データを配置。');
-  } else {
-    model.phase = 'inspected';
-    if (model.staleReference) {
-      state.dataRead = true;
-      memoryFragment = `[架空のメモリ断片 / ${model.slot}]\n${model.payload}`;
-      flag = state.flag;
-      model.events.push('④ 古い参照を使った結果、別のリクエストのデータが漏れる状況を模擬。');
-    } else {
-      state.secureBlocked = true;
-      blocked = true;
-      model.events.push('④ 古い参照がないため、情報は返りません。修正後モデルで漏えい防止を確認。');
+  if (model.staleReference) {
+    // Lazy loading of the common fixture backs the pre-populated conceptual slot.
+    // It is automatic setup, not a request asking an attacker to place data.
+    if (!model.payload) {
+      const fixture = await loadCustomers();
+      if (session.phpLab !== state || state.memory[mode] !== model) return { status: 409, ...info, error: '演習が初期化されました。やり直してください。' };
+      if (fixture.status !== 200 || typeof fixture.output !== 'string' || !fixture.output.startsWith('customer_id,name,birth_date,email')) throw new Error('教材データを読み取れません。');
+      model.payload = fixture.output;
     }
+    state.dataRead = true;
+    memoryFragment = `[架空のメモリ断片 / ${model.slot}]\n${model.payload}`;
+    flag = state.flag;
+  } else {
+    // Do not read or return the fixture on the protected inspection path.
+    state.secureBlocked = true;
+    blocked = true;
   }
-  return { status: 200, simulation: true, notice: PHP_SIMULATION_NOTICE, mode, step, phase: model.phase, slot: model.slot, staleReference: model.staleReference, events: [...model.events], blocked, ...(memoryFragment ? { memoryFragment, flag } : {}) };
+  if (model.phase !== 'inspected') model.events.push(blocked ? '④ 古い参照がないため、顧客情報は返りません。' : '④ 未ログインの観察者へ顧客情報が漏れる影響を模擬しました。');
+  model.phase = 'inspected';
+  return { status: 200, ...info, mode, step, phase: model.phase, slot: model.slot, staleReference: model.staleReference, events: [...model.events], blocked, ...(memoryFragment ? { memoryFragment, flag } : {}) };
 }
