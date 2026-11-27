@@ -87,7 +87,7 @@ export function installPhpRoutes(app, { isWebService, isLabService, labProxy, se
     if (action === 'status') return phpSummary(session);
     if (action === 'reset') { session.phpLab = createPhpState(); return phpSummary(session); }
     if (action === 'check') return checkPhpAnswer(session, body.stage, String(body.answer ?? '').slice(0, 200));
-    if (action === 'unclear') { phpState(session).completed = []; return phpSummary(session); }
+    if (action === 'unclear') { phpState(session).completed = []; phpState(session).normalViewed = false; return phpSummary(session); }
     throw new Error('不明な操作です。');
   };
 
@@ -137,6 +137,7 @@ export function installPhpRoutes(app, { isWebService, isLabService, labProxy, se
       state.loginAttempts.push(now);
       if (typeof body.id !== 'string' || typeof body.password !== 'string' || body.id.length > 80 || body.password.length > 200 || body.id !== 'phpstudent' || !same(body.password, state.loginPassword)) return send(401, loginPage(mode, 'IDまたはパスワードが違います。'), true);
       state.loginAttempts = [];
+      state.normalViewed = true;
       const token = randomBytes(32).toString('base64url');
       state.auth[mode] = { token, expiresAt: now + COOKIE_TTL };
       cookie(token, COOKIE_TTL / 1000);
